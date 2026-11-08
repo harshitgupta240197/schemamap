@@ -16,6 +16,7 @@ Schema Map connects to a SQL Server database with a read-only login, reads only 
 cli/        Python package `schemamap` (extract, infer, export, CLI)
   src/schemamap/queries/   every SQL statement lives here as a .sql file
 viewer/     React + TypeScript single-file viewer (Vite)
+schema/     snapshot.v1.json, generated from cli/src/schemamap/snapshot/ (never edit by hand)
 tools/      lab.py (SQL Server Docker lab), synthetic schema generator
 docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate reports
 .github/    CI workflows
@@ -27,6 +28,7 @@ docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate repo
 - CLI integration tests (lab must be up): `cd cli && uv run pytest -m integration`
 - Viewer checks: `cd viewer && npm run lint && npm run typecheck && npm test && npm run build`
 - Viewer end-to-end: `cd viewer && npx playwright test`
+- Regenerate the snapshot JSON Schema after changing `snapshot/` models: `cd cli && uv run python scripts/gen_snapshot_schema.py` (a test fails if `schema/snapshot.v1.json` is stale)
 - Lab: `uv run tools/lab.py up | restore all | status | down [--purge]` (also `restore <db>`, `grant <db>`; see `docs/LAB.md`)
 
 Run the full checks for every area you touched before every commit. If a command here changes, update this file in the same commit.

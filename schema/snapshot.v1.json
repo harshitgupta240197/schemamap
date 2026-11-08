@@ -1,0 +1,1342 @@
+{
+  "$defs": {
+    "CheckConstraint": {
+      "description": "A check constraint.",
+      "properties": {
+        "column": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set for a column-level constraint.",
+          "title": "Column"
+        },
+        "definition": {
+          "description": "SQL predicate. Free text that may contain literals.",
+          "title": "Definition",
+          "type": "string"
+        },
+        "disabled": {
+          "default": false,
+          "title": "Disabled",
+          "type": "boolean"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "trusted": {
+          "default": true,
+          "title": "Trusted",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "definition"
+      ],
+      "title": "CheckConstraint",
+      "type": "object"
+    },
+    "Column": {
+      "description": "A column of a table or view.",
+      "properties": {
+        "collation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Collation"
+        },
+        "computed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ComputedColumn"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "data_type": {
+          "description": "System type name, for example \"nvarchar\".",
+          "minLength": 1,
+          "title": "Data Type",
+          "type": "string"
+        },
+        "default": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DefaultConstraint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "identity": {
+          "default": false,
+          "title": "Identity",
+          "type": "boolean"
+        },
+        "is_max": {
+          "default": false,
+          "title": "Is Max",
+          "type": "boolean"
+        },
+        "length": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Declared length in characters (character types) or bytes (binary types).",
+          "title": "Length"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "nullable": {
+          "title": "Nullable",
+          "type": "boolean"
+        },
+        "ordinal": {
+          "description": "Position in the table (column_id order from the catalog).",
+          "minimum": 1,
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "precision": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Precision"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scale"
+        },
+        "user_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Qualified alias type name, for example \"dbo.Phone\", when the column uses one.",
+          "title": "User Type"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "ordinal",
+        "data_type",
+        "nullable"
+      ],
+      "title": "Column",
+      "type": "object"
+    },
+    "ComputedColumn": {
+      "description": "How a computed column is calculated.",
+      "properties": {
+        "definition": {
+          "description": "SQL expression. Free text that may contain literals.",
+          "title": "Definition",
+          "type": "string"
+        },
+        "persisted": {
+          "title": "Persisted",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "definition",
+        "persisted"
+      ],
+      "title": "ComputedColumn",
+      "type": "object"
+    },
+    "DefaultConstraint": {
+      "description": "A column's default constraint.",
+      "properties": {
+        "definition": {
+          "description": "SQL expression. Free text that may contain literals.",
+          "title": "Definition",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "definition"
+      ],
+      "title": "DefaultConstraint",
+      "type": "object"
+    },
+    "DefinitionStatus": {
+      "description": "Whether a module's SQL definition is in the snapshot, and if not, why.",
+      "enum": [
+        "available",
+        "encrypted",
+        "not_permitted",
+        "not_applicable"
+      ],
+      "title": "DefinitionStatus",
+      "type": "string"
+    },
+    "Dependency": {
+      "description": "One object's SQL refers to another (sys.sql_expression_dependencies).",
+      "properties": {
+        "from_object": {
+          "title": "From Object",
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/Reference"
+        }
+      },
+      "required": [
+        "from_object",
+        "target"
+      ],
+      "title": "Dependency",
+      "type": "object"
+    },
+    "EvidenceSource": {
+      "description": "Where a join was seen.",
+      "enum": [
+        "code",
+        "query_history"
+      ],
+      "title": "EvidenceSource",
+      "type": "string"
+    },
+    "ExtractionWarning": {
+      "description": "Something extraction could not read, usually a missing permission.",
+      "properties": {
+        "code": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "section": {
+          "$ref": "#/$defs/Section"
+        }
+      },
+      "required": [
+        "section",
+        "code",
+        "message"
+      ],
+      "title": "ExtractionWarning",
+      "type": "object"
+    },
+    "Generator": {
+      "description": "The tool that wrote the snapshot.",
+      "properties": {
+        "name": {
+          "const": "schemamap",
+          "default": "schemamap",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version"
+      ],
+      "title": "Generator",
+      "type": "object"
+    },
+    "Index": {
+      "description": "An index on a table. Heaps have no index entry.",
+      "properties": {
+        "disabled": {
+          "default": false,
+          "title": "Disabled",
+          "type": "boolean"
+        },
+        "filter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Filter predicate of a filtered index. Free text that may contain literals.",
+          "title": "Filter"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "included_columns": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Included Columns",
+          "type": "array"
+        },
+        "key_columns": {
+          "description": "Key columns in key order.",
+          "items": {
+            "$ref": "#/$defs/IndexColumn"
+          },
+          "title": "Key Columns",
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/IndexKind"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "unique": {
+          "title": "Unique",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "unique",
+        "key_columns"
+      ],
+      "title": "Index",
+      "type": "object"
+    },
+    "IndexColumn": {
+      "description": "One key column of an index.",
+      "properties": {
+        "column": {
+          "title": "Column",
+          "type": "string"
+        },
+        "descending": {
+          "default": false,
+          "title": "Descending",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "column"
+      ],
+      "title": "IndexColumn",
+      "type": "object"
+    },
+    "IndexKind": {
+      "description": "Physical kind of an index.",
+      "enum": [
+        "clustered",
+        "nonclustered",
+        "clustered_columnstore",
+        "nonclustered_columnstore",
+        "xml",
+        "spatial",
+        "hash",
+        "other"
+      ],
+      "title": "IndexKind",
+      "type": "string"
+    },
+    "JoinEvidence": {
+      "description": "Optional section. Typed join pairs only: no query text is ever stored.",
+      "properties": {
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/JoinEvidenceEntry"
+          },
+          "title": "Entries",
+          "type": "array"
+        },
+        "parse_failure_count": {
+          "description": "Statements the parser could not read; they contribute no entries.",
+          "minimum": 0,
+          "title": "Parse Failure Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "entries",
+        "parse_failure_count"
+      ],
+      "title": "JoinEvidence",
+      "type": "object"
+    },
+    "JoinEvidenceEntry": {
+      "description": "Two columns compared by equality in a join. The pair is unordered, so it is stored\nwith from_column < to_column and the same join always produces one entry.",
+      "properties": {
+        "count": {
+          "description": "Number of distinct modules or queries that contain this join.",
+          "minimum": 1,
+          "title": "Count",
+          "type": "integer"
+        },
+        "from_column": {
+          "title": "From Column",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/EvidenceSource"
+        },
+        "to_column": {
+          "title": "To Column",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from_column",
+        "to_column",
+        "source",
+        "count"
+      ],
+      "title": "JoinEvidenceEntry",
+      "type": "object"
+    },
+    "KeyConstraint": {
+      "description": "A primary key or unique constraint.",
+      "properties": {
+        "columns": {
+          "description": "Key columns in key order.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Columns",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "index": {
+          "description": "The index that enforces the constraint.",
+          "title": "Index",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/KeyKind"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "columns",
+        "index"
+      ],
+      "title": "KeyConstraint",
+      "type": "object"
+    },
+    "KeyKind": {
+      "description": "Kind of key constraint.",
+      "enum": [
+        "primary_key",
+        "unique"
+      ],
+      "title": "KeyKind",
+      "type": "string"
+    },
+    "ObjectUsage": {
+      "description": "How often an object ran in the Query Store window. Counts only, never query text.",
+      "properties": {
+        "execution_count": {
+          "minimum": 0,
+          "title": "Execution Count",
+          "type": "integer"
+        },
+        "last_executed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Executed At"
+        },
+        "object": {
+          "title": "Object",
+          "type": "string"
+        }
+      },
+      "required": [
+        "object",
+        "execution_count"
+      ],
+      "title": "ObjectUsage",
+      "type": "object"
+    },
+    "QualifiedName": {
+      "description": "A multi-part name exactly as written in SQL; missing parts are null.",
+      "properties": {
+        "database": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Database"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "schema_name": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Schema Name"
+        },
+        "server": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Linked server name. Dropped by --redact-server.",
+          "title": "Server"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "QualifiedName",
+      "type": "object"
+    },
+    "QueryHistory": {
+      "description": "Optional section.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ObjectUsage"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "source": {
+          "const": "query_store",
+          "default": "query_store",
+          "title": "Source",
+          "type": "string"
+        },
+        "window_end": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Window End"
+        },
+        "window_start": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Window Start"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "QueryHistory",
+      "type": "object"
+    },
+    "Reference": {
+      "description": "A reference from SQL to another object.",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/QualifiedName"
+        },
+        "resolved": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The local object the name resolves to; only for local scope, null if it does not exist.",
+          "title": "Resolved"
+        },
+        "scope": {
+          "$ref": "#/$defs/ReferenceScope"
+        }
+      },
+      "required": [
+        "scope",
+        "name"
+      ],
+      "title": "Reference",
+      "type": "object"
+    },
+    "ReferenceScope": {
+      "description": "Where a referenced object lives. Cross-database targets are flagged, never resolved.",
+      "enum": [
+        "local",
+        "cross_database",
+        "cross_server"
+      ],
+      "title": "ReferenceScope",
+      "type": "string"
+    },
+    "ReferentialAction": {
+      "description": "What a foreign key does on delete or update.",
+      "enum": [
+        "no_action",
+        "cascade",
+        "set_null",
+        "set_default"
+      ],
+      "title": "ReferentialAction",
+      "type": "string"
+    },
+    "Relationship": {
+      "description": "A declared foreign key. Inferred relationships never appear here (see Snapshot).",
+      "properties": {
+        "disabled": {
+          "default": false,
+          "title": "Disabled",
+          "type": "boolean"
+        },
+        "edge": {
+          "description": "Derived from the ordered column IDs; stable across constraint renames.",
+          "title": "Edge",
+          "type": "string"
+        },
+        "from_columns": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "From Columns",
+          "type": "array"
+        },
+        "from_object": {
+          "title": "From Object",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "on_delete": {
+          "$ref": "#/$defs/ReferentialAction",
+          "default": "no_action"
+        },
+        "on_update": {
+          "$ref": "#/$defs/ReferentialAction",
+          "default": "no_action"
+        },
+        "to_columns": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "To Columns",
+          "type": "array"
+        },
+        "to_object": {
+          "title": "To Object",
+          "type": "string"
+        },
+        "trusted": {
+          "default": true,
+          "title": "Trusted",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "edge",
+        "from_object",
+        "from_columns",
+        "to_object",
+        "to_columns"
+      ],
+      "title": "Relationship",
+      "type": "object"
+    },
+    "Routine": {
+      "description": "A stored procedure, function or trigger.",
+      "properties": {
+        "definition": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "SQL text of the module. Free text written by the database's developers: it may contain\nliterals. Present only when definition_status is \"available\".",
+          "title": "Definition"
+        },
+        "definition_status": {
+          "$ref": "#/$defs/DefinitionStatus"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RoutineKind"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For a trigger: the table or view it fires on.",
+          "title": "Parent"
+        },
+        "schema_id": {
+          "title": "Schema Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "definition_status",
+        "id",
+        "schema_id",
+        "name",
+        "kind"
+      ],
+      "title": "Routine",
+      "type": "object"
+    },
+    "RoutineKind": {
+      "description": "Kind of programmable object.",
+      "enum": [
+        "procedure",
+        "scalar_function",
+        "table_function",
+        "inline_table_function",
+        "trigger",
+        "other"
+      ],
+      "title": "RoutineKind",
+      "type": "string"
+    },
+    "RowCount": {
+      "description": "Approximate row count of a table, from partition statistics (never from the table).",
+      "properties": {
+        "object": {
+          "title": "Object",
+          "type": "string"
+        },
+        "rows": {
+          "minimum": 0,
+          "title": "Rows",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "object",
+        "rows"
+      ],
+      "title": "RowCount",
+      "type": "object"
+    },
+    "RowCounts": {
+      "description": "Optional section.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/RowCount"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "RowCounts",
+      "type": "object"
+    },
+    "Schema": {
+      "description": "A database schema.",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "Schema",
+      "type": "object"
+    },
+    "Section": {
+      "description": "A part of the snapshot that extraction can skip.",
+      "enum": [
+        "schemas",
+        "tables",
+        "views",
+        "routines",
+        "synonyms",
+        "relationships",
+        "dependencies",
+        "definitions",
+        "descriptions",
+        "row_counts",
+        "query_history",
+        "join_evidence"
+      ],
+      "title": "Section",
+      "type": "string"
+    },
+    "SourceInfo": {
+      "description": "Where the snapshot came from. Never holds a login, password or connection string.",
+      "properties": {
+        "collation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Collation"
+        },
+        "compatibility_level": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Compatibility Level"
+        },
+        "database": {
+          "minLength": 1,
+          "title": "Database",
+          "type": "string"
+        },
+        "engine_edition": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine Edition"
+        },
+        "product_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Product Version"
+        },
+        "server": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Server host or instance name; null when redacted (--redact-server) or unknown.",
+          "title": "Server"
+        },
+        "server_redacted": {
+          "default": false,
+          "title": "Server Redacted",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "database"
+      ],
+      "title": "SourceInfo",
+      "type": "object"
+    },
+    "Synonym": {
+      "description": "A synonym and the object it points to.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "schema_id": {
+          "title": "Schema Id",
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/Reference"
+        }
+      },
+      "required": [
+        "id",
+        "schema_id",
+        "name",
+        "target"
+      ],
+      "title": "Synonym",
+      "type": "object"
+    },
+    "Table": {
+      "description": "A user table.",
+      "properties": {
+        "check_constraints": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CheckConstraint"
+          },
+          "title": "Check Constraints",
+          "type": "array"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/Column"
+          },
+          "title": "Columns",
+          "type": "array"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "indexes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Index"
+          },
+          "title": "Indexes",
+          "type": "array"
+        },
+        "key_constraints": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/KeyConstraint"
+          },
+          "title": "Key Constraints",
+          "type": "array"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "schema_id": {
+          "title": "Schema Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "schema_id",
+        "name",
+        "columns"
+      ],
+      "title": "Table",
+      "type": "object"
+    },
+    "View": {
+      "description": "A view.",
+      "properties": {
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/Column"
+          },
+          "title": "Columns",
+          "type": "array"
+        },
+        "definition": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "SQL text of the module. Free text written by the database's developers: it may contain\nliterals. Present only when definition_status is \"available\".",
+          "title": "Definition"
+        },
+        "definition_status": {
+          "$ref": "#/$defs/DefinitionStatus"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "schema_bound": {
+          "default": false,
+          "title": "Schema Bound",
+          "type": "boolean"
+        },
+        "schema_id": {
+          "title": "Schema Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "definition_status",
+        "id",
+        "schema_id",
+        "name",
+        "columns"
+      ],
+      "title": "View",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Schema Map snapshot, format v1.\n\nReaders must ignore fields they do not know. Minor versions only add optional fields.\nReserved for v1.1: a top-level `inferred_relationships` list (with score and evidence),\nkept separate from `relationships` so a v1.0 reader never shows a guess as a declared key.\nOptional sections (row_counts, query_history, join_evidence) are null when not collected.",
+  "properties": {
+    "captured_at": {
+      "description": "UTC time of extraction.",
+      "format": "date-time",
+      "title": "Captured At",
+      "type": "string"
+    },
+    "dependencies": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Dependency"
+      },
+      "title": "Dependencies",
+      "type": "array"
+    },
+    "format": {
+      "const": "schemamap.snapshot",
+      "default": "schemamap.snapshot",
+      "title": "Format",
+      "type": "string"
+    },
+    "format_version": {
+      "default": "1.0",
+      "pattern": "^1\\.(0|[1-9][0-9]*)$",
+      "title": "Format Version",
+      "type": "string"
+    },
+    "generator": {
+      "$ref": "#/$defs/Generator"
+    },
+    "join_evidence": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/JoinEvidence"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional section; null when not collected."
+    },
+    "query_history": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/QueryHistory"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional section; null when not collected."
+    },
+    "relationships": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Relationship"
+      },
+      "title": "Relationships",
+      "type": "array"
+    },
+    "routines": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Routine"
+      },
+      "title": "Routines",
+      "type": "array"
+    },
+    "row_counts": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RowCounts"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional section; null when not collected."
+    },
+    "schemas": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Schema"
+      },
+      "title": "Schemas",
+      "type": "array"
+    },
+    "source": {
+      "$ref": "#/$defs/SourceInfo"
+    },
+    "synonyms": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Synonym"
+      },
+      "title": "Synonyms",
+      "type": "array"
+    },
+    "tables": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Table"
+      },
+      "title": "Tables",
+      "type": "array"
+    },
+    "views": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/View"
+      },
+      "title": "Views",
+      "type": "array"
+    },
+    "warnings": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ExtractionWarning"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "generator",
+    "captured_at",
+    "source"
+  ],
+  "title": "Schema Map snapshot v1",
+  "type": "object"
+}
