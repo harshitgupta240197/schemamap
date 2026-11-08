@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(.env*)",
+      "Read(node_modules/**)",
+      "Read(dist/**)",
+      "Read(.venv/**)",
+      "Read(lab-data/**)",
+      "Read(*.bak)"
+    ],
+    "allow": [
+      "Bash(ruff check)",
+      "Bash(ruff check *)",
+      "Bash(ruff format --check *)",
+      "Bash(mypy *)",
+      "Bash(pytest)",
+      "Bash(pytest *)",
+      "Bash(uv run ruff check *)",
+      "Bash(uv run ruff format --check *)",
+      "Bash(uv run mypy *)",
+      "Bash(uv run pytest)",
+      "Bash(uv run pytest *)",
+      "Bash(npm run lint)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run test)",
+      "Bash(npm run build)",
+      "Bash(npx playwright test)",
+      "Bash(npx playwright test *)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log)",
+      "Bash(git log *)"
+    ]
+  }
+}

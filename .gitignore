@@ -32,3 +32,6 @@ blob-report/
 .DS_Store
 .idea/
 .vscode/
+
+# Claude Code personal overrides
+.claude/settings.local.json
