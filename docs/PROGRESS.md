@@ -6,3 +6,4 @@
 2026-11-08 | 0.6 | ebd1482 | Viewer toolchain: Vite/React/strict TS, ESLint, Prettier, Vitest, Playwright, single-file dist/index.html
 2026-11-08 | 0.7 | ab22994 | CI on 3 OSes (cli 6 jobs + viewer with Playwright), actions pinned to SHAs, all green
 2026-11-08 | 0.8 | 2d8a73d | SQL Server 2022 lab: tools/lab.py (up/restore/status/down/grant), 3 sample DBs, schemamap_reader without SELECT, integration tests
+2026-11-08 | 0.8a | b484a53 | Lab downloads: 3-attempt backoff, Range resume via .part, GitHub API fallback, manual-download hint; tested on local server only
