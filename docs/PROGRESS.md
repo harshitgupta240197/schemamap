@@ -5,3 +5,4 @@
 2026-11-08 | 0.5 | 9c0e1f4 | Python toolchain and CLI skeleton: uv project, Typer --version, ruff/mypy/pytest
 2026-11-08 | 0.6 | ebd1482 | Viewer toolchain: Vite/React/strict TS, ESLint, Prettier, Vitest, Playwright, single-file dist/index.html
 2026-11-08 | 0.7 | ab22994 | CI on 3 OSes (cli 6 jobs + viewer with Playwright), actions pinned to SHAs, all green
+2026-11-08 | 0.8 | 2d8a73d | SQL Server 2022 lab: tools/lab.py (up/restore/status/down/grant), 3 sample DBs, schemamap_reader without SELECT, integration tests
