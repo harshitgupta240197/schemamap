@@ -1,0 +1,21 @@
+# SQL Server 2022 lab for Schema Map. Drive it with `uv run tools/lab.py`; see docs/LAB.md.
+# Passwords come from .env, which `tools/lab.py up` generates. Never commit it.
+name: schemamap-lab
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    container_name: schemamap-lab
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${SCHEMAMAP_LAB_SA_PASSWORD:-}
+    ports:
+      # Host port 14330, not 1433 (often taken). Bound to loopback so the SA
+      # login is never reachable from the network.
+      - "127.0.0.1:14330:1433"
+    volumes:
+      - ./lab-data/mssql:/var/opt/mssql
+      - ./lab-data/backups:/backups:ro
+      - ./tools/lab-sql:/lab-sql:ro
