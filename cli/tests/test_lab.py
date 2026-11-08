@@ -180,6 +180,11 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         pass
 
 
+@pytest.fixture(autouse=True)
+def no_backoff(lab: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(lab, "BACKOFF_BASE_SECONDS", 0)
+
+
 @pytest.fixture
 def server() -> Iterator[str]:
     httpd = http.server.HTTPServer(("127.0.0.1", 0), _Handler)
@@ -212,7 +217,8 @@ def test_download_rejects_truncated_body(lab: ModuleType, server: str, tmp_path:
     with pytest.raises(lab.LabError, match="downloaded 5000 bytes, expected 10000"):
         lab.download(f"{server}/lie", dest, 10_000)
     assert not dest.exists()
-    assert list(tmp_path.glob("*.part")) == []
+    # The bytes received so far are kept in the .part file so the next run can resume.
+    assert (tmp_path / "a.bak.part").stat().st_size == 5000
 
 
 def test_download_reports_malformed_http_response(

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import http.client
+import json
 import os
 import re
 import secrets
@@ -25,9 +26,12 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PureWindowsPath
+from typing import TypeVar
+
+T = TypeVar("T")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 COMPOSE_FILE = REPO_ROOT / "docker-compose.yml"
@@ -53,6 +57,12 @@ READY_TIMEOUT_SECONDS = 240
 RESTORE_TIMEOUT_SECONDS = 900
 PASSWORD_LENGTH = 24
 
+DOWNLOAD_ATTEMPTS = 3
+BACKOFF_BASE_SECONDS = 2.0  # waits 2 s, then 4 s, between attempts
+DOWNLOAD_TIMEOUT_SECONDS = 60
+USER_AGENT = "schemamap-lab"
+ENV_GITHUB_TOKEN = "GITHUB_TOKEN"
+
 _SAFE_NAME = re.compile(r"^[A-Za-z0-9_.\-]+$")
 _DB_NAME = re.compile(r"^[A-Za-z0-9_]+$")
 _READER_PASSWORD = re.compile(r"^[A-Za-z0-9]+$")
@@ -70,10 +80,16 @@ class Backup:
     filename: str
     url: str
     size: int
+    tag: str = ""  # release tag; lets a failed download fall back to the GitHub API
 
 
-_ADVENTUREWORKS = "https://github.com/microsoft/sql-server-samples/releases/download/adventureworks"
-_WWI = "https://github.com/microsoft/sql-server-samples/releases/download/wide-world-importers-v1.0"
+SAMPLES_REPO = "microsoft/sql-server-samples"
+GITHUB_API = "https://api.github.com"
+_ADVENTUREWORKS_TAG = "adventureworks"
+_WWI_TAG = "wide-world-importers-v1.0"
+_RELEASES = f"https://github.com/{SAMPLES_REPO}/releases/download"
+_ADVENTUREWORKS = f"{_RELEASES}/{_ADVENTUREWORKS_TAG}"
+_WWI = f"{_RELEASES}/{_WWI_TAG}"
 
 # Sizes are the byte counts of the release assets, used to verify each download.
 CATALOG: dict[str, Backup] = {
@@ -84,18 +100,21 @@ CATALOG: dict[str, Backup] = {
             "AdventureWorks2022.bak",
             f"{_ADVENTUREWORKS}/AdventureWorks2022.bak",
             209_838_080,
+            _ADVENTUREWORKS_TAG,
         ),
         Backup(
             "AdventureWorksDW2022",
             "AdventureWorksDW2022.bak",
             f"{_ADVENTUREWORKS}/AdventureWorksDW2022.bak",
             101_834_752,
+            _ADVENTUREWORKS_TAG,
         ),
         Backup(
             "WideWorldImporters",
             "WideWorldImporters-Full.bak",
             f"{_WWI}/WideWorldImporters-Full.bak",
             127_111_168,
+            _WWI_TAG,
         ),
     )
 }
@@ -259,37 +278,181 @@ def read_env(path: Path = ENV_PATH) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
-def download(url: str, dest: Path, expected_size: int) -> None:
-    """Download `url` to `dest` through a `.part` file, verifying the exact byte count."""
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    part = dest.with_name(dest.name + ".part")
-    request = urllib.request.Request(url, headers={"User-Agent": "schemamap-lab"})
+class _Interrupted(Exception):
+    """A failure worth retrying: a 5xx answer, a dropped connection or a short body."""
+
+
+class _RangeRejected(_Interrupted):
+    """The server refused a Range request, so the partial file cannot be extended."""
+
+
+def _open(
+    url: str, headers: dict[str, str], have: int, authorize: bool
+) -> http.client.HTTPResponse:
+    """Open `url`, asking for the bytes from offset `have` on when `have` is not zero.
+
+    With `authorize`, GITHUB_TOKEN (if set) is sent as an *unredirected* header, so it
+    reaches only this host and is dropped when GitHub redirects to its file storage.
+    """
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, **headers})
+    if have:
+        request.add_header("Range", f"bytes={have}-")
+    token = os.environ.get(ENV_GITHUB_TOKEN)
+    if authorize and token:
+        request.add_unredirected_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(request, timeout=60) as response, part.open("wb") as out:
-            length = response.headers.get("Content-Length")
-            if length is not None and int(length) != expected_size:
-                raise LabError(
-                    f"{dest.name}: server reports {length} bytes, expected {expected_size}."
-                )
-            received = 0
-            next_report = 10
+        response: http.client.HTTPResponse = urllib.request.urlopen(
+            request, timeout=DOWNLOAD_TIMEOUT_SECONDS
+        )
+    except urllib.error.HTTPError as exc:
+        exc.close()
+        if exc.code == 416 and have:
+            raise _RangeRejected("the server rejected the partial download") from exc
+        if exc.code >= 500:
+            raise _Interrupted(f"HTTP {exc.code} {exc.reason}") from exc
+        raise LabError(f"HTTP {exc.code} {exc.reason}") from exc
+    except (urllib.error.URLError, http.client.HTTPException, OSError) as exc:
+        raise _Interrupted(str(exc)) from exc
+    return response
+
+
+def _stream(response: http.client.HTTPResponse, part: Path, expected: int, resumed: bool) -> None:
+    """Append the body to `part`, printing progress every ten percent."""
+    try:
+        with part.open("ab" if resumed else "wb") as out:
+            received = out.tell()
+            next_report = received * 100 // expected // 10 * 10 + 10
             while chunk := response.read(1024 * 1024):
                 out.write(chunk)
                 received += len(chunk)
-                percent = received * 100 // expected_size
+                percent = received * 100 // expected
                 if percent >= next_report:
-                    print(f"  {dest.name}: {min(percent, 100)}%", flush=True)
+                    print(f"  {part.name}: {min(percent, 100)}%", flush=True)
                     next_report = percent // 10 * 10 + 10
-    except (urllib.error.URLError, http.client.HTTPException, OSError) as exc:
-        part.unlink(missing_ok=True)
-        raise LabError(f"Could not download {url}: {exc}") from exc
-    except LabError:
-        part.unlink(missing_ok=True)
+    except (http.client.HTTPException, OSError) as exc:
+        raise _Interrupted(f"connection lost: {exc}") from exc
+
+
+def _attempt(url: str, part: Path, expected: int, headers: dict[str, str], authorize: bool) -> None:
+    """Make one request, resuming `part` with a Range header if it already has bytes.
+
+    Returns once `part` holds exactly `expected` bytes. Raises `_Interrupted` for failures
+    worth retrying and `LabError` for ones that retrying cannot fix.
+    """
+    have = part.stat().st_size if part.exists() else 0
+    if have > expected:
+        part.unlink()
+        have = 0
+    if have == expected:
+        return
+    try:
+        response = _open(url, headers, have, authorize)
+    except _RangeRejected:
+        part.unlink()  # the partial file does not belong to this file; start again
         raise
+    with response:
+        resumed = have > 0 and response.status == 206
+        if resumed and not (response.headers.get("Content-Range") or "").startswith(
+            f"bytes {have}-"
+        ):
+            part.unlink(missing_ok=True)
+            raise LabError("the server answered a Range request with the wrong range.")
+        remaining = expected - (have if resumed else 0)
+        length = response.headers.get("Content-Length")
+        if length is not None and int(length) != remaining:
+            part.unlink(missing_ok=True)
+            raise LabError(f"server reports {length} bytes, expected {remaining}.")
+        _stream(response, part, expected, resumed)
     actual = part.stat().st_size
-    if actual != expected_size:
-        part.unlink(missing_ok=True)
-        raise LabError(f"{dest.name}: downloaded {actual} bytes, expected {expected_size}.")
+    if actual > expected:
+        part.unlink()
+        raise LabError(f"downloaded {actual} bytes, expected {expected}.")
+    if actual < expected:
+        raise _Interrupted(f"downloaded {actual} bytes, expected {expected}")
+
+
+def _with_retries(action: Callable[[], T]) -> T:
+    """Run `action`, retrying `_Interrupted` failures with exponential backoff."""
+    for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+        try:
+            return action()
+        except _Interrupted as exc:
+            if attempt == DOWNLOAD_ATTEMPTS:
+                raise LabError(f"{exc} (gave up after {DOWNLOAD_ATTEMPTS} attempts)") from exc
+            delay = BACKOFF_BASE_SECONDS * 2 ** (attempt - 1)
+            print(f"  {exc}; retrying in {delay:g}s (attempt {attempt + 1} of {DOWNLOAD_ATTEMPTS})")
+            time.sleep(delay)
+    raise AssertionError("unreachable")  # pragma: no cover
+
+
+def _find_asset(tag: str, filename: str, expected: int) -> str:
+    """Ask the GitHub API for the asset endpoint URL of `filename` in release `tag`."""
+
+    def lookup() -> bytes:
+        url = f"{GITHUB_API}/repos/{SAMPLES_REPO}/releases/tags/{tag}"
+        headers = {"Accept": "application/vnd.github+json"}
+        with _open(url, headers, 0, authorize=True) as response:
+            try:
+                return bytes(response.read())
+            except (http.client.HTTPException, OSError) as exc:
+                raise _Interrupted(f"connection lost: {exc}") from exc
+
+    try:
+        release = json.loads(_with_retries(lookup))
+        assets = release["assets"]
+        asset = next(a for a in assets if a["name"] == filename)
+        asset_url, size = str(asset["url"]), int(asset["size"])
+    except (ValueError, KeyError, TypeError, StopIteration) as exc:
+        raise LabError(f"release {tag!r} has no usable asset named {filename}.") from exc
+    if not asset_url.startswith(f"{GITHUB_API}/"):
+        raise LabError(f"release {tag!r} points {filename} at an unexpected host.")
+    if size != expected:
+        raise LabError(f"GitHub lists {filename} as {size} bytes, expected {expected}.")
+    return asset_url
+
+
+def _manual_instructions(dest: Path, backup_url: str, expected: int) -> str:
+    try:
+        folder = dest.parent.relative_to(REPO_ROOT)
+    except ValueError:
+        folder = dest.parent
+    return (
+        f"To continue without the script, download {backup_url} in a browser and save it as "
+        f"{dest.name} ({expected:,} bytes) in the folder {folder}. "
+        "Running `uv run tools/lab.py restore` again will pick it up."
+    )
+
+
+def download(url: str, dest: Path, expected_size: int, tag: str = "") -> None:
+    """Download `url` to `dest` through a `.part` file, verifying the exact byte count.
+
+    Retries 5xx answers and dropped connections with exponential backoff and resumes a
+    partial file with a Range request. If the direct URL still fails and `tag` names a
+    release of the samples repository, it looks the asset up through the GitHub API and
+    tries that route too. `dest` appears only after the size check passes.
+    """
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    part = dest.with_name(dest.name + ".part")
+    try:
+        _with_retries(lambda: _attempt(url, part, expected_size, {}, authorize=False))
+    except LabError as direct:
+        failures = [f"direct download: {direct}"]
+        if tag:
+            print(f"  {dest.name}: direct download failed ({direct}); trying the GitHub API...")
+            try:
+                asset_url = _find_asset(tag, dest.name, expected_size)
+                headers = {"Accept": "application/octet-stream"}
+                _with_retries(lambda: _attempt(asset_url, part, expected_size, headers, True))
+            except LabError as api:
+                failures.append(f"GitHub API: {api}")
+            else:
+                os.replace(part, dest)
+                return
+        reasons = "".join(f"\n  - {failure}" for failure in failures)
+        raise LabError(
+            f"Could not download {dest.name}.{reasons}\n"
+            + _manual_instructions(dest, url, expected_size)
+        ) from direct
     os.replace(part, dest)
 
 
@@ -300,7 +463,7 @@ def ensure_backup(backup: Backup, directory: Path = BACKUP_DIR) -> Path:
         print(f"{backup.filename}: already downloaded ({backup.size:,} bytes).")
         return dest
     print(f"{backup.filename}: downloading {backup.size:,} bytes from Microsoft...")
-    download(backup.url, dest, backup.size)
+    download(backup.url, dest, backup.size, backup.tag)
     print(f"{backup.filename}: verified.")
     return dest
 

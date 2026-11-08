@@ -72,7 +72,13 @@ SQL Server 2022 for Linux is published for amd64 only. `docker-compose.yml` pins
 - `AdventureWorks2022.bak` and `AdventureWorksDW2022.bak` from the `adventureworks` release
 - `WideWorldImporters-Full.bak` from the `wide-world-importers-v1.0` release
 
-If a download fails or the size is wrong, the partial file is deleted and the command stops with an error. You can also place the file in `lab-data/backups/` yourself.
+Downloads are built for flaky networks (for example where GitHub release downloads return 504):
+
+- A 5xx answer or a dropped connection is retried up to 3 times with exponential backoff (2 s, then 4 s).
+- Bytes received so far are kept in `<file>.part` and the next attempt, or the next `restore` run, continues with an HTTP Range request. The file is renamed to its final name only after its size matches exactly.
+- If the direct URL still fails, the lab asks the GitHub API (`api.github.com`, `releases/tags/<tag>`) for the asset and downloads it from the asset endpoint. No login is needed; if `GITHUB_TOKEN` is set it is sent to `api.github.com` only (never to the file host it redirects to) and is never printed. Set it if you hit the unauthenticated API rate limit.
+- A file of the wrong size is rejected and its `.part` file deleted. A file that is already present with the right size is not downloaded again.
+- If every route fails, the error names the file and says what to do: download it in a browser, save it in `lab-data/backups/` under the same name, and run `uv run tools/lab.py restore` again. It is picked up as is.
 
 ## Optional extra: the Stack Overflow database
 
