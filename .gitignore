@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+build/
+dist/
+
+# Node
+node_modules/
+*.tsbuildinfo
+coverage/
+
+# Env / secrets
+.env
+.env.*
+
+# Project
+lab-data/
+*.bak
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+/playwright/.cache/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
