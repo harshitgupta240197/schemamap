@@ -23,3 +23,6 @@ Used for the package and command; revisit before launch. Checked 2026-11-08: fre
 
 ## D-008 Python toolchain dependencies (2026-11-08)
 Python 3.13 via uv for development, `requires-python >=3.10` for users. Runtime: `typer` (CLI framework, per D-004). Dev only: `ruff` (lint and format in one tool), `mypy` (strict typing), `pytest` (test runner, with an `integration` marker for lab tests), `pytest-cov` (coverage reporting). Build backend `uv_build` (matches uv, no extra tooling).
+
+## D-009 Viewer toolchain dependencies (2026-11-08)
+Runtime: `react`, `react-dom` (UI, per D-004). Build: `vite` (bundler and dev server), `@vitejs/plugin-react` (JSX transform), `vite-plugin-singlefile` (inlines JS and CSS so the build is one offline `dist/index.html`). Types and lint: `typescript` (strict), `@types/react`, `@types/react-dom`, `@types/node` (Node types for the e2e test), `eslint`, `@eslint/js`, `typescript-eslint` (type-aware strict rules), `eslint-plugin-react-hooks` (hook correctness), `globals` (browser globals for ESLint), `prettier` (formatting). Tests: `vitest` (unit tests, per D-004), `jsdom` (DOM for Vitest), `@testing-library/react` (render components in tests), `@playwright/test` (end-to-end tests in Chromium, per D-004).
