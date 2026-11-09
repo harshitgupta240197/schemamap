@@ -1,0 +1,1082 @@
+{
+ "check_constraint_count": 3,
+ "column_count": 557,
+ "database": "WideWorldImporters",
+ "index_count": 147,
+ "key_constraint_count": 48,
+ "schemas": [
+  "Application",
+  "DataLoadSimulation",
+  "Integration",
+  "PowerBI",
+  "Purchasing",
+  "Reports",
+  "Sales",
+  "Sequences",
+  "Warehouse",
+  "Website",
+  "dbo"
+ ],
+ "table_count": 48,
+ "tables": {
+  "Application.Cities": {
+   "check_constraints": [],
+   "columns": [
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": {
+      "definition": "(NEXT VALUE FOR [Sequences].[CityID])",
+      "id": "constraint:Application.DF_Application_Cities_CityID",
+      "name": "DF_Application_Cities_CityID"
+     },
+     "description": null,
+     "id": "column:Application.Cities.CityID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "CityID",
+     "nullable": false,
+     "ordinal": 1,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "Latin1_General_100_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Application.Cities.CityName",
+     "identity": false,
+     "is_max": false,
+     "length": 50,
+     "name": "CityName",
+     "nullable": false,
+     "ordinal": 2,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Application.Cities.StateProvinceID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "StateProvinceID",
+     "nullable": false,
+     "ordinal": 3,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "geography",
+     "default": null,
+     "description": null,
+     "id": "column:Application.Cities.Location",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "Location",
+     "nullable": true,
+     "ordinal": 4,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "bigint",
+     "default": null,
+     "description": null,
+     "id": "column:Application.Cities.LatestRecordedPopulation",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "LatestRecordedPopulation",
+     "nullable": true,
+     "ordinal": 5,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Application.Cities.LastEditedBy",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "LastEditedBy",
+     "nullable": false,
+     "ordinal": 6,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime2",
+     "default": null,
+     "description": null,
+     "id": "column:Application.Cities.ValidFrom",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ValidFrom",
+     "nullable": false,
+     "ordinal": 7,
+     "precision": null,
+     "scale": 7,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime2",
+     "default": null,
+     "description": null,
+     "id": "column:Application.Cities.ValidTo",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ValidTo",
+     "nullable": false,
+     "ordinal": 8,
+     "precision": null,
+     "scale": 7,
+     "user_type": null
+    }
+   ],
+   "description": null,
+   "id": "object:Application.Cities",
+   "indexes": [
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Application.Cities.FK_Application_Cities_StateProvinceID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Application.Cities.StateProvinceID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "FK_Application_Cities_StateProvinceID",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Application.Cities.PK_Application_Cities",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Application.Cities.CityID",
+       "descending": false
+      }
+     ],
+     "kind": "clustered",
+     "name": "PK_Application_Cities",
+     "unique": true
+    }
+   ],
+   "key_constraints": [
+    {
+     "columns": [
+      "column:Application.Cities.CityID"
+     ],
+     "id": "constraint:Application.PK_Application_Cities",
+     "index": "index:Application.Cities.PK_Application_Cities",
+     "kind": "primary_key",
+     "name": "PK_Application_Cities"
+    }
+   ],
+   "memory_optimized": false,
+   "name": "Cities",
+   "schema_id": "schema:Application",
+   "temporal_type": "system_versioned"
+  },
+  "Sales.OrderLines": {
+   "check_constraints": [],
+   "columns": [
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": {
+      "definition": "(NEXT VALUE FOR [Sequences].[OrderLineID])",
+      "id": "constraint:Sales.DF_Sales_OrderLines_OrderLineID",
+      "name": "DF_Sales_OrderLines_OrderLineID"
+     },
+     "description": null,
+     "id": "column:Sales.OrderLines.OrderLineID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "OrderLineID",
+     "nullable": false,
+     "ordinal": 1,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Sales.OrderLines.OrderID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "OrderID",
+     "nullable": false,
+     "ordinal": 2,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Sales.OrderLines.StockItemID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "StockItemID",
+     "nullable": false,
+     "ordinal": 3,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "Latin1_General_100_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Sales.OrderLines.Description",
+     "identity": false,
+     "is_max": false,
+     "length": 100,
+     "name": "Description",
+     "nullable": false,
+     "ordinal": 4,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Sales.OrderLines.PackageTypeID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "PackageTypeID",
+     "nullable": false,
+     "ordinal": 5,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Sales.OrderLines.Quantity",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "Quantity",
+     "nullable": false,
+     "ordinal": 6,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "decimal",
+     "default": null,
+     "description": null,
+     "id": "column:Sales.OrderLines.UnitPrice",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "UnitPrice",
+     "nullable": true,
+     "ordinal": 7,
+     "precision": 18,
+     "scale": 2,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "decimal",
+     "default": null,
+     "description": null,
+     "id": "column:Sales.OrderLines.TaxRate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "TaxRate",
+     "nullable": false,
+     "ordinal": 8,
+     "precision": 18,
+     "scale": 3,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Sales.OrderLines.PickedQuantity",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "PickedQuantity",
+     "nullable": false,
+     "ordinal": 9,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime2",
+     "default": null,
+     "description": null,
+     "id": "column:Sales.OrderLines.PickingCompletedWhen",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "PickingCompletedWhen",
+     "nullable": true,
+     "ordinal": 10,
+     "precision": null,
+     "scale": 7,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Sales.OrderLines.LastEditedBy",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "LastEditedBy",
+     "nullable": false,
+     "ordinal": 11,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime2",
+     "default": {
+      "definition": "(sysdatetime())",
+      "id": "constraint:Sales.DF_Sales_OrderLines_LastEditedWhen",
+      "name": "DF_Sales_OrderLines_LastEditedWhen"
+     },
+     "description": null,
+     "id": "column:Sales.OrderLines.LastEditedWhen",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "LastEditedWhen",
+     "nullable": false,
+     "ordinal": 12,
+     "precision": null,
+     "scale": 7,
+     "user_type": null
+    }
+   ],
+   "description": null,
+   "id": "object:Sales.OrderLines",
+   "indexes": [
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Sales.OrderLines.FK_Sales_OrderLines_OrderID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Sales.OrderLines.OrderID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "FK_Sales_OrderLines_OrderID",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Sales.OrderLines.FK_Sales_OrderLines_PackageTypeID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Sales.OrderLines.PackageTypeID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "FK_Sales_OrderLines_PackageTypeID",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Sales.OrderLines.IX_Sales_OrderLines_AllocatedStockItems",
+     "included_columns": [
+      "column:Sales.OrderLines.PickedQuantity"
+     ],
+     "key_columns": [
+      {
+       "column": "column:Sales.OrderLines.StockItemID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "IX_Sales_OrderLines_AllocatedStockItems",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Sales.OrderLines.IX_Sales_OrderLines_Perf_20160301_01",
+     "included_columns": [
+      "column:Sales.OrderLines.Quantity",
+      "column:Sales.OrderLines.StockItemID"
+     ],
+     "key_columns": [
+      {
+       "column": "column:Sales.OrderLines.PickingCompletedWhen",
+       "descending": false
+      },
+      {
+       "column": "column:Sales.OrderLines.OrderID",
+       "descending": false
+      },
+      {
+       "column": "column:Sales.OrderLines.OrderLineID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "IX_Sales_OrderLines_Perf_20160301_01",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Sales.OrderLines.IX_Sales_OrderLines_Perf_20160301_02",
+     "included_columns": [
+      "column:Sales.OrderLines.OrderID",
+      "column:Sales.OrderLines.PickedQuantity"
+     ],
+     "key_columns": [
+      {
+       "column": "column:Sales.OrderLines.StockItemID",
+       "descending": false
+      },
+      {
+       "column": "column:Sales.OrderLines.PickingCompletedWhen",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "IX_Sales_OrderLines_Perf_20160301_02",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Sales.OrderLines.NCCX_Sales_OrderLines",
+     "included_columns": [
+      "column:Sales.OrderLines.OrderID",
+      "column:Sales.OrderLines.StockItemID",
+      "column:Sales.OrderLines.Description",
+      "column:Sales.OrderLines.Quantity",
+      "column:Sales.OrderLines.UnitPrice",
+      "column:Sales.OrderLines.PickedQuantity"
+     ],
+     "key_columns": [],
+     "kind": "nonclustered_columnstore",
+     "name": "NCCX_Sales_OrderLines",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Sales.OrderLines.PK_Sales_OrderLines",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Sales.OrderLines.OrderLineID",
+       "descending": false
+      }
+     ],
+     "kind": "clustered",
+     "name": "PK_Sales_OrderLines",
+     "unique": true
+    }
+   ],
+   "key_constraints": [
+    {
+     "columns": [
+      "column:Sales.OrderLines.OrderLineID"
+     ],
+     "id": "constraint:Sales.PK_Sales_OrderLines",
+     "index": "index:Sales.OrderLines.PK_Sales_OrderLines",
+     "kind": "primary_key",
+     "name": "PK_Sales_OrderLines"
+    }
+   ],
+   "memory_optimized": false,
+   "name": "OrderLines",
+   "schema_id": "schema:Sales",
+   "temporal_type": "none"
+  },
+  "Warehouse.ColdRoomTemperatures": {
+   "check_constraints": [],
+   "columns": [
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "bigint",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.ColdRoomTemperatures.ColdRoomTemperatureID",
+     "identity": true,
+     "is_max": false,
+     "length": null,
+     "name": "ColdRoomTemperatureID",
+     "nullable": false,
+     "ordinal": 1,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.ColdRoomTemperatures.ColdRoomSensorNumber",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ColdRoomSensorNumber",
+     "nullable": false,
+     "ordinal": 2,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime2",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.ColdRoomTemperatures.RecordedWhen",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "RecordedWhen",
+     "nullable": false,
+     "ordinal": 3,
+     "precision": null,
+     "scale": 7,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "decimal",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.ColdRoomTemperatures.Temperature",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "Temperature",
+     "nullable": false,
+     "ordinal": 4,
+     "precision": 10,
+     "scale": 2,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime2",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.ColdRoomTemperatures.ValidFrom",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ValidFrom",
+     "nullable": false,
+     "ordinal": 5,
+     "precision": null,
+     "scale": 7,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime2",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.ColdRoomTemperatures.ValidTo",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ValidTo",
+     "nullable": false,
+     "ordinal": 6,
+     "precision": null,
+     "scale": 7,
+     "user_type": null
+    }
+   ],
+   "description": null,
+   "id": "object:Warehouse.ColdRoomTemperatures",
+   "indexes": [
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Warehouse.ColdRoomTemperatures.IX_Warehouse_ColdRoomTemperatures_ColdRoomSensorNumber",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Warehouse.ColdRoomTemperatures.ColdRoomSensorNumber",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "IX_Warehouse_ColdRoomTemperatures_ColdRoomSensorNumber",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Warehouse.ColdRoomTemperatures.PK_Warehouse_ColdRoomTemperatures",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Warehouse.ColdRoomTemperatures.ColdRoomTemperatureID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "PK_Warehouse_ColdRoomTemperatures",
+     "unique": true
+    }
+   ],
+   "key_constraints": [
+    {
+     "columns": [
+      "column:Warehouse.ColdRoomTemperatures.ColdRoomTemperatureID"
+     ],
+     "id": "constraint:Warehouse.PK_Warehouse_ColdRoomTemperatures",
+     "index": "index:Warehouse.ColdRoomTemperatures.PK_Warehouse_ColdRoomTemperatures",
+     "kind": "primary_key",
+     "name": "PK_Warehouse_ColdRoomTemperatures"
+    }
+   ],
+   "memory_optimized": true,
+   "name": "ColdRoomTemperatures",
+   "schema_id": "schema:Warehouse",
+   "temporal_type": "system_versioned"
+  },
+  "Warehouse.StockItemTransactions": {
+   "check_constraints": [],
+   "columns": [
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": {
+      "definition": "(NEXT VALUE FOR [Sequences].[TransactionID])",
+      "id": "constraint:Warehouse.DF_Warehouse_StockItemTransactions_StockItemTransactionID",
+      "name": "DF_Warehouse_StockItemTransactions_StockItemTransactionID"
+     },
+     "description": null,
+     "id": "column:Warehouse.StockItemTransactions.StockItemTransactionID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "StockItemTransactionID",
+     "nullable": false,
+     "ordinal": 1,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.StockItemTransactions.StockItemID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "StockItemID",
+     "nullable": false,
+     "ordinal": 2,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.StockItemTransactions.TransactionTypeID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "TransactionTypeID",
+     "nullable": false,
+     "ordinal": 3,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.StockItemTransactions.CustomerID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "CustomerID",
+     "nullable": true,
+     "ordinal": 4,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.StockItemTransactions.InvoiceID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "InvoiceID",
+     "nullable": true,
+     "ordinal": 5,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.StockItemTransactions.SupplierID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "SupplierID",
+     "nullable": true,
+     "ordinal": 6,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.StockItemTransactions.PurchaseOrderID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "PurchaseOrderID",
+     "nullable": true,
+     "ordinal": 7,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime2",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.StockItemTransactions.TransactionOccurredWhen",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "TransactionOccurredWhen",
+     "nullable": false,
+     "ordinal": 8,
+     "precision": null,
+     "scale": 7,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "decimal",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.StockItemTransactions.Quantity",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "Quantity",
+     "nullable": false,
+     "ordinal": 9,
+     "precision": 18,
+     "scale": 3,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Warehouse.StockItemTransactions.LastEditedBy",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "LastEditedBy",
+     "nullable": false,
+     "ordinal": 10,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime2",
+     "default": {
+      "definition": "(sysdatetime())",
+      "id": "constraint:Warehouse.DF_Warehouse_StockItemTransactions_LastEditedWhen",
+      "name": "DF_Warehouse_StockItemTransactions_LastEditedWhen"
+     },
+     "description": null,
+     "id": "column:Warehouse.StockItemTransactions.LastEditedWhen",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "LastEditedWhen",
+     "nullable": false,
+     "ordinal": 11,
+     "precision": null,
+     "scale": 7,
+     "user_type": null
+    }
+   ],
+   "description": null,
+   "id": "object:Warehouse.StockItemTransactions",
+   "indexes": [
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Warehouse.StockItemTransactions.CCX_Warehouse_StockItemTransactions",
+     "included_columns": [
+      "column:Warehouse.StockItemTransactions.StockItemTransactionID",
+      "column:Warehouse.StockItemTransactions.StockItemID",
+      "column:Warehouse.StockItemTransactions.TransactionTypeID",
+      "column:Warehouse.StockItemTransactions.CustomerID",
+      "column:Warehouse.StockItemTransactions.InvoiceID",
+      "column:Warehouse.StockItemTransactions.SupplierID",
+      "column:Warehouse.StockItemTransactions.PurchaseOrderID",
+      "column:Warehouse.StockItemTransactions.TransactionOccurredWhen",
+      "column:Warehouse.StockItemTransactions.Quantity",
+      "column:Warehouse.StockItemTransactions.LastEditedBy",
+      "column:Warehouse.StockItemTransactions.LastEditedWhen"
+     ],
+     "key_columns": [],
+     "kind": "clustered_columnstore",
+     "name": "CCX_Warehouse_StockItemTransactions",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Warehouse.StockItemTransactions.FK_Warehouse_StockItemTransactions_CustomerID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Warehouse.StockItemTransactions.CustomerID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "FK_Warehouse_StockItemTransactions_CustomerID",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Warehouse.StockItemTransactions.FK_Warehouse_StockItemTransactions_InvoiceID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Warehouse.StockItemTransactions.InvoiceID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "FK_Warehouse_StockItemTransactions_InvoiceID",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Warehouse.StockItemTransactions.FK_Warehouse_StockItemTransactions_PurchaseOrderID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Warehouse.StockItemTransactions.PurchaseOrderID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "FK_Warehouse_StockItemTransactions_PurchaseOrderID",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Warehouse.StockItemTransactions.FK_Warehouse_StockItemTransactions_StockItemID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Warehouse.StockItemTransactions.StockItemID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "FK_Warehouse_StockItemTransactions_StockItemID",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Warehouse.StockItemTransactions.FK_Warehouse_StockItemTransactions_SupplierID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Warehouse.StockItemTransactions.SupplierID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "FK_Warehouse_StockItemTransactions_SupplierID",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Warehouse.StockItemTransactions.FK_Warehouse_StockItemTransactions_TransactionTypeID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Warehouse.StockItemTransactions.TransactionTypeID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "FK_Warehouse_StockItemTransactions_TransactionTypeID",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Warehouse.StockItemTransactions.PK_Warehouse_StockItemTransactions",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Warehouse.StockItemTransactions.StockItemTransactionID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "PK_Warehouse_StockItemTransactions",
+     "unique": true
+    }
+   ],
+   "key_constraints": [
+    {
+     "columns": [
+      "column:Warehouse.StockItemTransactions.StockItemTransactionID"
+     ],
+     "id": "constraint:Warehouse.PK_Warehouse_StockItemTransactions",
+     "index": "index:Warehouse.StockItemTransactions.PK_Warehouse_StockItemTransactions",
+     "kind": "primary_key",
+     "name": "PK_Warehouse_StockItemTransactions"
+    }
+   ],
+   "memory_optimized": false,
+   "name": "StockItemTransactions",
+   "schema_id": "schema:Warehouse",
+   "temporal_type": "none"
+  }
+ }
+}

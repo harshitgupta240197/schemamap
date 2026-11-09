@@ -30,24 +30,6 @@ PROTECTED_TABLES = [
 ]
 
 
-@pytest.fixture(scope="module")
-def passwords(lab: ModuleType) -> tuple[str, str]:
-    """(sa, reader) passwords from the lab's .env; fails clearly if the lab is not set up."""
-    env = lab.read_env()
-    sa, reader = env.get(lab.ENV_SA), env.get(lab.ENV_READER)
-    if not sa or not reader:
-        pytest.fail("Lab not initialised: run `uv run tools/lab.py up` first.")
-    state = subprocess.run(
-        ["docker", "inspect", "-f", "{{.State.Status}}", lab.CONTAINER],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if state.stdout.strip() != "running":
-        pytest.fail("Lab container is not running: run `uv run tools/lab.py up` first.")
-    return sa, reader
-
-
 def sqlcmd(
     lab: ModuleType, user: str, password: str, database: str, query: str
 ) -> subprocess.CompletedProcess[str]:

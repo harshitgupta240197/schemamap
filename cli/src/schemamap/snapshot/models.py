@@ -256,6 +256,16 @@ class CheckConstraint(_Model):
     trusted: bool = True
 
 
+class TemporalType(str, Enum):
+    """Whether a table takes part in system versioning."""
+
+    NONE = "none"
+    SYSTEM_VERSIONED = "system_versioned"
+    """A current table whose history is kept in a history table."""
+    HISTORY = "history"
+    """The history table of a system-versioned table."""
+
+
 class Table(_Model):
     """A user table."""
 
@@ -263,6 +273,8 @@ class Table(_Model):
     schema_id: SchemaId
     name: Name
     description: str | None = None
+    temporal_type: TemporalType = TemporalType.NONE
+    memory_optimized: bool = False
     columns: tuple[Column, ...]
     indexes: tuple[Index, ...] = ()
     key_constraints: tuple[KeyConstraint, ...] = ()

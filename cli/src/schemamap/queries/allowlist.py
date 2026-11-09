@@ -21,18 +21,9 @@ SYSTEM_SCHEMAS = frozenset({"sys", "information_schema"})
 # so each one must be approved by name below.
 GATED_PREFIXES = ("dm_", "query_store_")
 
-APPROVED_GATED_VIEWS = frozenset(
-    {
-        # Query Store: query text for join evidence, plans and runtime stats for usage hints.
-        "sys.query_store_query",
-        "sys.query_store_query_text",
-        "sys.query_store_plan",
-        "sys.query_store_runtime_stats",
-        # DMVs: row counts and index usage per object. Numbers only, never row data.
-        "sys.dm_db_partition_stats",
-        "sys.dm_db_index_usage_stats",
-    }
-)
+# None are approved yet. A view is added here, with a reason in docs/DECISIONS.md, in the
+# crumb whose query first uses it.
+APPROVED_GATED_VIEWS: frozenset[str] = frozenset()
 
 # Schema-qualified functions (table-valued or scalar), by lower-case two-part name.
 APPROVED_SYSTEM_FUNCTIONS = frozenset({"sys.fn_my_permissions"})

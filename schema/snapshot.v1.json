@@ -1117,6 +1117,11 @@
           "title": "Key Constraints",
           "type": "array"
         },
+        "memory_optimized": {
+          "default": false,
+          "title": "Memory Optimized",
+          "type": "boolean"
+        },
         "name": {
           "minLength": 1,
           "title": "Name",
@@ -1125,6 +1130,10 @@
         "schema_id": {
           "title": "Schema Id",
           "type": "string"
+        },
+        "temporal_type": {
+          "$ref": "#/$defs/TemporalType",
+          "default": "none"
         }
       },
       "required": [
@@ -1135,6 +1144,16 @@
       ],
       "title": "Table",
       "type": "object"
+    },
+    "TemporalType": {
+      "description": "Whether a table takes part in system versioning.",
+      "enum": [
+        "none",
+        "system_versioned",
+        "history"
+      ],
+      "title": "TemporalType",
+      "type": "string"
     },
     "View": {
       "description": "A view.",

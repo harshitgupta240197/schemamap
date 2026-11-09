@@ -138,3 +138,13 @@ Dependency: `rich` is now declared directly (it was already installed through Ty
 **`QueryRefusedError` is a bug, not a warning.** The doctor re-raises it instead of reporting "could not be checked", so a broken query cannot hide as a permissions problem.
 
 Dependency: `sqlglot>=30.30,<31` (runtime, on the approved stack): the executor parses every query before running it. Pinned to one major version because the allowlist walks its AST.
+
+## D-030 Extract tables, columns, keys and indexes (2026-11-09)
+
+`schemamap.extract` returns snapshot models from a `MetadataExecutor`; one NamedTuple per query (`extract/rows.py`) fixes the column order, and the `build_*` functions are pure so they are tested with hand-written rows. Six queries: `schemas`, `tables`, `columns`, `indexes`, `index_columns`, `check_constraints`. AdventureWorks2022 (71 tables, 486 columns, 173 indexes) extracts in about 2.5 s against the 10 s budget.
+
+**Model change (additive, still format 1.0):** `Table` gains `temporal_type` (`none`, `system_versioned`, `history`) and `memory_optimized`, because the crumb asks for those flags and the model had nowhere to hold them. Both default, so older readers and files are unaffected.
+
+**Mapping rules.** `length` is characters for `nchar`/`nvarchar` (catalog bytes / 2) and bytes for `char`, `varchar`, `binary`, `varbinary`; `max` sets `is_max` and leaves `length` null. `precision` is set only for `decimal`/`numeric`, `scale` also for `time`, `datetime2`, `datetimeoffset`, so an `int` does not claim a precision of 10. An alias type reports its base type in `data_type` and `schema.name` in `user_type`. `collation` is stored for every string column. Index columns: included ones go to `included_columns` (columnstore columns are listed that way by the catalog); a non-included column is a key if it has a key ordinal, or has no partition ordinal (this keeps the column of an XML or spatial index while dropping columns that only partition the index). Rows for an object dropped between two queries are ignored.
+
+**Allowlist trimmed.** The pre-approved Query Store views and DMVs (D-029) are removed because no query uses them yet; each returns with a reason in the crumb that first needs it. The three-part-name refusal is unchanged.

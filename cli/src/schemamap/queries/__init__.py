@@ -20,9 +20,15 @@ _PARAM_NAME = re.compile(r"[a-z][a-z0-9_]*")
 class QueryName(enum.Enum):
     """One member per .sql file in this folder; the value is the file name without ``.sql``."""
 
+    CHECK_CONSTRAINTS = "check_constraints"
+    COLUMNS = "columns"
     DOCTOR_PERMISSIONS = "doctor_permissions"
     DOCTOR_QUERY_STORE = "doctor_query_store"
     DOCTOR_SERVER_INFO = "doctor_server_info"
+    INDEX_COLUMNS = "index_columns"
+    INDEXES = "indexes"
+    SCHEMAS = "schemas"
+    TABLES = "tables"
 
 
 def load_query(name: QueryName) -> str:

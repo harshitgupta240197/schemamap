@@ -31,8 +31,6 @@ ALLOWED = {
     "catalog view": "SELECT name FROM sys.tables;",
     "bracketed mixed case": "SELECT [name] FROM [SYS].[Tables];",
     "information schema": "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES;",
-    "approved dmv": "SELECT object_id, row_count FROM sys.dm_db_partition_stats;",
-    "approved query store view": "SELECT query_sql_text FROM sys.query_store_query_text;",
     "approved table function": (
         "SELECT permission_name FROM sys.fn_my_permissions(NULL, N'DATABASE');"
     ),
@@ -178,6 +176,14 @@ REFUSED = {
     "non-approved system table function": (
         "SELECT * FROM sys.fn_dblog(NULL, NULL);",
         "table-valued function sys.fn_dblog is not on the approved list",
+    ),
+    "dmv awaiting its first query": (
+        "SELECT object_id, row_count FROM sys.dm_db_partition_stats;",
+        "sys.dm_db_partition_stats is not on the approved list of DMVs",
+    ),
+    "query store view awaiting its first query": (
+        "SELECT query_sql_text FROM sys.query_store_query_text;",
+        "sys.query_store_query_text is not on the approved list",
     ),
     "non-approved dmv": (
         "SELECT * FROM sys.dm_exec_requests;",
