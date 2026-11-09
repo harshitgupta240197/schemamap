@@ -6,11 +6,13 @@ Under construction. Until this is finalized, report vulnerabilities privately vi
 
 Schema Map reads system metadata only, never table rows. A snapshot does contain:
 
-- Object names, column types, keys, indexes and descriptions (extended properties).
-- **SQL definitions** of views, procedures, functions, triggers, computed columns, defaults, check constraints and index filters. These are on by default. They are metadata, but they are free text written by developers and **may contain literals** (for example a hard-coded status value or email address). Review a snapshot before sharing it. A `--no-definitions` flag to omit them is planned.
+- Object names, column types, keys, constraints, indexes and dependencies, and, with `VIEW DATABASE STATE`, approximate row counts and sizes. (Descriptions from extended properties are not extracted yet.)
+- **SQL definitions** of views, procedures, functions, triggers, computed columns, defaults, check constraints and index filters. These are on by default. They are metadata, but they are free text written by developers and **may contain literals** (for example a hard-coded status value or email address). Review a snapshot before sharing it, or pass `--no-definitions` to leave all SQL text out (each definition is then marked `omitted`).
 - The server host name, unless you pass `--redact-server`, which also drops linked-server names.
 
 A snapshot never contains credentials, connection strings or query text.
+
+On macOS and Linux a snapshot file is created readable only by you (mode 0600); share it deliberately.
 
 ## How we guarantee read-only
 
@@ -40,7 +42,8 @@ Every connection sets `ApplicationIntent=ReadOnly`. On an Availability Group lis
 Every SQL statement Schema Map can send is a `.sql` file in `cli/src/schemamap/queries/`. The only code in the package that touches a driver cursor is `MetadataExecutor` (`connect/executor.py`). It accepts a query *name* (an enum of those files), never SQL text, and raises `QueryRefusedError` otherwise. Before every run it parses the file again and refuses it unless it is:
 
 - exactly one `SELECT` (CTEs and `UNION` allowed);
-- over `sys.*` and `INFORMATION_SCHEMA.*` only, with DMVs (`sys.dm_*`) and Query Store views (`sys.query_store_*`) each approved by name (today only `sys.dm_db_partition_stats`, for row counts and sizes);
+- over `INFORMATION_SCHEMA.*` and `sys.*` views approved one by one by exact name (not every `sys` view is metadata: `sys.sql_logins` holds password hashes and `sys.sysprocesses` shows other sessions, so neither is approved). The only DMV approved today is `sys.dm_db_partition_stats`, for row counts and sizes. System schemas must be written exactly `sys` and `INFORMATION_SCHEMA`, because in a case-sensitive database a user can create a schema named `SYS`;
+- reading an unqualified name only when it is a CTE that SQL Server would resolve there (an earlier CTE, or the CTE itself for recursion), compared case-sensitively;
 - calling only functions on an explicit list of built-ins (such as `SERVERPROPERTY`, `OBJECT_NAME`, `HAS_PERMS_BY_NAME`);
 - free of `SELECT INTO`, temp tables, table variables, variables, `EXEC`, `sp_executesql`, `OPENROWSET`, `OPENQUERY`, `OPENDATASOURCE`, `OPENXML`, and three- or four-part names (other databases, linked servers).
 
@@ -48,12 +51,14 @@ Values are bound as parameters, never formatted into the SQL text.
 
 ### 4. Tests prove it on every commit
 
-CI runs these on Windows, macOS and Linux:
+CI runs these on every push:
 
-- `cli/tests/test_allowlist.py` parses every file in `queries/` and requires it to pass. It also feeds in queries that touch `dbo.Customers`, write, use `SELECT INTO`, temp tables, `EXEC`, `OPENROWSET`, four-part names, unapproved functions or two statements, and requires each to fail with a clear reason.
+- `cli/tests/test_allowlist.py` parses every file in `queries/` and requires it to pass. It also feeds in queries that touch `dbo.Customers`, write, use `SELECT INTO`, temp tables, `EXEC`, `OPENROWSET`, four-part names, unapproved functions or views (`sys.sql_logins`, `sys.sysprocesses`), a `SYS` schema, a forward-referenced CTE or two statements, and requires each to fail with a clear reason.
 - `cli/tests/test_static_guard.py` parses every `.py` file in the package and fails if any of them contains a SQL statement, or reaches a driver cursor or `execute` anywhere except the executor.
 - `cli/tests/test_executor.py` proves the executor refuses SQL text and re-checks each file before running it.
 - Against the lab's real SQL Server, `cli/tests/test_lab_integration.py` proves the reader login is denied `SELECT` on a user table in each sample database.
+
+The unit tests run on Windows, macOS and Linux; the integration tests against SQL Server run on Linux only.
 
 ### Verify it yourself
 

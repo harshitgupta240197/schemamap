@@ -1,7 +1,8 @@
 # Architecture
 
-Status: draft for gate 0 review (crumb 0.9). Decisions referenced as D-nnn live in
-[DECISIONS.md](DECISIONS.md).
+Status: reviewed at gate 1 (crumb 1.11) against the code on `phase-1-extract`. Sections
+about `infer`, `export`, the viewer, telemetry and Pulse describe planned work. Decisions
+referenced as D-nnn live in [DECISIONS.md](DECISIONS.md).
 
 Schema Map reads system metadata from one SQL Server database through a read-only login,
 writes a **snapshot** (a JSON document), infers undeclared relationships from it, and exports
@@ -9,8 +10,9 @@ an offline single-file HTML **map**. The snapshot is the contract between every 
 
 ## 1. Principles
 
-1. **Metadata only, read-only.** Only `sys.*`, `INFORMATION_SCHEMA`, Query Store views and DMVs
-   are queried, only with `SELECT`, and only through an allowlisting executor.
+1. **Metadata only, read-only.** Only `INFORMATION_SCHEMA` and `sys.*` views approved by exact
+   name (catalog views, plus named DMVs and Query Store views) are queried, only with
+   `SELECT`, and only through an allowlisting executor (D-029, D-039).
 2. **The snapshot is the boundary.** Only `connect` and `extract` see the database. Everything
    downstream (infer, export, viewer, later Pulse) works from snapshot files, so it is testable
    without a server and reproducible from a file someone sends you.
@@ -23,8 +25,10 @@ an offline single-file HTML **map**. The snapshot is the contract between every 
 
 ```
 cli/src/schemamap/
-  cli.py          Typer app. The only place that prints (Rich), parses flags, maps errors
-                  to exit codes, reads credentials from a prompt or environment variables.
+  cli.py          Typer app: commands, flags, the summary. With cli_connection.py
+                  (connection options, credentials from a prompt or environment variables,
+                  errors to exit codes) and cli_progress.py (Rich progress), the only code
+                  that prints.
   errors.py       Typed error hierarchy (section 6).
   connect/        Opens a connection (ApplicationIntent=ReadOnly where supported) and exposes
                   a MetadataExecutor that runs only queries from queries/.
@@ -33,9 +37,9 @@ cli/src/schemamap/
   extract/        Runs queries section by section, maps rows to snapshot models, records
                   warnings for skipped sections, parses SQL text into join evidence.
   snapshot/       Pydantic models (format v1), IDs, JSON I/O, redaction, JSON Schema.
-  infer/          Pure functions: Snapshot (+ overrides) -> inferred relationships.
-  export/         Builds the HTML map: viewer bundle + snapshot JSON inlined safely.
-  telemetry/      Opt-in, count-only. The only module allowed to open a socket.
+  infer/          (planned) Pure functions: Snapshot (+ overrides) -> inferred relationships.
+  export/         (planned) Builds the HTML map: viewer bundle + snapshot JSON inlined safely.
+  telemetry/      (planned) Opt-in, count-only. The only module allowed to open a socket.
 viewer/           React + TypeScript app built into one HTML file; reads the inlined JSON.
 schema/           snapshot.v1.json, generated from snapshot/ and committed.
 ```
@@ -84,10 +88,15 @@ send a snapshot instead of database access. Snapshots are not anonymous; see sec
 
 ### Extract, section by section
 
-Each section (schemas, tables, views, routines, synonyms, relationships, dependencies,
-definitions, descriptions, row counts, query history, join evidence) is independent. If a
-section's query fails with a permission error, extract records one `ExtractionWarning`
-(`section`, `code`, `message`) and carries on. Partial snapshots are normal and are labelled.
+Each section is independent. Today extract runs eight: schemas, tables, views, routines,
+synonyms, relationships, dependencies and row counts (descriptions, query history and join
+evidence are planned). It first reads which permissions the login holds
+(`sys.fn_my_permissions`). A section whose permission is missing is not run at all: extract
+records one `ExtractionWarning` (`section`, `code`, `message`, naming the exact `GRANT`) and
+carries on, so partial snapshots are normal and labelled. Today that covers dependencies
+(`SELECT` on `sys.sql_expression_dependencies`) and row counts (`VIEW DATABASE STATE`). A
+query the server refuses even though the probe passed (for example a `DENY` through a role)
+ends extraction with exit 3; turning that into a section warning is planned (GATE1.md).
 
 ### Why parsing happens in extract and infer stays pure
 
@@ -133,7 +142,7 @@ Snapshot
                        to_object, to_columns[], on_delete, on_update, disabled, trusted}
   dependencies[]      {from_object, target: Reference}
   warnings[]          {section, code, message}
-  row_counts          OPTIONAL {items[]: {object, rows}}
+  row_counts          OPTIONAL {items[]: {object, rows, reserved_bytes}}
   query_history       OPTIONAL {source, window_start, window_end,
                                 items[]: {object, execution_count, last_executed_at}}
   join_evidence       OPTIONAL {entries[]: {from_column, to_column, source, count},
@@ -160,9 +169,9 @@ View, routine, computed column, default, check and filtered-index definitions ar
 default because they drive dependency and join evidence and are what users want to read.
 They are metadata, but they are free text written by developers and **may contain literals**
 (for example `WHERE Status = 'VIP'` or a hard-coded email address). This is documented in
-SECURITY.md. A future `--no-definitions` flag will omit them, adding an `omitted` value to
-`definition_status` in a v1.x minor release. Today `definition_status` tells the viewer why a
-definition is missing: `encrypted`, `not_permitted` or `not_applicable`.
+SECURITY.md. `--no-definitions` leaves all of them out. `definition_status` tells the viewer
+whether a definition is there and, if not, why: `available`, `encrypted`, `not_permitted`,
+`not_applicable` or `omitted` (left out by `--no-definitions`).
 
 ### Join evidence
 
@@ -223,8 +232,8 @@ SchemaMapError
     QueryTimeoutError       a metadata query ran past --query-timeout
     PermissionDeniedError   the server refused a metadata query (permission missing)
   QueryRefusedError     SQL not in the allowlist: a bug, never user-facing input
-  PermissionMissing     (crumb 1.x) raised inside extract for one section, caught there and
-                        turned into an ExtractionWarning; never escapes extract
+  PermissionMissing     raised inside extract for one section, caught there and turned
+                        into an ExtractionWarning; never escapes extract
 ```
 
 Rules: library code raises typed errors and never prints or exits. Messages never include
@@ -291,4 +300,4 @@ so it is easy to audit.
 * Read-only connection plus allowlisted SELECT-only queries over system objects.
 * Snapshots and maps stay local. `--redact-server` removes host names only; definitions, object names and the database name remain, so review a snapshot before sharing it.
 * Hostile object names are handled by escaped IDs, text-only rendering and safe JSON inlining.
-* Definitions may contain literals (section 4); `--no-definitions` is planned.
+* Definitions may contain literals (section 4); `--no-definitions` leaves them out.

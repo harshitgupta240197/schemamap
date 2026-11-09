@@ -35,12 +35,12 @@ cd cli && uv run pytest -m integration
 
 | Item | Value |
 | --- | --- |
-| Container | `schemamap-lab`, image `mcr.microsoft.com/mssql/server:2022-latest`, Developer edition |
-| Host and port | `localhost,14330` (bound to loopback only) |
+| Container | `schemamap-lab`, image `mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04` (the tag CI pins, D-040), Developer edition |
+| Host and port | `127.0.0.1,14330` (bound to IPv4 loopback only; use `127.0.0.1`, not `localhost`, which resolves to `::1` first on Linux) |
 | Admin login | `sa` |
 | Reader login | `schemamap_reader`: `VIEW DEFINITION` in each database, plus one `SELECT` on the system catalog view `sys.sql_expression_dependencies` for dependency tracking; **no SELECT on any user table** |
 | Minimal login | `schemamap_reader_min`: `VIEW DEFINITION` only (no `VIEW DATABASE STATE`, no `SELECT` on `sys.sql_expression_dependencies`), same password as the reader. It exists to test that extraction degrades gracefully: row counts and dependencies are skipped with one warning each |
-| Databases | `AdventureWorks2022`, `AdventureWorksDW2022`, `WideWorldImporters` |
+| Databases | `AdventureWorks2022`, `AdventureWorksDW2022`, `WideWorldImporters`; plus `SchemaMapEdgeCases` and `SchemaMapSynth*` when you build them (below) |
 | Data | `lab-data/mssql/` (SQL Server files) and `lab-data/backups/` (downloads), both gitignored |
 
 The reader login is what Schema Map should connect as. It can read catalog metadata (`sys.tables`, ...) and cannot read a single row of any user table, which is the access level real users are asked to grant.
@@ -93,7 +93,7 @@ If you delete `.env` after the first start, the data folder still holds the old 
 
 ## CI mode
 
-CI (the `integration` job in `.github/workflows/ci.yml`) runs the same commands with no `.env`. When `.env` is absent and both `SCHEMAMAP_LAB_SA_PASSWORD` and `SCHEMAMAP_LAB_READER_PASSWORD` are set in the environment, `lab.py` uses them and writes nothing to disk; a `.env` file always wins. The reader password must be letters and digits only. `SCHEMAMAP_LAB_IMAGE_TAG` selects the SQL Server image tag (default `2022-latest`; CI pins a specific cumulative update, see D-038). The job generates both passwords at start, masks them with `::add-mask::` and passes them to later steps through the environment.
+CI (the `integration` job in `.github/workflows/ci.yml`) runs the same commands with no `.env`. When `.env` is absent and both `SCHEMAMAP_LAB_SA_PASSWORD` and `SCHEMAMAP_LAB_READER_PASSWORD` are set in the environment, `lab.py` uses them and writes nothing to disk; a `.env` file always wins. The reader password must be letters and digits only. `SCHEMAMAP_LAB_IMAGE_TAG` selects the SQL Server image tag. CI pins a specific cumulative update (D-038) and `docker-compose.yml` defaults to the same tag (D-040), so local and CI runs use one build. To move an existing lab onto the pinned tag, run `down` then `up`: the new image is pulled and `lab-data/` is kept. The job generates both passwords at start, masks them with `::add-mask::` and passes them to later steps through the environment.
 
 ## Port 14330
 

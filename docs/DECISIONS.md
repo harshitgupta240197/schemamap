@@ -125,7 +125,7 @@ Dependency: `rich` is now declared directly (it was already installed through Ty
 
 `MetadataExecutor` (`connect/executor.py`) replaces D-028's `Connection` and its raw `cursor()`. It takes a `QueryName`, never text, re-checks the file with `queries/allowlist.py` before every run, and binds values positionally. Tests that must run other SQL (proving the reader is denied `SELECT` on a user table) use `cli/tests/raw_sql.py`, which opens the driver directly and is outside the package.
 
-**Allowlist rules** (parsed with sqlglot, T-SQL dialect): exactly one statement; a `SELECT` (CTEs and `UNION` allowed); every table source is `sys.*` or `INFORMATION_SCHEMA.*`, or an unqualified name of a CTE in scope; `sys.dm_*` and `sys.query_store_*` must be approved by name; schema-qualified functions (`sys.fn_my_permissions`) and unqualified built-ins must be on explicit lists; no `SELECT INTO`, temp tables, table variables, `@` variables, `EXEC`, `sp_executesql`, `OPENROWSET`/`OPENQUERY`/`OPENDATASOURCE`/`OPENXML`, DML, DDL or other statements. We also refuse **three-part names** (`OtherDb.sys.tables`), not just four-part ones: a query reads only the database it is connected to. `NEXT VALUE FOR` is refused because it advances a sequence.
+**Allowlist rules** (parsed with sqlglot, T-SQL dialect): exactly one statement; a `SELECT` (CTEs and `UNION` allowed); every table source is `sys.*` or `INFORMATION_SCHEMA.*`, or an unqualified name of a CTE in scope; `sys.dm_*` and `sys.query_store_*` must be approved by name; schema-qualified functions (`sys.fn_my_permissions`) and unqualified built-ins must be on explicit lists; no `SELECT INTO`, temp tables, table variables, `@` variables, `EXEC`, `sp_executesql`, `OPENROWSET`/`OPENQUERY`/`OPENDATASOURCE`/`OPENXML`, DML, DDL or other statements. We also refuse **three-part names** (`OtherDb.sys.tables`), not just four-part ones: a query reads only the database it is connected to. `NEXT VALUE FOR` is refused because it advances a sequence. (Tightened by D-039: every `sys` view by exact name, exact-case schemas, CTE scope.)
 
 **Function names** are resolved to T-SQL names (sqlglot types some built-ins and leaves others anonymous; typed ones are rendered back to T-SQL and named by their leading word), so the approved list is written in T-SQL and survives sqlglot moving a function between node types. A test calls every approved function once, so an upgrade that changes this fails loudly.
 
@@ -241,7 +241,7 @@ Until v0.1.0 ships, new optional fields may stay in format 1.0. After release, a
 
 **What.** An `integration` job (ubuntu only) in `ci.yml` starts SQL Server, restores the sample databases, builds `SchemaMapEdgeCases` and runs `pytest -m integration`. The unit and viewer jobs are unchanged; the workflow keeps `contents: read` and its single concurrency group.
 
-**Image tag.** `mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04`, the newest `2022-CU*-ubuntu-22.04` tag in the MCR tag list on 2026-11-09. It is not `2022-latest`, which moves under us: it already points at a different image than CU27. `docker-compose.yml` reads the tag from `SCHEMAMAP_LAB_IMAGE_TAG` (default `2022-latest`, so local use is unchanged) and the job sets it. Bump the CU deliberately, in a commit of its own.
+**Image tag.** `mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04`, the newest `2022-CU*-ubuntu-22.04` tag in the MCR tag list on 2026-11-09. It is not `2022-latest`, which moves under us: it already points at a different image than CU27. `docker-compose.yml` reads the tag from `SCHEMAMAP_LAB_IMAGE_TAG` (default `2022-latest`, so local use is unchanged; since D-040 the default is the CI pin) and the job sets it. Bump the CU deliberately, in a commit of its own.
 
 **A container started by a step, not a `services:` entry.** Service containers start before any step runs, so they cannot receive passwords generated at job start; the only way to use one would be a fixed password committed to the workflow. The job instead runs `lab.py up`, which starts the same compose container as local development. It also keeps the container name, mounts and `sqlcmd` plumbing identical in both places, so CI tests the real lab path. The container listens on host port 14330, bound to loopback (not 1433).
 
@@ -262,3 +262,25 @@ The budget is 12 s of extraction, about 3 times the CI time observed (3.9 s), so
 
 **Dependencies.** None added. `actions/cache` v6.1.0 is pinned by commit SHA like the other actions.
 
+## D-039 Allowlist: every sys view by exact name, exact-case system schemas, CTE scope as SQL Server resolves it (2026-11-09)
+
+Gate 1 (docs/gates/GATE1.md) found three ways past the D-029 allowlist, each proven against the lab. None was reachable from a shipped query, because the executor runs only the files in `queries/`; the allowlist exists to catch a bad file before it ships, so each is fixed.
+
+1. **Not every `sys` view is metadata.** Only `sys.dm_*` and `sys.query_store_*` needed approval, so `sys.sql_logins` (password hashes, for a login allowed to see them), `sys.sysprocesses` (other sessions' host and program names; it returned rows to the reader) and `sys.syscacheobjects` (cached batch text, which can hold literals) passed. Now every `sys.*` view is approved by exact name in `APPROVED_SYSTEM_VIEWS`, starting with the 20 our queries use, and a test fails if an approval is not used by any query. `INFORMATION_SCHEMA` views are all catalog metadata and need no approval.
+2. **Case-insensitive schema match.** In a case-sensitive database a user can create schema `SYS` and table `SYS.TABLES`; `SELECT * FROM SYS.TABLES` returned its rows. System schemas now match exactly: `sys` and `INFORMATION_SCHEMA`, for views and for schema-qualified functions. The old allowed case `[SYS].[Tables]` was wrong and is now a refused case.
+3. **CTE forward references.** SQL Server does not let a CTE see the CTEs defined after it, so in `WITH a AS (SELECT ... FROM ErrorLog), ErrorLog AS (...)` the first `ErrorLog` is the user table `dbo.ErrorLog` (the server denied the reader `SELECT` on it, and returned rows to `sa`). Inside a CTE's body only that CTE (for recursion) and earlier ones now count, and CTE names match case-sensitively.
+
+Correction to D-029: it lists four Query Store views and `sys.dm_db_index_usage_stats` as pre-approved. The code never approved them; only `sys.dm_db_partition_stats` is, and the tests refuse the others until a query needs them. That stays the rule.
+
+**Dependencies.** None added.
+
+## D-040 Local lab defaults to the image tag CI pins (2026-11-09)
+
+`docker-compose.yml` now defaults `SCHEMAMAP_LAB_IMAGE_TAG` to `2022-CU27-ubuntu-22.04`, the tag CI pins (D-038), instead of `2022-latest`. Reason: Gate 1 found the local lab on a cached `2022-latest` that was CU24 while CI ran CU27, so local and CI results came from different builds without anyone choosing that. A test now requires the compose default to equal the CI pin, so a CU bump changes both in one commit. Switching an existing lab is an upgrade from any older 2022 CU: `uv run tools/lab.py down`, then `up` pulls the pinned image and keeps `lab-data/`.
+
+**Dependencies.** None added.
+## D-041 Snapshot files: exclusive random temporary, owner-only, never a Windows device (2026-11-09)
+
+Gate 1 found that `write_snapshot` wrote to a fixed temporary name (`.<name>.tmp`) with a call that follows symlinks: anyone who could write to the output folder could plant that name as a symlink and have the snapshot overwrite another of the user's files. The temporary file is now created with `tempfile.mkstemp` in the target folder (random name, exclusive create), then moved into place as before. A side effect we keep on purpose: on POSIX the snapshot is created mode 0600, readable only by its owner, because it holds SQL definitions and the host name and the user decides when to share it. The default file name also gets a leading `_` when the database is named like a Windows device (`CON`, `NUL`, `COM1`...), which Windows opens as a device whatever the extension.
+
+**Dependencies.** None added (standard library).

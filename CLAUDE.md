@@ -29,7 +29,7 @@ docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate repo
 - Viewer checks: `cd viewer && npm run lint && npm run typecheck && npm test && npm run build`
 - Viewer end-to-end: `cd viewer && npx playwright test`
 - Regenerate the snapshot JSON Schema after changing `snapshot/` models: `cd cli && uv run python scripts/gen_snapshot_schema.py` (a test fails if `schema/snapshot.v1.json` is stale)
-- Lab: `uv run tools/lab.py up | restore all | status | down [--purge]` (also `restore <db>`, `grant <db>`; see `docs/LAB.md`)
+- Lab: `uv run tools/lab.py up | restore all | status | down [--purge]` (also `restore <db>`, `grant <db> [--view-database-state]`, `edgecases`, `synth --tables N`; see `docs/LAB.md`)
 
 Run the full checks for every area you touched before every commit. If a command here changes, update this file in the same commit.
 
