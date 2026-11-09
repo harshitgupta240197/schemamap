@@ -249,12 +249,12 @@ Until v0.1.0 ships, new optional fields may stay in format 1.0. After release, a
 
 **All three sample databases, not only AdventureWorks2022.** The crumb names AdventureWorks2022, but the existing integration tests also query AdventureWorksDW2022 and WideWorldImporters, and a test must not be skipped to get green. The job restores all three (about 440 MB). The backups are cached with `actions/cache` keyed on each file name and exact size; a test keeps the key in step with the catalog in `lab.py`. If a download fails, the 0.8a retry and GitHub API fallback apply.
 
-**Performance smoke test.** `test_extract_performance_integration.py` builds a 500-table synthetic database, extracts it as the reader and asserts the extraction stays under a budget. It guards against order-of-magnitude regressions, not drift. Timings for 500 tables, one run each (CI: GitHub-hosted `ubuntu-latest`, SQL Server 2022 CU27):
+**Performance smoke test.** `test_extract_performance_integration.py` builds a 500-table synthetic database, extracts it as the reader and asserts the extraction stays under a budget. It guards against order-of-magnitude regressions, not drift. Timings for 500 tables (CI: GitHub-hosted `ubuntu-latest`, SQL Server 2022 CU27):
 
 | | build | extract |
 | --- | --- | --- |
 | Local (Apple Silicon, Docker Desktop, amd64 emulation) | 2.1 s | 2.4 s |
-| CI | 1.4 s | 3.9 s |
+| CI (two runs) | 1.4 to 1.6 s | 2.8 to 3.9 s |
 
 The budget is 12 s of extraction, about 3 times the CI time observed (3.9 s), so a runner twice as slow still passes while a quadratic regression does not. It was set from a single CI observation; if CI proves noisier than that, widen it here and in the test together rather than skipping the test.
 
