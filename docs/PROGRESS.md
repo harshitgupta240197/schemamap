@@ -13,3 +13,4 @@
 2026-11-09 | 1.2 | d8ead1f | Connection layer (mssql-python, read-only intent, redacted ConnectError) and schemamap doctor; reader-permission tests moved off sqlcmd
 2026-11-09 | 1.3 | 1844998 | MetadataExecutor runs only allowlisted named queries (sqlglot T-SQL allowlist, bound params); raw cursor removed; static AST guard; SECURITY.md read-only section
 2026-11-09 | 1.4 | 5b18466 | Extract schemas, tables, columns, keys, indexes and checks into snapshot models; AdventureWorks2022 in 2.5 s (budget 10 s); allowlist trimmed to used views
+2026-11-09 | 1.5 | 6db4fe0 | Extract foreign keys, views, routines, synonyms and dependencies; lab.py edgecases; reader needs SELECT on sys.sql_expression_dependencies; PARSENAME allowlisted
