@@ -156,7 +156,7 @@ def test_doctor_command_exit_code(lab: ModuleType, passwords: tuple[str, str]) -
     args = [
         "doctor",
         "--server",
-        "localhost",
+        lab.HOST,
         "--port",
         str(lab.HOST_PORT),
         "--database",

@@ -21,7 +21,7 @@ pytestmark = pytest.mark.integration
 
 DATABASE = "SchemaMapSynthPerf500"
 TABLES = 500
-EXTRACT_BUDGET_SECONDS = 60.0
+EXTRACT_BUDGET_SECONDS = 12.0
 
 
 def test_extracting_500_tables_stays_within_the_ci_budget(

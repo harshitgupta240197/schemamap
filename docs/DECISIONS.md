@@ -249,7 +249,16 @@ Until v0.1.0 ships, new optional fields may stay in format 1.0. After release, a
 
 **All three sample databases, not only AdventureWorks2022.** The crumb names AdventureWorks2022, but the existing integration tests also query AdventureWorksDW2022 and WideWorldImporters, and a test must not be skipped to get green. The job restores all three (about 440 MB). The backups are cached with `actions/cache` keyed on each file name and exact size; a test keeps the key in step with the catalog in `lab.py`. If a download fails, the 0.8a retry and GitHub API fallback apply.
 
-**Performance smoke test.** `test_extract_performance_integration.py` builds a 500-table synthetic database, extracts it as the reader and asserts the extraction stays under a budget. It guards against order-of-magnitude regressions, not drift. Timings and the budget: see below.
+**Performance smoke test.** `test_extract_performance_integration.py` builds a 500-table synthetic database, extracts it as the reader and asserts the extraction stays under a budget. It guards against order-of-magnitude regressions, not drift. Timings for 500 tables, one run each (CI: GitHub-hosted `ubuntu-latest`, SQL Server 2022 CU27):
+
+| | build | extract |
+| --- | --- | --- |
+| Local (Apple Silicon, Docker Desktop, amd64 emulation) | 2.1 s | 2.4 s |
+| CI | 1.4 s | 3.9 s |
+
+The budget is 12 s of extraction, about 3 times the CI time observed (3.9 s), so a runner twice as slow still passes while a quadratic regression does not. It was set from a single CI observation; if CI proves noisier than that, widen it here and in the test together rather than skipping the test.
+
+**CI is where the lab met Linux.** Two things only showed there. (1) `localhost` resolves to `::1` first on Linux, nothing listens there (Docker publishes on 127.0.0.1) and the driver does not fall back, so every connection failed with `TCP Provider: Error code 0x2749`. The lab and the tests now use `lab.HOST` (`127.0.0.1`); the golden snapshot test normalises `source.server` as it already did the clock and the build number. (2) The `cli` jobs had been red since crumbs 1.7 to 1.9, which were never watched in CI: mypy rejected a star-unpack inside a subscript under Python 3.10, and the help-text tests assumed a 200-column terminal that Typer replaces with an 80-column dumb terminal when `GITHUB_ACTIONS` is set. Both are fixed; the help helpers now also strip ANSI escapes.
 
 **Dependencies.** None added. `actions/cache` v6.1.0 is pinned by commit SHA like the other actions.
 
