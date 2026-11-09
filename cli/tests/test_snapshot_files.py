@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gzip
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -52,6 +53,44 @@ def test_default_name_cannot_leave_the_current_folder(database: str, expected: s
     path = default_output_path(database)
     assert path.name == expected
     assert path.parent == Path(".")
+
+
+@pytest.mark.parametrize(
+    ("database", "expected"),
+    [
+        ("CON", "_CON.snapshot.json"),
+        ("nul", "_nul.snapshot.json"),
+        ("Com1", "_Com1.snapshot.json"),
+        ("LPT9.archive", "_LPT9.archive.snapshot.json"),
+        ("AUX", "_AUX.snapshot.json"),
+        ("Console", "Console.snapshot.json"),
+        ("CONTOSO", "CONTOSO.snapshot.json"),
+    ],
+)
+def test_default_name_is_never_a_windows_device(database: str, expected: str) -> None:
+    """On Windows ``CON.snapshot.json`` opens the console device, not a file."""
+    assert default_output_path(database).name == expected
+
+
+def test_a_planted_symlink_is_never_followed(tmp_path: Path) -> None:
+    """Someone who can write to the folder cannot redirect the snapshot onto another file."""
+    victim = tmp_path / "victim.txt"
+    victim.write_text("precious", encoding="utf-8")
+    try:
+        (tmp_path / ".s.json.tmp").symlink_to(victim)
+    except OSError:
+        pytest.skip("symlinks need extra privileges on this system")
+    written = write_snapshot(sample(), tmp_path / "s.json")
+    assert victim.read_text(encoding="utf-8") == "precious"
+    assert not written.is_symlink()
+    assert read_snapshot(written) == sample()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_snapshot_is_readable_only_by_its_owner(tmp_path: Path) -> None:
+    """A snapshot holds SQL definitions and the host name: private until the user shares it."""
+    written = write_snapshot(sample(), tmp_path / "s.json")
+    assert written.stat().st_mode & 0o077 == 0
 
 
 def test_plain_file_is_the_dump_and_loads_back(tmp_path: Path) -> None:
