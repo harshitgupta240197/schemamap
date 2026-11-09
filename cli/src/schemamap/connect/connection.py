@@ -18,6 +18,8 @@ _UNREACHABLE = (
     "no such host",
     "nodename nor servname",
     "08001",
+    "client unable to establish connection",  # mssql-python, any OS
+    "tcp provider: error code",  # mssql-python: 0x2726 (macOS), 0x2749 (Linux) for a closed port
 )
 
 

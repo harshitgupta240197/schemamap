@@ -111,6 +111,13 @@ class RaisingDriver:
         ("Login failed for user 'reader'.", "Check the user name and password"),
         ("Login timeout expired", "raise --connect-timeout"),
         ("TCP Provider: Connection refused", "no firewall blocks it"),
+        # mssql-python's own words for a closed port: macOS (Gate 1) and Linux (D-038).
+        (
+            "Driver Error: Client unable to establish connection; DDBC Error: "
+            "[Microsoft]TCP Provider: Error code 0x2726",
+            "no firewall blocks it",
+        ),
+        ("[Microsoft]TCP Provider: Error code 0x2749", "no firewall blocks it"),
         ("SSL certificate verify failed", "--trust-server-certificate"),
         ("something odd", "schemamap doctor"),
     ],

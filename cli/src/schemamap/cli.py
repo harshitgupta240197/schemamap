@@ -88,7 +88,7 @@ def doctor(
     \b
     Examples:
       schemamap doctor --server localhost --database AdventureWorks2022
-      schemamap doctor --server db.example.com --database Sales --auth entra
+      schemamap doctor --server db.example.com --database Sales --auth entra-interactive
     """
     console = Console(highlight=False)
     config = connection_config(
