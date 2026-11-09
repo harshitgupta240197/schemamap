@@ -22,6 +22,10 @@ coverage/
 # Project
 lab-data/
 *.bak
+*.snapshot.json
+*.snapshot.json.gz
+!cli/tests/fixtures/*.snapshot.json
+!cli/tests/fixtures/*.snapshot.json.gz
 
 # Playwright
 playwright-report/

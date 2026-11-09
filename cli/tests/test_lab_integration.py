@@ -1,8 +1,10 @@
 """Integration tests: the lab SQL Server must be up and restored.
 
 Start it with `uv run tools/lab.py up && uv run tools/lab.py restore all`, then run
-`uv run pytest -m integration`. These talk to SQL Server through `docker exec` and
-sqlcmd; crumb 1.2 moves the reader checks onto the real driver.
+`uv run pytest -m integration`. Package code can only run allowlisted queries, so the
+checks that deliberately run other SQL (proving SELECT on a user table is denied) use the
+test-only helper in raw_sql.py, which opens the driver directly. Only the sa check of the
+restored databases still goes through `docker exec`.
 """
 
 import os
@@ -10,6 +12,13 @@ import subprocess
 from types import ModuleType
 
 import pytest
+from raw_sql import run_raw_sql
+from typer.testing import CliRunner
+
+from schemamap.cli import app
+from schemamap.connect import ConnectionConfig, Status, connect, diagnose
+from schemamap.errors import ConnectError, QueryRefusedError
+from schemamap.queries import QueryName
 
 pytestmark = pytest.mark.integration
 
@@ -19,24 +28,6 @@ PROTECTED_TABLES = [
     ("AdventureWorksDW2022", "SELECT TOP 1 * FROM dbo.DimCustomer"),
     ("WideWorldImporters", "SELECT TOP 1 * FROM Sales.Customers"),
 ]
-
-
-@pytest.fixture(scope="module")
-def passwords(lab: ModuleType) -> tuple[str, str]:
-    """(sa, reader) passwords from the lab's .env; fails clearly if the lab is not set up."""
-    env = lab.read_env()
-    sa, reader = env.get(lab.ENV_SA), env.get(lab.ENV_READER)
-    if not sa or not reader:
-        pytest.fail("Lab not initialised: run `uv run tools/lab.py up` first.")
-    state = subprocess.run(
-        ["docker", "inspect", "-f", "{{.State.Status}}", lab.CONTAINER],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if state.stdout.strip() != "running":
-        pytest.fail("Lab container is not running: run `uv run tools/lab.py up` first.")
-    return sa, reader
 
 
 def sqlcmd(
@@ -68,24 +59,117 @@ def sqlcmd(
     return subprocess.run(command, env=env, capture_output=True, text=True, timeout=60, check=False)
 
 
+def reader_config(lab: ModuleType, password: str, database: str) -> ConnectionConfig:
+    return ConnectionConfig(
+        server=lab.HOST,
+        port=lab.HOST_PORT,
+        database=database,
+        user=lab.READER_LOGIN,
+        password=password,
+        trust_server_certificate=True,
+    )
+
+
+# Queries that fail by design for a reader without VIEW DATABASE STATE.
+NEEDS_VIEW_DATABASE_STATE = frozenset({QueryName.ROW_COUNTS})
+
+
 @pytest.mark.parametrize(("database", "query"), PROTECTED_TABLES)
 def test_reader_cannot_read_rows(
     lab: ModuleType, passwords: tuple[str, str], database: str, query: str
 ) -> None:
-    result = sqlcmd(lab, lab.READER_LOGIN, passwords[1], database, query)
-    assert result.returncode != 0
-    assert "SELECT permission was denied" in result.stdout + result.stderr
+    with pytest.raises(Exception, match="SELECT permission was denied"):
+        run_raw_sql(reader_config(lab, passwords[1], database), query)
 
 
 @pytest.mark.parametrize("database", [db for db, _ in PROTECTED_TABLES])
 def test_reader_can_read_catalog_metadata(
     lab: ModuleType, passwords: tuple[str, str], database: str
 ) -> None:
-    result = sqlcmd(
-        lab, lab.READER_LOGIN, passwords[1], database, "SELECT COUNT(*) FROM sys.tables"
+    rows = run_raw_sql(
+        reader_config(lab, passwords[1], database), "SELECT COUNT(*) FROM sys.tables"
     )
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert int(result.stdout.strip()) > 0
+    assert rows[0][0] > 0
+
+
+@pytest.mark.parametrize("database", [db for db, _ in PROTECTED_TABLES])
+def test_executor_runs_every_named_query(
+    lab: ModuleType, passwords: tuple[str, str], database: str
+) -> None:
+    with connect(reader_config(lab, passwords[1], database)) as executor:
+        for name in QueryName:
+            if name in NEEDS_VIEW_DATABASE_STATE:
+                continue  # run with that permission in test_extract_sections_integration.py
+            executor.run(name)
+
+
+def test_executor_refuses_raw_sql_on_a_live_connection(
+    lab: ModuleType, passwords: tuple[str, str]
+) -> None:
+    with connect(reader_config(lab, passwords[1], "AdventureWorks2022")) as executor:
+        with pytest.raises(QueryRefusedError, match="only named queries"):
+            executor.run("SELECT TOP 1 * FROM Person.Person")  # type: ignore[arg-type]
+        assert not hasattr(executor, "cursor")
+
+
+def test_wrong_password_is_connect_error_without_secrets(
+    lab: ModuleType, passwords: tuple[str, str]
+) -> None:
+    config = reader_config(lab, "Wrong" + passwords[1], "AdventureWorks2022")
+    with pytest.raises(ConnectError) as info:
+        connect(config)
+    assert config.password is not None
+    assert config.password not in str(info.value)
+    assert "PWD=" not in str(info.value)
+
+
+def test_untrusted_certificate_is_rejected_by_default(
+    lab: ModuleType, passwords: tuple[str, str]
+) -> None:
+    config = ConnectionConfig(
+        server=lab.HOST,
+        port=lab.HOST_PORT,
+        database="AdventureWorks2022",
+        user=lab.READER_LOGIN,
+        password=passwords[1],
+    )
+    with pytest.raises(ConnectError):
+        connect(config)
+
+
+def test_doctor_reports_lab_all_green(lab: ModuleType, passwords: tuple[str, str]) -> None:
+    report = diagnose(reader_config(lab, passwords[1], "AdventureWorks2022"))
+    detail = [(c.name, c.status.value, c.detail) for c in report.checks]
+    assert report.connected, detail
+    statuses = {c.name: c.status for c in report.checks}
+    assert statuses["Driver"] is Status.OK
+    assert statuses["Connection"] is Status.OK
+    assert statuses["Server"] is Status.OK
+    assert statuses["VIEW DEFINITION"] is Status.OK
+    # Every probe ran through the executor. VIEW DATABASE STATE and Query Store are optional
+    # and depend on how the lab was restored, so they may be WARN, but never unchecked.
+    assert all(c.status is not Status.FAIL for c in report.checks), detail
+    assert all(c.detail != "could not be checked" for c in report.checks), detail
+
+
+def test_doctor_command_exit_code(lab: ModuleType, passwords: tuple[str, str]) -> None:
+    args = [
+        "doctor",
+        "--server",
+        lab.HOST,
+        "--port",
+        str(lab.HOST_PORT),
+        "--database",
+        "AdventureWorks2022",
+        "--trust-server-certificate",
+    ]
+    env = {"SCHEMAMAP_USER": lab.READER_LOGIN, "SCHEMAMAP_PASSWORD": passwords[1]}
+    result = CliRunner().invoke(app, args, env=env)
+    assert result.exit_code == 0, result.output
+    assert passwords[1] not in result.output
+    bad = CliRunner().invoke(app, args, env={**env, "SCHEMAMAP_PASSWORD": "nope"})
+    assert bad.exit_code == 3
+    assert "nope" not in bad.output
 
 
 def test_all_sample_databases_are_restored(lab: ModuleType, passwords: tuple[str, str]) -> None:

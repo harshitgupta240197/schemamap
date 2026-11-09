@@ -1,0 +1,1713 @@
+{
+ "check_constraint_count": 89,
+ "column_count": 486,
+ "database": "AdventureWorks2022",
+ "index_count": 173,
+ "key_constraint_count": 72,
+ "schemas": [
+  "HumanResources",
+  "Person",
+  "Production",
+  "Purchasing",
+  "Sales",
+  "dbo"
+ ],
+ "table_count": 71,
+ "tables": {
+  "HumanResources.EmployeeDepartmentHistory": {
+   "check_constraints": [
+    {
+     "column": null,
+     "definition": "([EndDate]>=[StartDate] OR [EndDate] IS NULL)",
+     "disabled": false,
+     "id": "constraint:HumanResources.CK_EmployeeDepartmentHistory_EndDate",
+     "name": "CK_EmployeeDepartmentHistory_EndDate",
+     "trusted": true
+    }
+   ],
+   "columns": [
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:HumanResources.EmployeeDepartmentHistory.BusinessEntityID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "BusinessEntityID",
+     "nullable": false,
+     "ordinal": 1,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "smallint",
+     "default": null,
+     "description": null,
+     "id": "column:HumanResources.EmployeeDepartmentHistory.DepartmentID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "DepartmentID",
+     "nullable": false,
+     "ordinal": 2,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "tinyint",
+     "default": null,
+     "description": null,
+     "id": "column:HumanResources.EmployeeDepartmentHistory.ShiftID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ShiftID",
+     "nullable": false,
+     "ordinal": 3,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "date",
+     "default": null,
+     "description": null,
+     "id": "column:HumanResources.EmployeeDepartmentHistory.StartDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "StartDate",
+     "nullable": false,
+     "ordinal": 4,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "date",
+     "default": null,
+     "description": null,
+     "id": "column:HumanResources.EmployeeDepartmentHistory.EndDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "EndDate",
+     "nullable": true,
+     "ordinal": 5,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime",
+     "default": {
+      "definition": "(getdate())",
+      "id": "constraint:HumanResources.DF_EmployeeDepartmentHistory_ModifiedDate",
+      "name": "DF_EmployeeDepartmentHistory_ModifiedDate"
+     },
+     "description": null,
+     "id": "column:HumanResources.EmployeeDepartmentHistory.ModifiedDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ModifiedDate",
+     "nullable": false,
+     "ordinal": 6,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    }
+   ],
+   "description": null,
+   "id": "object:HumanResources.EmployeeDepartmentHistory",
+   "indexes": [
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:HumanResources.EmployeeDepartmentHistory.IX_EmployeeDepartmentHistory_DepartmentID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:HumanResources.EmployeeDepartmentHistory.DepartmentID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "IX_EmployeeDepartmentHistory_DepartmentID",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:HumanResources.EmployeeDepartmentHistory.IX_EmployeeDepartmentHistory_ShiftID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:HumanResources.EmployeeDepartmentHistory.ShiftID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "IX_EmployeeDepartmentHistory_ShiftID",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:HumanResources.EmployeeDepartmentHistory.PK_EmployeeDepartmentHistory_BusinessEntityID_StartDate_DepartmentID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:HumanResources.EmployeeDepartmentHistory.BusinessEntityID",
+       "descending": false
+      },
+      {
+       "column": "column:HumanResources.EmployeeDepartmentHistory.StartDate",
+       "descending": false
+      },
+      {
+       "column": "column:HumanResources.EmployeeDepartmentHistory.DepartmentID",
+       "descending": false
+      },
+      {
+       "column": "column:HumanResources.EmployeeDepartmentHistory.ShiftID",
+       "descending": false
+      }
+     ],
+     "kind": "clustered",
+     "name": "PK_EmployeeDepartmentHistory_BusinessEntityID_StartDate_DepartmentID",
+     "unique": true
+    }
+   ],
+   "key_constraints": [
+    {
+     "columns": [
+      "column:HumanResources.EmployeeDepartmentHistory.BusinessEntityID",
+      "column:HumanResources.EmployeeDepartmentHistory.StartDate",
+      "column:HumanResources.EmployeeDepartmentHistory.DepartmentID",
+      "column:HumanResources.EmployeeDepartmentHistory.ShiftID"
+     ],
+     "id": "constraint:HumanResources.PK_EmployeeDepartmentHistory_BusinessEntityID_StartDate_DepartmentID",
+     "index": "index:HumanResources.EmployeeDepartmentHistory.PK_EmployeeDepartmentHistory_BusinessEntityID_StartDate_DepartmentID",
+     "kind": "primary_key",
+     "name": "PK_EmployeeDepartmentHistory_BusinessEntityID_StartDate_DepartmentID"
+    }
+   ],
+   "memory_optimized": false,
+   "name": "EmployeeDepartmentHistory",
+   "schema_id": "schema:HumanResources",
+   "temporal_type": "none"
+  },
+  "Person.Person": {
+   "check_constraints": [
+    {
+     "column": "column:Person.Person.EmailPromotion",
+     "definition": "([EmailPromotion]>=(0) AND [EmailPromotion]<=(2))",
+     "disabled": false,
+     "id": "constraint:Person.CK_Person_EmailPromotion",
+     "name": "CK_Person_EmailPromotion",
+     "trusted": true
+    },
+    {
+     "column": "column:Person.Person.PersonType",
+     "definition": "([PersonType] IS NULL OR (upper([PersonType])='GC' OR upper([PersonType])='SP' OR upper([PersonType])='EM' OR upper([PersonType])='IN' OR upper([PersonType])='VC' OR upper([PersonType])='SC'))",
+     "disabled": false,
+     "id": "constraint:Person.CK_Person_PersonType",
+     "name": "CK_Person_PersonType",
+     "trusted": true
+    }
+   ],
+   "columns": [
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Person.Person.BusinessEntityID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "BusinessEntityID",
+     "nullable": false,
+     "ordinal": 1,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nchar",
+     "default": null,
+     "description": null,
+     "id": "column:Person.Person.PersonType",
+     "identity": false,
+     "is_max": false,
+     "length": 2,
+     "name": "PersonType",
+     "nullable": false,
+     "ordinal": 2,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "bit",
+     "default": {
+      "definition": "((0))",
+      "id": "constraint:Person.DF_Person_NameStyle",
+      "name": "DF_Person_NameStyle"
+     },
+     "description": null,
+     "id": "column:Person.Person.NameStyle",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "NameStyle",
+     "nullable": false,
+     "ordinal": 3,
+     "precision": null,
+     "scale": null,
+     "user_type": "dbo.NameStyle"
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Person.Person.Title",
+     "identity": false,
+     "is_max": false,
+     "length": 8,
+     "name": "Title",
+     "nullable": true,
+     "ordinal": 4,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Person.Person.FirstName",
+     "identity": false,
+     "is_max": false,
+     "length": 50,
+     "name": "FirstName",
+     "nullable": false,
+     "ordinal": 5,
+     "precision": null,
+     "scale": null,
+     "user_type": "dbo.Name"
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Person.Person.MiddleName",
+     "identity": false,
+     "is_max": false,
+     "length": 50,
+     "name": "MiddleName",
+     "nullable": true,
+     "ordinal": 6,
+     "precision": null,
+     "scale": null,
+     "user_type": "dbo.Name"
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Person.Person.LastName",
+     "identity": false,
+     "is_max": false,
+     "length": 50,
+     "name": "LastName",
+     "nullable": false,
+     "ordinal": 7,
+     "precision": null,
+     "scale": null,
+     "user_type": "dbo.Name"
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Person.Person.Suffix",
+     "identity": false,
+     "is_max": false,
+     "length": 10,
+     "name": "Suffix",
+     "nullable": true,
+     "ordinal": 8,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": {
+      "definition": "((0))",
+      "id": "constraint:Person.DF_Person_EmailPromotion",
+      "name": "DF_Person_EmailPromotion"
+     },
+     "description": null,
+     "id": "column:Person.Person.EmailPromotion",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "EmailPromotion",
+     "nullable": false,
+     "ordinal": 9,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "xml",
+     "default": null,
+     "description": null,
+     "id": "column:Person.Person.AdditionalContactInfo",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "AdditionalContactInfo",
+     "nullable": true,
+     "ordinal": 10,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "xml",
+     "default": null,
+     "description": null,
+     "id": "column:Person.Person.Demographics",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "Demographics",
+     "nullable": true,
+     "ordinal": 11,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "uniqueidentifier",
+     "default": {
+      "definition": "(newid())",
+      "id": "constraint:Person.DF_Person_rowguid",
+      "name": "DF_Person_rowguid"
+     },
+     "description": null,
+     "id": "column:Person.Person.rowguid",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "rowguid",
+     "nullable": false,
+     "ordinal": 12,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime",
+     "default": {
+      "definition": "(getdate())",
+      "id": "constraint:Person.DF_Person_ModifiedDate",
+      "name": "DF_Person_ModifiedDate"
+     },
+     "description": null,
+     "id": "column:Person.Person.ModifiedDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ModifiedDate",
+     "nullable": false,
+     "ordinal": 13,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    }
+   ],
+   "description": null,
+   "id": "object:Person.Person",
+   "indexes": [
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Person.Person.AK_Person_rowguid",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Person.Person.rowguid",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "AK_Person_rowguid",
+     "unique": true
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Person.Person.IX_Person_LastName_FirstName_MiddleName",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Person.Person.LastName",
+       "descending": false
+      },
+      {
+       "column": "column:Person.Person.FirstName",
+       "descending": false
+      },
+      {
+       "column": "column:Person.Person.MiddleName",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "IX_Person_LastName_FirstName_MiddleName",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Person.Person.PK_Person_BusinessEntityID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Person.Person.BusinessEntityID",
+       "descending": false
+      }
+     ],
+     "kind": "clustered",
+     "name": "PK_Person_BusinessEntityID",
+     "unique": true
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Person.Person.PXML_Person_AddContact",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Person.Person.AdditionalContactInfo",
+       "descending": false
+      }
+     ],
+     "kind": "xml",
+     "name": "PXML_Person_AddContact",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Person.Person.PXML_Person_Demographics",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Person.Person.Demographics",
+       "descending": false
+      }
+     ],
+     "kind": "xml",
+     "name": "PXML_Person_Demographics",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Person.Person.XMLPATH_Person_Demographics",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Person.Person.Demographics",
+       "descending": false
+      }
+     ],
+     "kind": "xml",
+     "name": "XMLPATH_Person_Demographics",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Person.Person.XMLPROPERTY_Person_Demographics",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Person.Person.Demographics",
+       "descending": false
+      }
+     ],
+     "kind": "xml",
+     "name": "XMLPROPERTY_Person_Demographics",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Person.Person.XMLVALUE_Person_Demographics",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Person.Person.Demographics",
+       "descending": false
+      }
+     ],
+     "kind": "xml",
+     "name": "XMLVALUE_Person_Demographics",
+     "unique": false
+    }
+   ],
+   "key_constraints": [
+    {
+     "columns": [
+      "column:Person.Person.BusinessEntityID"
+     ],
+     "id": "constraint:Person.PK_Person_BusinessEntityID",
+     "index": "index:Person.Person.PK_Person_BusinessEntityID",
+     "kind": "primary_key",
+     "name": "PK_Person_BusinessEntityID"
+    }
+   ],
+   "memory_optimized": false,
+   "name": "Person",
+   "schema_id": "schema:Person",
+   "temporal_type": "none"
+  },
+  "Production.Product": {
+   "check_constraints": [
+    {
+     "column": "column:Production.Product.Class",
+     "definition": "(upper([Class])='H' OR upper([Class])='M' OR upper([Class])='L' OR [Class] IS NULL)",
+     "disabled": false,
+     "id": "constraint:Production.CK_Product_Class",
+     "name": "CK_Product_Class",
+     "trusted": true
+    },
+    {
+     "column": "column:Production.Product.DaysToManufacture",
+     "definition": "([DaysToManufacture]>=(0))",
+     "disabled": false,
+     "id": "constraint:Production.CK_Product_DaysToManufacture",
+     "name": "CK_Product_DaysToManufacture",
+     "trusted": true
+    },
+    {
+     "column": "column:Production.Product.ListPrice",
+     "definition": "([ListPrice]>=(0.00))",
+     "disabled": false,
+     "id": "constraint:Production.CK_Product_ListPrice",
+     "name": "CK_Product_ListPrice",
+     "trusted": true
+    },
+    {
+     "column": "column:Production.Product.ProductLine",
+     "definition": "(upper([ProductLine])='R' OR upper([ProductLine])='M' OR upper([ProductLine])='T' OR upper([ProductLine])='S' OR [ProductLine] IS NULL)",
+     "disabled": false,
+     "id": "constraint:Production.CK_Product_ProductLine",
+     "name": "CK_Product_ProductLine",
+     "trusted": true
+    },
+    {
+     "column": "column:Production.Product.ReorderPoint",
+     "definition": "([ReorderPoint]>(0))",
+     "disabled": false,
+     "id": "constraint:Production.CK_Product_ReorderPoint",
+     "name": "CK_Product_ReorderPoint",
+     "trusted": true
+    },
+    {
+     "column": "column:Production.Product.SafetyStockLevel",
+     "definition": "([SafetyStockLevel]>(0))",
+     "disabled": false,
+     "id": "constraint:Production.CK_Product_SafetyStockLevel",
+     "name": "CK_Product_SafetyStockLevel",
+     "trusted": true
+    },
+    {
+     "column": null,
+     "definition": "([SellEndDate]>=[SellStartDate] OR [SellEndDate] IS NULL)",
+     "disabled": false,
+     "id": "constraint:Production.CK_Product_SellEndDate",
+     "name": "CK_Product_SellEndDate",
+     "trusted": true
+    },
+    {
+     "column": "column:Production.Product.StandardCost",
+     "definition": "([StandardCost]>=(0.00))",
+     "disabled": false,
+     "id": "constraint:Production.CK_Product_StandardCost",
+     "name": "CK_Product_StandardCost",
+     "trusted": true
+    },
+    {
+     "column": "column:Production.Product.Style",
+     "definition": "(upper([Style])='U' OR upper([Style])='M' OR upper([Style])='W' OR [Style] IS NULL)",
+     "disabled": false,
+     "id": "constraint:Production.CK_Product_Style",
+     "name": "CK_Product_Style",
+     "trusted": true
+    },
+    {
+     "column": "column:Production.Product.Weight",
+     "definition": "([Weight]>(0.00))",
+     "disabled": false,
+     "id": "constraint:Production.CK_Product_Weight",
+     "name": "CK_Product_Weight",
+     "trusted": true
+    }
+   ],
+   "columns": [
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.ProductID",
+     "identity": true,
+     "is_max": false,
+     "length": null,
+     "name": "ProductID",
+     "nullable": false,
+     "ordinal": 1,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.Name",
+     "identity": false,
+     "is_max": false,
+     "length": 50,
+     "name": "Name",
+     "nullable": false,
+     "ordinal": 2,
+     "precision": null,
+     "scale": null,
+     "user_type": "dbo.Name"
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.ProductNumber",
+     "identity": false,
+     "is_max": false,
+     "length": 25,
+     "name": "ProductNumber",
+     "nullable": false,
+     "ordinal": 3,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "bit",
+     "default": {
+      "definition": "((1))",
+      "id": "constraint:Production.DF_Product_MakeFlag",
+      "name": "DF_Product_MakeFlag"
+     },
+     "description": null,
+     "id": "column:Production.Product.MakeFlag",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "MakeFlag",
+     "nullable": false,
+     "ordinal": 4,
+     "precision": null,
+     "scale": null,
+     "user_type": "dbo.Flag"
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "bit",
+     "default": {
+      "definition": "((1))",
+      "id": "constraint:Production.DF_Product_FinishedGoodsFlag",
+      "name": "DF_Product_FinishedGoodsFlag"
+     },
+     "description": null,
+     "id": "column:Production.Product.FinishedGoodsFlag",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "FinishedGoodsFlag",
+     "nullable": false,
+     "ordinal": 5,
+     "precision": null,
+     "scale": null,
+     "user_type": "dbo.Flag"
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.Color",
+     "identity": false,
+     "is_max": false,
+     "length": 15,
+     "name": "Color",
+     "nullable": true,
+     "ordinal": 6,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "smallint",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.SafetyStockLevel",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "SafetyStockLevel",
+     "nullable": false,
+     "ordinal": 7,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "smallint",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.ReorderPoint",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ReorderPoint",
+     "nullable": false,
+     "ordinal": 8,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "money",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.StandardCost",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "StandardCost",
+     "nullable": false,
+     "ordinal": 9,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "money",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.ListPrice",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ListPrice",
+     "nullable": false,
+     "ordinal": 10,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.Size",
+     "identity": false,
+     "is_max": false,
+     "length": 5,
+     "name": "Size",
+     "nullable": true,
+     "ordinal": 11,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nchar",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.SizeUnitMeasureCode",
+     "identity": false,
+     "is_max": false,
+     "length": 3,
+     "name": "SizeUnitMeasureCode",
+     "nullable": true,
+     "ordinal": 12,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nchar",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.WeightUnitMeasureCode",
+     "identity": false,
+     "is_max": false,
+     "length": 3,
+     "name": "WeightUnitMeasureCode",
+     "nullable": true,
+     "ordinal": 13,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "decimal",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.Weight",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "Weight",
+     "nullable": true,
+     "ordinal": 14,
+     "precision": 8,
+     "scale": 2,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.DaysToManufacture",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "DaysToManufacture",
+     "nullable": false,
+     "ordinal": 15,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nchar",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.ProductLine",
+     "identity": false,
+     "is_max": false,
+     "length": 2,
+     "name": "ProductLine",
+     "nullable": true,
+     "ordinal": 16,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nchar",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.Class",
+     "identity": false,
+     "is_max": false,
+     "length": 2,
+     "name": "Class",
+     "nullable": true,
+     "ordinal": 17,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nchar",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.Style",
+     "identity": false,
+     "is_max": false,
+     "length": 2,
+     "name": "Style",
+     "nullable": true,
+     "ordinal": 18,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.ProductSubcategoryID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ProductSubcategoryID",
+     "nullable": true,
+     "ordinal": 19,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.ProductModelID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ProductModelID",
+     "nullable": true,
+     "ordinal": 20,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.SellStartDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "SellStartDate",
+     "nullable": false,
+     "ordinal": 21,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.SellEndDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "SellEndDate",
+     "nullable": true,
+     "ordinal": 22,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime",
+     "default": null,
+     "description": null,
+     "id": "column:Production.Product.DiscontinuedDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "DiscontinuedDate",
+     "nullable": true,
+     "ordinal": 23,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "uniqueidentifier",
+     "default": {
+      "definition": "(newid())",
+      "id": "constraint:Production.DF_Product_rowguid",
+      "name": "DF_Product_rowguid"
+     },
+     "description": null,
+     "id": "column:Production.Product.rowguid",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "rowguid",
+     "nullable": false,
+     "ordinal": 24,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime",
+     "default": {
+      "definition": "(getdate())",
+      "id": "constraint:Production.DF_Product_ModifiedDate",
+      "name": "DF_Product_ModifiedDate"
+     },
+     "description": null,
+     "id": "column:Production.Product.ModifiedDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ModifiedDate",
+     "nullable": false,
+     "ordinal": 25,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    }
+   ],
+   "description": null,
+   "id": "object:Production.Product",
+   "indexes": [
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Production.Product.AK_Product_Name",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Production.Product.Name",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "AK_Product_Name",
+     "unique": true
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Production.Product.AK_Product_ProductNumber",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Production.Product.ProductNumber",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "AK_Product_ProductNumber",
+     "unique": true
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Production.Product.AK_Product_rowguid",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Production.Product.rowguid",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "AK_Product_rowguid",
+     "unique": true
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Production.Product.PK_Product_ProductID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Production.Product.ProductID",
+       "descending": false
+      }
+     ],
+     "kind": "clustered",
+     "name": "PK_Product_ProductID",
+     "unique": true
+    }
+   ],
+   "key_constraints": [
+    {
+     "columns": [
+      "column:Production.Product.ProductID"
+     ],
+     "id": "constraint:Production.PK_Product_ProductID",
+     "index": "index:Production.Product.PK_Product_ProductID",
+     "kind": "primary_key",
+     "name": "PK_Product_ProductID"
+    }
+   ],
+   "memory_optimized": false,
+   "name": "Product",
+   "schema_id": "schema:Production",
+   "temporal_type": "none"
+  },
+  "Production.ProductReview": {
+   "check_constraints": [
+    {
+     "column": "column:Production.ProductReview.Rating",
+     "definition": "([Rating]>=(1) AND [Rating]<=(5))",
+     "disabled": false,
+     "id": "constraint:Production.CK_ProductReview_Rating",
+     "name": "CK_ProductReview_Rating",
+     "trusted": true
+    }
+   ],
+   "columns": [
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Production.ProductReview.ProductReviewID",
+     "identity": true,
+     "is_max": false,
+     "length": null,
+     "name": "ProductReviewID",
+     "nullable": false,
+     "ordinal": 1,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Production.ProductReview.ProductID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ProductID",
+     "nullable": false,
+     "ordinal": 2,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Production.ProductReview.ReviewerName",
+     "identity": false,
+     "is_max": false,
+     "length": 50,
+     "name": "ReviewerName",
+     "nullable": false,
+     "ordinal": 3,
+     "precision": null,
+     "scale": null,
+     "user_type": "dbo.Name"
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime",
+     "default": {
+      "definition": "(getdate())",
+      "id": "constraint:Production.DF_ProductReview_ReviewDate",
+      "name": "DF_ProductReview_ReviewDate"
+     },
+     "description": null,
+     "id": "column:Production.ProductReview.ReviewDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ReviewDate",
+     "nullable": false,
+     "ordinal": 4,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Production.ProductReview.EmailAddress",
+     "identity": false,
+     "is_max": false,
+     "length": 50,
+     "name": "EmailAddress",
+     "nullable": false,
+     "ordinal": 5,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Production.ProductReview.Rating",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "Rating",
+     "nullable": false,
+     "ordinal": 6,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": "SQL_Latin1_General_CP1_CI_AS",
+     "computed": null,
+     "data_type": "nvarchar",
+     "default": null,
+     "description": null,
+     "id": "column:Production.ProductReview.Comments",
+     "identity": false,
+     "is_max": false,
+     "length": 3850,
+     "name": "Comments",
+     "nullable": true,
+     "ordinal": 7,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime",
+     "default": {
+      "definition": "(getdate())",
+      "id": "constraint:Production.DF_ProductReview_ModifiedDate",
+      "name": "DF_ProductReview_ModifiedDate"
+     },
+     "description": null,
+     "id": "column:Production.ProductReview.ModifiedDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ModifiedDate",
+     "nullable": false,
+     "ordinal": 8,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    }
+   ],
+   "description": null,
+   "id": "object:Production.ProductReview",
+   "indexes": [
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Production.ProductReview.IX_ProductReview_ProductID_Name",
+     "included_columns": [
+      "column:Production.ProductReview.Comments"
+     ],
+     "key_columns": [
+      {
+       "column": "column:Production.ProductReview.ProductID",
+       "descending": false
+      },
+      {
+       "column": "column:Production.ProductReview.ReviewerName",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "IX_ProductReview_ProductID_Name",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Production.ProductReview.PK_ProductReview_ProductReviewID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Production.ProductReview.ProductReviewID",
+       "descending": false
+      }
+     ],
+     "kind": "clustered",
+     "name": "PK_ProductReview_ProductReviewID",
+     "unique": true
+    }
+   ],
+   "key_constraints": [
+    {
+     "columns": [
+      "column:Production.ProductReview.ProductReviewID"
+     ],
+     "id": "constraint:Production.PK_ProductReview_ProductReviewID",
+     "index": "index:Production.ProductReview.PK_ProductReview_ProductReviewID",
+     "kind": "primary_key",
+     "name": "PK_ProductReview_ProductReviewID"
+    }
+   ],
+   "memory_optimized": false,
+   "name": "ProductReview",
+   "schema_id": "schema:Production",
+   "temporal_type": "none"
+  },
+  "Production.WorkOrder": {
+   "check_constraints": [
+    {
+     "column": null,
+     "definition": "([EndDate]>=[StartDate] OR [EndDate] IS NULL)",
+     "disabled": false,
+     "id": "constraint:Production.CK_WorkOrder_EndDate",
+     "name": "CK_WorkOrder_EndDate",
+     "trusted": true
+    },
+    {
+     "column": "column:Production.WorkOrder.OrderQty",
+     "definition": "([OrderQty]>(0))",
+     "disabled": false,
+     "id": "constraint:Production.CK_WorkOrder_OrderQty",
+     "name": "CK_WorkOrder_OrderQty",
+     "trusted": true
+    },
+    {
+     "column": "column:Production.WorkOrder.ScrappedQty",
+     "definition": "([ScrappedQty]>=(0))",
+     "disabled": false,
+     "id": "constraint:Production.CK_WorkOrder_ScrappedQty",
+     "name": "CK_WorkOrder_ScrappedQty",
+     "trusted": true
+    }
+   ],
+   "columns": [
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Production.WorkOrder.WorkOrderID",
+     "identity": true,
+     "is_max": false,
+     "length": null,
+     "name": "WorkOrderID",
+     "nullable": false,
+     "ordinal": 1,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Production.WorkOrder.ProductID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ProductID",
+     "nullable": false,
+     "ordinal": 2,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Production.WorkOrder.OrderQty",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "OrderQty",
+     "nullable": false,
+     "ordinal": 3,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": {
+      "definition": "(isnull([OrderQty]-[ScrappedQty],(0)))",
+      "persisted": false
+     },
+     "data_type": "int",
+     "default": null,
+     "description": null,
+     "id": "column:Production.WorkOrder.StockedQty",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "StockedQty",
+     "nullable": false,
+     "ordinal": 4,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "smallint",
+     "default": null,
+     "description": null,
+     "id": "column:Production.WorkOrder.ScrappedQty",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ScrappedQty",
+     "nullable": false,
+     "ordinal": 5,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime",
+     "default": null,
+     "description": null,
+     "id": "column:Production.WorkOrder.StartDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "StartDate",
+     "nullable": false,
+     "ordinal": 6,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime",
+     "default": null,
+     "description": null,
+     "id": "column:Production.WorkOrder.EndDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "EndDate",
+     "nullable": true,
+     "ordinal": 7,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime",
+     "default": null,
+     "description": null,
+     "id": "column:Production.WorkOrder.DueDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "DueDate",
+     "nullable": false,
+     "ordinal": 8,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "smallint",
+     "default": null,
+     "description": null,
+     "id": "column:Production.WorkOrder.ScrapReasonID",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ScrapReasonID",
+     "nullable": true,
+     "ordinal": 9,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    },
+    {
+     "collation": null,
+     "computed": null,
+     "data_type": "datetime",
+     "default": {
+      "definition": "(getdate())",
+      "id": "constraint:Production.DF_WorkOrder_ModifiedDate",
+      "name": "DF_WorkOrder_ModifiedDate"
+     },
+     "description": null,
+     "id": "column:Production.WorkOrder.ModifiedDate",
+     "identity": false,
+     "is_max": false,
+     "length": null,
+     "name": "ModifiedDate",
+     "nullable": false,
+     "ordinal": 10,
+     "precision": null,
+     "scale": null,
+     "user_type": null
+    }
+   ],
+   "description": null,
+   "id": "object:Production.WorkOrder",
+   "indexes": [
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Production.WorkOrder.IX_WorkOrder_ProductID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Production.WorkOrder.ProductID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "IX_WorkOrder_ProductID",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Production.WorkOrder.IX_WorkOrder_ScrapReasonID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Production.WorkOrder.ScrapReasonID",
+       "descending": false
+      }
+     ],
+     "kind": "nonclustered",
+     "name": "IX_WorkOrder_ScrapReasonID",
+     "unique": false
+    },
+    {
+     "disabled": false,
+     "filter": null,
+     "id": "index:Production.WorkOrder.PK_WorkOrder_WorkOrderID",
+     "included_columns": [],
+     "key_columns": [
+      {
+       "column": "column:Production.WorkOrder.WorkOrderID",
+       "descending": false
+      }
+     ],
+     "kind": "clustered",
+     "name": "PK_WorkOrder_WorkOrderID",
+     "unique": true
+    }
+   ],
+   "key_constraints": [
+    {
+     "columns": [
+      "column:Production.WorkOrder.WorkOrderID"
+     ],
+     "id": "constraint:Production.PK_WorkOrder_WorkOrderID",
+     "index": "index:Production.WorkOrder.PK_WorkOrder_WorkOrderID",
+     "kind": "primary_key",
+     "name": "PK_WorkOrder_WorkOrderID"
+    }
+   ],
+   "memory_optimized": false,
+   "name": "WorkOrder",
+   "schema_id": "schema:Production",
+   "temporal_type": "none"
+  }
+ }
+}

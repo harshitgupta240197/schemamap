@@ -1,7 +1,8 @@
 # Architecture
 
-Status: draft for gate 0 review (crumb 0.9). Decisions referenced as D-nnn live in
-[DECISIONS.md](DECISIONS.md).
+Status: reviewed at gate 1 (crumb 1.11) against the code on `phase-1-extract`. Sections
+about `infer`, `export`, the viewer, telemetry and Pulse describe planned work. Decisions
+referenced as D-nnn live in [DECISIONS.md](DECISIONS.md).
 
 Schema Map reads system metadata from one SQL Server database through a read-only login,
 writes a **snapshot** (a JSON document), infers undeclared relationships from it, and exports
@@ -9,8 +10,9 @@ an offline single-file HTML **map**. The snapshot is the contract between every 
 
 ## 1. Principles
 
-1. **Metadata only, read-only.** Only `sys.*`, `INFORMATION_SCHEMA`, Query Store views and DMVs
-   are queried, only with `SELECT`, and only through an allowlisting executor.
+1. **Metadata only, read-only.** Only `INFORMATION_SCHEMA` and `sys.*` views approved by exact
+   name (catalog views, plus named DMVs and Query Store views) are queried, only with
+   `SELECT`, and only through an allowlisting executor (D-029, D-039).
 2. **The snapshot is the boundary.** Only `connect` and `extract` see the database. Everything
    downstream (infer, export, viewer, later Pulse) works from snapshot files, so it is testable
    without a server and reproducible from a file someone sends you.
@@ -23,8 +25,10 @@ an offline single-file HTML **map**. The snapshot is the contract between every 
 
 ```
 cli/src/schemamap/
-  cli.py          Typer app. The only place that prints (Rich), parses flags, maps errors
-                  to exit codes, reads credentials from a prompt or environment variables.
+  cli.py          Typer app: commands, flags, the summary. With cli_connection.py
+                  (connection options, credentials from a prompt or environment variables,
+                  errors to exit codes) and cli_progress.py (Rich progress), the only code
+                  that prints.
   errors.py       Typed error hierarchy (section 6).
   connect/        Opens a connection (ApplicationIntent=ReadOnly where supported) and exposes
                   a MetadataExecutor that runs only queries from queries/.
@@ -33,9 +37,9 @@ cli/src/schemamap/
   extract/        Runs queries section by section, maps rows to snapshot models, records
                   warnings for skipped sections, parses SQL text into join evidence.
   snapshot/       Pydantic models (format v1), IDs, JSON I/O, redaction, JSON Schema.
-  infer/          Pure functions: Snapshot (+ overrides) -> inferred relationships.
-  export/         Builds the HTML map: viewer bundle + snapshot JSON inlined safely.
-  telemetry/      Opt-in, count-only. The only module allowed to open a socket.
+  infer/          (planned) Pure functions: Snapshot (+ overrides) -> inferred relationships.
+  export/         (planned) Builds the HTML map: viewer bundle + snapshot JSON inlined safely.
+  telemetry/      (planned) Opt-in, count-only. The only module allowed to open a socket.
 viewer/           React + TypeScript app built into one HTML file; reads the inlined JSON.
 schema/           snapshot.v1.json, generated from snapshot/ and committed.
 ```
@@ -51,15 +55,17 @@ telemetry ──> errors                                  (never snapshot conten
 snapshot ──> errors                                   (leaf)
 ```
 
-The SQL Server driver is chosen in a later crumb. It is hidden behind `MetadataExecutor`:
+The SQL Server driver (mssql-python, D-027) is hidden behind `MetadataExecutor`
+(`connect/executor.py`), the only code in the package that touches a driver cursor (D-029):
 
 ```python
-class MetadataExecutor(Protocol):
-    def run(self, query: QueryName, params: Mapping[str, str | int]) -> Iterator[Row]: ...
+class MetadataExecutor:
+    def run(self, query: QueryName, params: Mapping[str, str | int] | None = None) -> list[Row]: ...
 ```
 
 `QueryName` is an enum of files in `queries/`, so arbitrary SQL cannot even be expressed.
-The executor checks the file against the allowlist again before executing it.
+The executor checks the file against the allowlist again before executing it, and binds
+parameters positionally (`?`) in the order the file's `-- params:` header declares.
 
 ## 3. Data flow
 
@@ -82,10 +88,15 @@ send a snapshot instead of database access. Snapshots are not anonymous; see sec
 
 ### Extract, section by section
 
-Each section (schemas, tables, views, routines, synonyms, relationships, dependencies,
-definitions, descriptions, row counts, query history, join evidence) is independent. If a
-section's query fails with a permission error, extract records one `ExtractionWarning`
-(`section`, `code`, `message`) and carries on. Partial snapshots are normal and are labelled.
+Each section is independent. Today extract runs eight: schemas, tables, views, routines,
+synonyms, relationships, dependencies and row counts (descriptions, query history and join
+evidence are planned). It first reads which permissions the login holds
+(`sys.fn_my_permissions`). A section whose permission is missing is not run at all: extract
+records one `ExtractionWarning` (`section`, `code`, `message`, naming the exact `GRANT`) and
+carries on, so partial snapshots are normal and labelled. Today that covers dependencies
+(`SELECT` on `sys.sql_expression_dependencies`) and row counts (`VIEW DATABASE STATE`). A
+query the server refuses even though the probe passed (for example a `DENY` through a role)
+ends extraction with exit 3; turning that into a section warning is planned (GATE1.md).
 
 ### Why parsing happens in extract and infer stays pure
 
@@ -119,7 +130,8 @@ Snapshot
   generator           {name, version}
   captured_at         UTC timestamp
   source              {server | null, server_redacted, database, product_version,
-                       engine_edition, compatibility_level, collation}
+                       engine_edition, edition, compatibility_level, collation,
+                       query_store}
   schemas[]           {id, name, description}
   tables[]            {id, schema_id, name, description, columns[], indexes[],
                        key_constraints[], check_constraints[]}
@@ -130,11 +142,12 @@ Snapshot
                        to_object, to_columns[], on_delete, on_update, disabled, trusted}
   dependencies[]      {from_object, target: Reference}
   warnings[]          {section, code, message}
-  row_counts          OPTIONAL {items[]: {object, rows}}
+  row_counts          OPTIONAL {items[]: {object, rows, reserved_bytes}}
   query_history       OPTIONAL {source, window_start, window_end,
                                 items[]: {object, execution_count, last_executed_at}}
   join_evidence       OPTIONAL {entries[]: {from_column, to_column, source, count},
                                 parse_failure_count}
+  filters             OPTIONAL {schemas[], exclude_schemas[]}: schema filters applied at extract
   inferred_relationships   RESERVED for v1.1, not in v1
 ```
 
@@ -145,7 +158,7 @@ Snapshot
 | No row data | Every field has a concrete type: no `Any`, no open dicts, no bytes. A test walks every model field, another walks the JSON Schema. Free text is limited to names, descriptions and SQL definitions (see below). |
 | Deterministic | Unordered lists are sorted by ID (or by canonical content) on validation and duplicates are rejected. Ordered lists (columns by ordinal, key columns) keep catalog order. Fixed field order, indent 2, trailing newline. |
 | Forward compatible | Readers ignore unknown fields. Minor versions only add optional fields or sections. |
-| Cross-database | `Reference.scope` is `local`, `cross_database` or `cross_server`. Only local references get `resolved`; others keep the name exactly as written and are never followed. |
+| Cross-database | `Reference.scope` is `local`, `cross_database`, `cross_server` or `column_method` (an XML/UDT method call such as `Demographics.exist(...)`, see D-034). Only local references get `resolved`; others keep the name exactly as written and are never followed. |
 | Optional sections | `row_counts`, `query_history`, `join_evidence` are `null` when not collected, which is distinct from an empty list (collected, nothing found). |
 | No credentials | No field can hold a login, password, token or connection string; a test rejects such field names. `--redact-server` drops `source.server` and every linked-server name. It removes host names only: definitions, object names and the database name remain, so review a snapshot before sharing it. |
 | Integrity | Validation checks that every referenced object and column exists and that columns, indexes and objects belong to their parent. |
@@ -156,9 +169,9 @@ View, routine, computed column, default, check and filtered-index definitions ar
 default because they drive dependency and join evidence and are what users want to read.
 They are metadata, but they are free text written by developers and **may contain literals**
 (for example `WHERE Status = 'VIP'` or a hard-coded email address). This is documented in
-SECURITY.md. A future `--no-definitions` flag will omit them, adding an `omitted` value to
-`definition_status` in a v1.x minor release. Today `definition_status` tells the viewer why a
-definition is missing: `encrypted`, `not_permitted` or `not_applicable`.
+SECURITY.md. `--no-definitions` leaves all of them out. `definition_status` tells the viewer
+whether a definition is there and, if not, why: `available`, `encrypted`, `not_permitted`,
+`not_applicable` or `omitted` (left out by `--no-definitions`).
 
 ### Join evidence
 
@@ -214,10 +227,14 @@ SchemaMapError
   InvalidIdError        malformed or non-canonical ID (also a ValueError)
   SnapshotError         unreadable snapshot file
     SnapshotVersionError  unsupported format major version
-  ConnectError          (crumb 1.x) cannot connect or authenticate
-  QueryRefusedError     (crumb 1.x) SQL not in the allowlist: a bug, never user-facing input
-  PermissionMissing     (crumb 1.x) raised inside extract for one section, caught there and
-                        turned into an ExtractionWarning; never escapes extract
+  ConnectError          cannot connect or authenticate (message never holds secrets)
+    DriverUnavailableError  the SQL Server driver or its native library cannot load
+    QueryTimeoutError       a metadata query ran past --query-timeout
+    PermissionDeniedError   the server refused a metadata query (permission missing)
+      NoVisibleObjectsError   no VIEW DEFINITION and no visible objects: nothing is written
+  QueryRefusedError     SQL not in the allowlist: a bug, never user-facing input
+  PermissionMissing     raised inside extract for one section, caught there and turned
+                        into an ExtractionWarning; never escapes extract
 ```
 
 Rules: library code raises typed errors and never prints or exits. Messages never include
@@ -228,8 +245,28 @@ credentials or connection strings. The CLI maps errors to exit codes:
 | 0 | success (possibly with warnings, which are printed and stored in the snapshot) |
 | 1 | unexpected internal error (bug; traceback only with `--debug`) |
 | 2 | usage error (Typer default) |
-| 3 | cannot connect or authenticate |
+| 3 | cannot connect, log in or read: unreachable server, failed login, untrusted certificate, permission denied, timeout, or no `VIEW DEFINITION` with no visible objects |
 | 4 | invalid or unsupported snapshot file |
+
+A missing `VIEW DEFINITION` is judged in `extract_database` (D-042), because SQL Server answers a
+login without it with short catalog views, not an error:
+
+| `VIEW DEFINITION` | Visible objects | Result |
+|---|---|---|
+| missing | none | `NoVisibleObjectsError`, exit 3, no file, message with the exact `GRANT` |
+| missing | some | snapshot written with one `partial_visibility` warning (section `objects`), shown first in the summary |
+| held | no tables | exit 0 and the note `0 user tables found`; not a warning |
+
+Grant hints name the database user: `GRANT ... TO [<user>];` with a note that it may differ from
+the login name. The real name is shown by the doctor, the exit-3 error and the partial-map
+summary, never stored in the snapshot.
+
+`schemamap doctor` exits 3 when any check is FAIL (including a missing `VIEW DEFINITION`) and
+0 when every check is OK or WARN, so it can gate a script.
+
+These codes are final for format 1.0 and are listed in the `--help` epilog of every command.
+Errors print one red message with a `Fix:` hint and no traceback; unexpected errors print only
+the exception type. `--debug` re-raises them so the full traceback shows.
 
 ## 7. Versioning
 
@@ -280,4 +317,4 @@ so it is easy to audit.
 * Read-only connection plus allowlisted SELECT-only queries over system objects.
 * Snapshots and maps stay local. `--redact-server` removes host names only; definitions, object names and the database name remain, so review a snapshot before sharing it.
 * Hostile object names are handled by escaped IDs, text-only rendering and safe JSON inlining.
-* Definitions may contain literals (section 4); `--no-definitions` is planned.
+* Definitions may contain literals (section 4); `--no-definitions` leaves them out.

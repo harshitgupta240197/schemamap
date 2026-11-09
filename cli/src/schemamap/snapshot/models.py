@@ -93,6 +93,8 @@ class DefinitionStatus(str, Enum):
     ENCRYPTED = "encrypted"
     NOT_PERMITTED = "not_permitted"
     NOT_APPLICABLE = "not_applicable"
+    OMITTED = "omitted"
+    """Left out on purpose (--no-definitions)."""
 
 
 class _HasDefinition(_Model):
@@ -116,6 +118,14 @@ class Generator(_Model):
     version: Name
 
 
+class QueryStoreState(str, Enum):
+    """Whether Query Store is enabled. ``unknown`` means the login cannot read the setting."""
+
+    ON = "on"
+    OFF = "off"
+    UNKNOWN = "unknown"
+
+
 class SourceInfo(_Model):
     """Where the snapshot came from. Never holds a login, password or connection string."""
 
@@ -125,8 +135,12 @@ class SourceInfo(_Model):
     database: Name
     product_version: str | None = None
     engine_edition: str | None = None
+    edition: str | None = None
+    """Readable edition, for example "Developer Edition (64-bit)"."""
     compatibility_level: int | None = None
     collation: str | None = None
+    query_store: QueryStoreState = QueryStoreState.UNKNOWN
+    """Never ``off`` unless the login was allowed to read the setting and it was off."""
 
     @model_validator(mode="after")
     def _redacted_means_no_server(self) -> SourceInfo:
@@ -146,8 +160,8 @@ class Schema(_Model):
 class ComputedColumn(_Model):
     """How a computed column is calculated."""
 
-    definition: str
-    """SQL expression. Free text that may contain literals."""
+    definition: str | None = None
+    """SQL expression. Free text that may contain literals. Null only with --no-definitions."""
     persisted: bool
 
 
@@ -156,8 +170,8 @@ class DefaultConstraint(_Model):
 
     id: ConstraintId
     name: Name
-    definition: str
-    """SQL expression. Free text that may contain literals."""
+    definition: str | None = None
+    """SQL expression. Free text that may contain literals. Null only with --no-definitions."""
 
 
 class Column(_Model):
@@ -220,7 +234,8 @@ class Index(_Model):
     """Key columns in key order."""
     included_columns: tuple[ColumnId, ...] = ()
     filter: str | None = None
-    """Filter predicate of a filtered index. Free text that may contain literals."""
+    """Filter predicate of a filtered index. Free text that may contain literals. Null for an
+    unfiltered index, and with --no-definitions."""
     disabled: bool = False
 
 
@@ -248,12 +263,22 @@ class CheckConstraint(_Model):
 
     id: ConstraintId
     name: Name
-    definition: str
-    """SQL predicate. Free text that may contain literals."""
+    definition: str | None = None
+    """SQL predicate. Free text that may contain literals. Null only with --no-definitions."""
     column: ColumnId | None = None
     """Set for a column-level constraint."""
     disabled: bool = False
     trusted: bool = True
+
+
+class TemporalType(str, Enum):
+    """Whether a table takes part in system versioning."""
+
+    NONE = "none"
+    SYSTEM_VERSIONED = "system_versioned"
+    """A current table whose history is kept in a history table."""
+    HISTORY = "history"
+    """The history table of a system-versioned table."""
 
 
 class Table(_Model):
@@ -263,6 +288,8 @@ class Table(_Model):
     schema_id: SchemaId
     name: Name
     description: str | None = None
+    temporal_type: TemporalType = TemporalType.NONE
+    memory_optimized: bool = False
     columns: tuple[Column, ...]
     indexes: tuple[Index, ...] = ()
     key_constraints: tuple[KeyConstraint, ...] = ()
@@ -350,6 +377,9 @@ class ReferenceScope(str, Enum):
     LOCAL = "local"
     CROSS_DATABASE = "cross_database"
     CROSS_SERVER = "cross_server"
+    COLUMN_METHOD = "column_method"
+    """An XML or UDT method call such as `Demographics.exist(...)`. SQL Server records it as a
+    multi-part name, so the name parts are a column or alias and a method, not an object."""
 
 
 class QualifiedName(_Model):
@@ -434,6 +464,7 @@ class Dependency(_Model):
 class Section(str, Enum):
     """A part of the snapshot that extraction can skip."""
 
+    OBJECTS = "objects"
     SCHEMAS = "schemas"
     TABLES = "tables"
     VIEWS = "views"
@@ -446,6 +477,7 @@ class Section(str, Enum):
     ROW_COUNTS = "row_counts"
     QUERY_HISTORY = "query_history"
     JOIN_EVIDENCE = "join_evidence"
+    FILTERS = "filters"
 
 
 class ExtractionWarning(_Model):
@@ -461,6 +493,8 @@ class RowCount(_Model):
 
     object: ObjectId
     rows: Count
+    reserved_bytes: Count | None = None
+    """Space reserved by the table and all its indexes, from the same statistics."""
 
 
 class RowCounts(_Model):
@@ -539,6 +573,20 @@ class JoinEvidence(_Model):
         )
 
 
+class AppliedFilters(_Model):
+    """Schema filters the extract ran with. Present only when a filter was given."""
+
+    schemas: tuple[Name, ...] = ()
+    """Only these schemas were read (--schema); empty means no restriction."""
+    exclude_schemas: tuple[Name, ...] = ()
+    """These schemas were left out (--exclude-schema)."""
+
+    @field_validator("schemas", "exclude_schemas")
+    @classmethod
+    def _sort(cls, names: tuple[str, ...]) -> tuple[str, ...]:
+        return _sorted_unique(names, lambda n: n, "schema name")
+
+
 class Snapshot(_Model):
     """Schema Map snapshot, format v1.
 
@@ -568,6 +616,8 @@ class Snapshot(_Model):
     """Optional section; null when not collected."""
     join_evidence: JoinEvidence | None = None
     """Optional section; null when not collected."""
+    filters: AppliedFilters | None = None
+    """Optional; the schema filters applied at extract time, null when none were."""
 
     @field_validator("captured_at")
     @classmethod

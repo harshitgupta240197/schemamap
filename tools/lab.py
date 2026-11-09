@@ -3,12 +3,15 @@
 
     uv run tools/lab.py up                  start SQL Server 2022 in Docker, wait until ready
     uv run tools/lab.py restore all         download and restore the sample databases
+    uv run tools/lab.py synth               build a synthetic database with a ground-truth file
     uv run tools/lab.py status              show what is running and restored
     uv run tools/lab.py down [--purge]      stop the container (--purge also wipes its data)
 
 The lab is a test fixture: it creates logins and restores databases, but only ever
 inside the throwaway `schemamap-lab` container. Passwords are generated into `.env`
-(gitignored) and are never printed. See docs/LAB.md.
+(gitignored) and are never printed. When `.env` is absent and both password variables
+are set in the environment (CI), those are used instead and nothing is written to disk.
+See docs/LAB.md.
 """
 
 from __future__ import annotations
@@ -26,9 +29,10 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PureWindowsPath
+from types import ModuleType
 from typing import TypeVar
 
 T = TypeVar("T")
@@ -41,6 +45,10 @@ DATA_DIR = REPO_ROOT / "lab-data" / "mssql"
 
 CONTAINER = "schemamap-lab"
 SERVICE = "sqlserver"
+# Docker publishes the port on IPv4 loopback only. Connect to this address, not "localhost":
+# on Linux "localhost" resolves to ::1 first, where nothing listens, and the driver does
+# not fall back to IPv4.
+HOST = "127.0.0.1"
 HOST_PORT = 14330
 SQLCMD = "/opt/mssql-tools18/bin/sqlcmd"
 SQL_DIR_IN_CONTAINER = "/lab-sql"
@@ -48,6 +56,9 @@ BACKUP_DIR_IN_CONTAINER = "/backups"
 DATA_DIR_IN_CONTAINER = "/var/opt/mssql/data"
 
 READER_LOGIN = "schemamap_reader"
+READER_MIN_LOGIN = "schemamap_reader_min"
+EDGE_CASES_DB = "SchemaMapEdgeCases"
+EDGE_CASES_COLLATION_DBS = ("SchemaMapEdgeCasesCS", "SchemaMapEdgeCasesBIN2")
 ENV_SA = "SCHEMAMAP_LAB_SA_PASSWORD"
 ENV_READER = "SCHEMAMAP_LAB_READER_PASSWORD"
 ENV_KEYS = (ENV_SA, ENV_READER)
@@ -268,9 +279,34 @@ def credentials_from_env(values: dict[str, str]) -> Credentials:
     return Credentials(sa=sa, reader=reader)
 
 
-def read_env(path: Path = ENV_PATH) -> dict[str, str]:
-    """Read the lab .env if it exists (empty dict if not)."""
-    return parse_env(path.read_text(encoding="utf-8")) if path.exists() else {}
+def environ_credentials(environ: Mapping[str, str] | None = None) -> dict[str, str]:
+    """The two lab passwords from the process environment (CI mode), or {} unless both are set."""
+    source = os.environ if environ is None else environ
+    values = {key: source.get(key, "") for key in ENV_KEYS}
+    return values if all(values.values()) else {}
+
+
+def read_env(path: Path = ENV_PATH, environ: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Read the lab credentials: the .env file if it exists, else the environment (CI mode).
+
+    The environment is consulted only when the file is absent, so a developer's `.env` always
+    wins. Returns {} when neither source has both passwords.
+    """
+    if path.exists():
+        return parse_env(path.read_text(encoding="utf-8"))
+    return environ_credentials(environ)
+
+
+def env_for_up(path: Path = ENV_PATH, environ: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Credentials for `up`: the environment in CI mode, else the .env file (created if needed).
+
+    In CI mode no file is written, so the passwords never touch the disk.
+    """
+    if not path.exists():
+        from_environ = environ_credentials(environ)
+        if from_environ:
+            return from_environ
+    return ensure_env(path)
 
 
 # ---------------------------------------------------------------------------
@@ -478,11 +514,13 @@ def _run(
     *,
     env: dict[str, str] | None = None,
     timeout: float | None = None,
+    input_text: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     try:
         return subprocess.run(
             list(cmd),
             env=env,
+            input=input_text,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -557,15 +595,22 @@ def run_sqlcmd(
     extra_env: dict[str, str] | None = None,
     tabular: bool = False,
     timeout: float = 60,
+    script_text: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run sqlcmd inside the lab container.
+
+    `script_text` is piped to sqlcmd's standard input (GO separates batches), for scripts too
+    big or too generated to live under tools/lab-sql.
 
     Passwords and other variables travel as environment variables (`docker exec -e NAME`
     copies the value from this process), so they never appear in a command line. SQL
     files under tools/lab-sql read them as `$(NAME)` scripting variables.
     """
     extra_env = extra_env or {}
-    cmd = ["docker", "exec", "-e", "SQLCMDPASSWORD"]
+    cmd = ["docker", "exec"]
+    if script_text is not None:
+        cmd.append("-i")
+    cmd += ["-e", "SQLCMDPASSWORD"]
     for name in extra_env:
         cmd += ["-e", name]
     cmd += [CONTAINER, SQLCMD, "-S", "localhost", "-U", user, "-C", "-b", "-l", "10"]
@@ -578,7 +623,7 @@ def run_sqlcmd(
     elif query is not None:
         cmd += ["-Q", query]
     env = {**os.environ, "SQLCMDPASSWORD": password, **extra_env}
-    return _run(cmd, env=env, timeout=timeout)
+    return _run(cmd, env=env, timeout=timeout, input_text=script_text)
 
 
 def sql_or_raise(
@@ -606,7 +651,7 @@ def sql_or_raise(
 
 
 def load_credentials() -> Credentials:
-    return credentials_from_env(read_env())
+    return credentials_from_env(read_env(ENV_PATH))
 
 
 def require_running() -> Credentials:
@@ -656,18 +701,22 @@ def cmd_up(_: argparse.Namespace) -> None:
         print(f"warning: Docker has {memory / 1024**3:.1f} GB. {memory_hint()}", file=sys.stderr)
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    creds = credentials_from_env(ensure_env(ENV_PATH))
+    creds = credentials_from_env(env_for_up(ENV_PATH))
     print("Starting the SQL Server container (image pull on first run can take a few minutes)...")
     compose(["up", "-d"], creds.sa)
     print(f"Waiting for SQL Server (up to {READY_TIMEOUT_SECONDS}s)...")
     waited = wait_ready(creds)
     print(f"Ready after {waited:.0f}s.")
-    print(f"  Host: localhost,{HOST_PORT}   Admin login: sa   Reader login: {READER_LOGIN}")
-    print("  Passwords are in .env (never printed). Next: `uv run tools/lab.py restore all`.")
+    print(f"  Host: {HOST},{HOST_PORT}   Admin login: sa   Reader login: {READER_LOGIN}")
+    print("  Passwords are in .env or the environment (never printed). Next: `restore all`.")
 
 
 def grant_reader(creds: Credentials, database: str, view_database_state: bool) -> None:
-    """Create the reader login and user in `database` with VIEW DEFINITION and no SELECT."""
+    """Create both reader logins and their users in `database`; neither can SELECT user data.
+
+    The reader gets VIEW DEFINITION and SELECT on sys.sql_expression_dependencies (and VIEW
+    DATABASE STATE if asked). The minimal reader gets VIEW DEFINITION only.
+    """
     if not _DB_NAME.match(database):
         raise LabError(f"Unsafe database name {database!r}.")
     sql_or_raise(
@@ -681,7 +730,8 @@ def grant_reader(creds: Credentials, database: str, view_database_state: bool) -
         },
     )
     state = " + VIEW DATABASE STATE" if view_database_state else ""
-    print(f"{database}: {READER_LOGIN} has VIEW DEFINITION{state}, no SELECT.")
+    print(f"{database}: {READER_LOGIN} has VIEW DEFINITION{state}, no SELECT on user tables.")
+    print(f"{database}: {READER_MIN_LOGIN} has VIEW DEFINITION only.")
 
 
 def restore_one(creds: Credentials, backup: Backup) -> None:
@@ -722,10 +772,59 @@ def cmd_grant(args: argparse.Namespace) -> None:
     grant_reader(creds, args.database, args.view_database_state)
 
 
+def cmd_edgecases(_: argparse.Namespace) -> None:
+    creds = require_running()
+    print(f"{EDGE_CASES_DB}: creating (lab only; the sample databases are not touched)...")
+    sql_or_raise(creds, f"Creating {EDGE_CASES_DB}", "edgecases.sql")
+    for database in (EDGE_CASES_DB, *EDGE_CASES_COLLATION_DBS):
+        grant_reader(creds, database, False)
+
+
+def _load_synth() -> ModuleType:
+    """Import tools/synth.py (a sibling script) lazily."""
+    tools = str(Path(__file__).resolve().parent)
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+    import synth
+
+    return synth
+
+
+def build_synthetic(creds: Credentials, name: str, script: str, timeout: float = 3600) -> float:
+    """Apply a generated build script as SA and grant the reader; return build seconds."""
+    synth = _load_synth()
+    synth.validate_database_name(name)
+    start = time.monotonic()
+    result = run_sqlcmd("sa", creds.sa, script_text=script, timeout=timeout)
+    if result.returncode != 0:
+        output = redact((result.stdout + result.stderr).strip(), creds.secrets())
+        raise LabError(f"Building {name} failed:\n{output[-3000:]}")
+    seconds = time.monotonic() - start
+    grant_reader(creds, name, False)
+    return seconds
+
+
+def cmd_synth(args: argparse.Namespace) -> None:
+    synth = _load_synth()
+    try:
+        result = synth.generate(
+            args.seed, args.tables, args.schemas, args.declared_fk_share, args.name
+        )
+    except synth.SynthError as exc:
+        raise LabError(str(exc)) from exc
+    creds = require_running()
+    out = args.out if args.out.is_absolute() else REPO_ROOT / args.out
+    script_path, truth_path = synth.write_files(result, args.name, out)
+    print(f"{args.name}: building {args.tables} tables as sa (lab only)...")
+    seconds = build_synthetic(creds, args.name, result.script)
+    print(f"{args.name}: built in {seconds:.1f}s; {result.relationship_count} true relationships.")
+    print(f"  Script: {script_path}\n  Ground truth: {truth_path}")
+
+
 def cmd_status(_: argparse.Namespace) -> None:
     check_docker()
     state = container_state()
-    print(f"container {CONTAINER}: {state or 'not created'}  (localhost,{HOST_PORT})")
+    print(f"container {CONTAINER}: {state or 'not created'}  ({HOST},{HOST_PORT})")
     for backup in CATALOG.values():
         path = BACKUP_DIR / backup.filename
         have = path.exists() and path.stat().st_size == backup.size
@@ -748,7 +847,7 @@ def cmd_status(_: argparse.Namespace) -> None:
 
 def cmd_down(args: argparse.Namespace) -> None:
     check_docker()
-    sa_password = read_env().get(ENV_SA)
+    sa_password = read_env(ENV_PATH).get(ENV_SA)
     compose(["down"], sa_password)
     print("Lab stopped." if args.purge else "Lab stopped. Data in lab-data/ is kept.")
     if args.purge:
@@ -793,6 +892,17 @@ def build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help=f"also grant VIEW DATABASE STATE to {READER_LOGIN} (Query Store, DMVs)",
         )
+
+    sub.add_parser(
+        "edgecases",
+        help=f"create the small {EDGE_CASES_DB} database of awkward schema shapes (lab only)",
+    ).set_defaults(func=cmd_edgecases)
+
+    synth_parser = sub.add_parser(
+        "synth", help="build a synthetic database with a ground-truth file (lab only)"
+    )
+    _load_synth().add_arguments(synth_parser)
+    synth_parser.set_defaults(func=cmd_synth)
 
     sub.add_parser("status", help="show container, backups and databases").set_defaults(
         func=cmd_status

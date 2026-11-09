@@ -5,7 +5,10 @@ description = "Map a SQL Server database from system metadata only."
 requires-python = ">=3.10"
 license = "Apache-2.0"
 dependencies = [
+    "mssql-python>=1.17",
     "pydantic>=2.9",
+    "rich>=13",
+    "sqlglot>=30.30,<31",
     "typer>=0.15",
 ]
 
@@ -15,10 +18,12 @@ schemamap = "schemamap.cli:app"
 [dependency-groups]
 dev = [
     "hypothesis>=6.100",
+    "jsonschema>=4.26.0",
     "mypy>=1.13",
     "pytest>=8.3",
     "pytest-cov>=6.0",
     "ruff>=0.8",
+    "types-jsonschema>=4.26.0.20261006",
 ]
 
 [build-system]

@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import gzip
 import json
+import os
+import re
+import tempfile
+from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
@@ -10,10 +15,67 @@ from pydantic import ValidationError
 from schemamap.errors import SnapshotError, SnapshotVersionError
 from schemamap.snapshot.models import FORMAT, ReferenceScope, Snapshot
 
+_GZIP_MAGIC = b"\x1f\x8b"
+_UNSAFE_FILENAME_CHARS = re.compile(r"[^A-Za-z0-9._-]")
+# Windows opens these devices whatever extension follows (CON.snapshot.json is the console).
+_WINDOWS_DEVICES = frozenset(
+    {"CON", "PRN", "AUX", "NUL"} | {f"{port}{n}" for port in ("COM", "LPT") for n in range(1, 10)}
+)
+
 
 def dump_snapshot(snapshot: Snapshot) -> str:
     """Serialize a snapshot as UTF-8 JSON text with a fixed layout and a trailing newline."""
     return snapshot.model_dump_json(indent=2) + "\n"
+
+
+def default_output_path(database: str, compress: bool = False) -> Path:
+    """``<database>.snapshot.json[.gz]`` in the current directory.
+
+    The database name is untrusted, so anything outside letters, digits, ``.``, ``_`` and ``-``
+    becomes ``_``; a name can never point the file at another folder. A name that Windows
+    reserves for a device (``CON``, ``NUL``, ``COM1``...) gets a leading ``_``.
+    """
+    stem = _UNSAFE_FILENAME_CHARS.sub("_", database).strip(".") or "database"
+    if stem.split(".")[0].upper() in _WINDOWS_DEVICES:
+        stem = f"_{stem}"
+    return Path(f"{stem}.snapshot.json" + (".gz" if compress else ""))
+
+
+def write_snapshot(snapshot: Snapshot, path: Path, compress: bool = False) -> Path:
+    """Write the snapshot to ``path`` and return the path actually written.
+
+    With ``compress`` the file is gzip and ``.gz`` is appended unless the path already ends in
+    it. The gzip header carries no file name and a zero time, so equal snapshots give equal
+    bytes. The file is written beside the target and moved into place, so an interrupted run
+    never leaves a half-written snapshot. The temporary file gets a fresh random name and is
+    created exclusively, so a symlink planted in the folder is never followed, and it is
+    readable only by its owner (POSIX), as is the snapshot it becomes.
+    """
+    if compress and path.suffix != ".gz":
+        path = path.with_name(path.name + ".gz")
+    data = dump_snapshot(snapshot).encode("utf-8")
+    if compress:
+        data = gzip.compress(data, mtime=0)
+    descriptor, name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(data)
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return path
+
+
+def read_snapshot(path: Path) -> Snapshot:
+    """Load a snapshot file, plain or gzip (detected by content, not by extension)."""
+    try:
+        data = path.read_bytes()
+        if data.startswith(_GZIP_MAGIC):
+            data = gzip.decompress(data)
+    except (OSError, EOFError) as exc:
+        raise SnapshotError(f"cannot read {path}: {exc}") from exc
+    return load_snapshot(data)
 
 
 def load_snapshot(text: str | bytes) -> Snapshot:

@@ -15,6 +15,7 @@ A one-command local SQL Server 2022 with the official sample databases and a rea
 uv run tools/lab.py up                       # start the container, wait until it accepts logins
 uv run tools/lab.py restore all              # download, verify and restore all three databases
 uv run tools/lab.py restore AdventureWorks2022   # or one: AdventureWorksDW2022, WideWorldImporters
+uv run tools/lab.py edgecases                # create the small SchemaMapEdgeCases database (see below)
 uv run tools/lab.py status                   # container, backups, databases, reader login
 uv run tools/lab.py down                     # stop and remove the container, keep the data
 uv run tools/lab.py down --purge             # also wipe the SQL Server data (keeps downloaded backups)
@@ -34,28 +35,67 @@ cd cli && uv run pytest -m integration
 
 | Item | Value |
 | --- | --- |
-| Container | `schemamap-lab`, image `mcr.microsoft.com/mssql/server:2022-latest`, Developer edition |
-| Host and port | `localhost,14330` (bound to loopback only) |
+| Container | `schemamap-lab`, image `mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04` (the tag CI pins, D-040), Developer edition |
+| Host and port | `127.0.0.1,14330` (bound to IPv4 loopback only; use `127.0.0.1`, not `localhost`, which resolves to `::1` first on Linux) |
 | Admin login | `sa` |
-| Reader login | `schemamap_reader`: `VIEW DEFINITION` in each database, **no SELECT** |
-| Databases | `AdventureWorks2022`, `AdventureWorksDW2022`, `WideWorldImporters` |
+| Reader login | `schemamap_reader`: `VIEW DEFINITION` in each database, plus one `SELECT` on the system catalog view `sys.sql_expression_dependencies` for dependency tracking; **no SELECT on any user table** |
+| Minimal login | `schemamap_reader_min`: `VIEW DEFINITION` only (no `VIEW DATABASE STATE`, no `SELECT` on `sys.sql_expression_dependencies`), same password as the reader. It exists to test that extraction degrades gracefully: row counts and dependencies are skipped with one warning each . The visibility tests (`test_extract_visibility_integration.py`) revoke its `VIEW DEFINITION` on `SchemaMapEdgeCases` to prove `extract` exits 3 and writes no file, and put it back with `lab.py grant SchemaMapEdgeCases`; they also create and drop two throwaway databases (`SchemaMapVisibilityOwner`, `SchemaMapVisibilityEmpty`) and one lab-only login. If a run is killed half way, `uv run tools/lab.py grant SchemaMapEdgeCases` restores the grant |
+| Databases | `AdventureWorks2022`, `AdventureWorksDW2022`, `WideWorldImporters`; plus `SchemaMapEdgeCases` and `SchemaMapSynth*` when you build them (below) |
 | Data | `lab-data/mssql/` (SQL Server files) and `lab-data/backups/` (downloads), both gitignored |
 
 The reader login is what Schema Map should connect as. It can read catalog metadata (`sys.tables`, ...) and cannot read a single row of any user table, which is the access level real users are asked to grant.
 
-Add `--view-database-state` to `restore` (or to `grant`, below) to also give the reader `VIEW DATABASE STATE`, which Query Store views and some DMVs need:
+Add `--view-database-state` to `restore` (or to `grant`, below) to also give `schemamap_reader` `VIEW DATABASE STATE`, which row counts and sizes, Query Store views and some DMVs need (`schemamap_reader_min` never gets it):
 
 ```
 uv run tools/lab.py restore all --view-database-state
-uv run tools/lab.py grant AdventureWorks2022                       # re-apply, flag off
-uv run tools/lab.py grant AdventureWorks2022 --view-database-state # re-apply, flag on
+uv run tools/lab.py grant AdventureWorks2022                       # re-apply both logins, flag off
+uv run tools/lab.py grant AdventureWorks2022 --view-database-state # re-apply both logins, flag on
 ```
+
+## Edge cases database
+
+```
+uv run tools/lab.py edgecases
+```
+
+Creates `SchemaMapEdgeCases` (and a tiny `SchemaMapEdgeCasesOther` for cross-database references) as `sa`, replacing them if they exist, and grants the reader `VIEW DEFINITION`. The sample databases are never touched. It holds the awkward shapes the sample databases lack:
+
+| Object | Why |
+| --- | --- |
+| `dbo.SecretProc` | encrypted procedure: no definition, status `encrypted` |
+| `dbo.FK_Child_Parent_A`, `dbo.FK_Child_Parent_B` | two foreign keys on identical columns: one edge, two constraints |
+| `dbo.RemoteView`, `dbo.RemoteSynonym` | refer to `SchemaMapEdgeCasesOther`: cross-database, never resolved |
+| `dbo.RemoteFnView` | calls `SchemaMapEdgeCasesOther.dbo.RemoteFn(...)`: a genuine cross-database reference that looks like a method call |
+| `dbo.XmlDoc`, `dbo.XmlMethodView`, `dbo.XmlAliasLikeDatabaseView` | `Body.value(...)` on an XML column, also through an alias named like a real database: `column_method`, never `cross_database` |
+| `dbo.UsesMissing` | refers to `dbo.DoesNotExist`: an unresolved local reference |
+| `dbo.IX_Child_Active` (on `dbo.Child`) | filtered index |
+| `dbo.Versioned`, `dbo.VersionedHistory` | system-versioned temporal table and its history table |
+| `dbo.[Odd.Table [x] Ü☃]` | a name with a dot, brackets and non-ASCII characters |
+
+`edgecases` also builds `SchemaMapEdgeCasesCS` (`Latin1_General_100_CS_AS`) and `SchemaMapEdgeCasesBIN2` (`Latin1_General_100_BIN2`). Each holds tables `dbo.Orders` and `dbo.orders` (columns `Name` and `name`, a foreign key between them), a view and a procedure that each use one of the two, and a user schema `SYS` with a table `TABLES`, to prove the allowlist treats only the real `sys` schema as system.
+
+The integration tests for crumb 1.5 expect it, and fail with this command in the message if it is missing.
+
+## Synthetic databases
+
+```
+uv run tools/lab.py synth --tables 2000 --seed 1                 # builds SchemaMapSynth
+uv run tools/lab.py synth --tables 200 --name SchemaMapSynth200  # name must start with SchemaMapSynth
+uv run tools/synth.py --tables 500 --out some/folder             # files only, no database
+```
+
+Builds a messy database with known answers for speed tests and inference measurement, and writes `<name>.sql` and `<name>.truth.json` to `lab-data/synth/`. The ground truth lists every true relationship (declared or not), the traps that are not relationships, and what the generated views and procedures join. Reference: 2,000 tables build in about 6 s and extract in about 11 s. See D-037.
 
 ## Passwords
 
 `up` generates a random 24-character password for `sa` and for `schemamap_reader` and saves them to `.env` (mode 0600, gitignored; `.env.example` shows the shape). Nothing prints them. Existing values are never overwritten. To use a login by hand, read the value from `.env` yourself.
 
 If you delete `.env` after the first start, the data folder still holds the old `sa` password and `up` will time out. Run `uv run tools/lab.py down --purge`, then `up` again.
+
+## CI mode
+
+CI (the `integration` job in `.github/workflows/ci.yml`) runs the same commands with no `.env`. When `.env` is absent and both `SCHEMAMAP_LAB_SA_PASSWORD` and `SCHEMAMAP_LAB_READER_PASSWORD` are set in the environment, `lab.py` uses them and writes nothing to disk; a `.env` file always wins. The reader password must be letters and digits only. `SCHEMAMAP_LAB_IMAGE_TAG` selects the SQL Server image tag. CI pins a specific cumulative update (D-038) and `docker-compose.yml` defaults to the same tag (D-040), so local and CI runs use one build. To move an existing lab onto the pinned tag, run `down` then `up`: the new image is pulled and `lab-data/` is kept. The job generates both passwords at start, masks them with `::add-mask::` and passes them to later steps through the environment.
 
 ## Port 14330
 
