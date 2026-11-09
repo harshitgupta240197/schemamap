@@ -10,11 +10,23 @@ from schemamap.connect.config import ConnectionConfig
 from schemamap.connect.connection import connect
 from schemamap.connect.driver import load_driver
 from schemamap.connect.executor import MetadataExecutor
+from schemamap.connect.permissions import Permission, held_permissions, query_store_state
 from schemamap.errors import ConnectError, DriverUnavailableError, QueryRefusedError
 from schemamap.queries import QueryName
+from schemamap.snapshot.models import QueryStoreState
 
 # EngineEdition values: 5 = Azure SQL Database, 8 = Azure SQL Managed Instance.
 _AZURE_ENGINES = {5, 8}
+
+
+_NO_DEFINITION = "Without it, views, procedures and functions cannot be read."
+_NO_DATABASE_STATE = (
+    "Without it, row counts and sizes, Query Store and usage hints are skipped (optional)."
+)
+_NO_DEPENDENCIES = (
+    "This is a system catalog view, not user data. Without it, dependency and impact "
+    "information is skipped."
+)
 
 
 class Status(str, enum.Enum):
@@ -56,40 +68,41 @@ def _server_check(conn: MetadataExecutor) -> Check:
 
 
 def _permission_checks(conn: MetadataExecutor) -> list[Check]:
-    held = {row[0] for row in conn.run(QueryName.DOCTOR_PERMISSIONS)}
-    checks: list[Check] = []
-    definition = "VIEW DEFINITION" in held
-    checks.append(
-        Check(
-            "VIEW DEFINITION",
-            Status.OK if definition else Status.WARN,
-            "granted" if definition else "missing",
-            None
-            if definition
-            else "Without it, views, procedures and functions cannot be read. Ask a DBA to run "
-            "GRANT VIEW DEFINITION TO <login>.",
-        )
-    )
-    state = "VIEW DATABASE STATE" in held
-    checks.append(
-        Check(
-            "VIEW DATABASE STATE",
-            Status.OK if state else Status.WARN,
-            "granted" if state else "missing",
-            None
-            if state
-            else "Without it, Query Store and usage hints are skipped. Ask a DBA to run "
-            "GRANT VIEW DATABASE STATE TO <login> (optional).",
-        )
-    )
-    return checks
+    held = held_permissions(conn)
+    return [
+        _permission_check("VIEW DEFINITION", Permission.VIEW_DEFINITION, held, _NO_DEFINITION),
+        _permission_check(
+            "VIEW DATABASE STATE", Permission.VIEW_DATABASE_STATE, held, _NO_DATABASE_STATE
+        ),
+        _permission_check(
+            "SELECT sys.sql_expression_dependencies",
+            Permission.SELECT_DEPENDENCIES,
+            held,
+            _NO_DEPENDENCIES,
+        ),
+    ]
+
+
+def _permission_check(
+    name: str, permission: Permission, held: frozenset[Permission], consequence: str
+) -> Check:
+    if permission in held:
+        return Check(name, Status.OK, "granted")
+    return Check(name, Status.WARN, "missing", f"{consequence} Ask a DBA to run {permission.grant}")
 
 
 def _query_store_check(conn: MetadataExecutor) -> Check:
-    rows = conn.run(QueryName.DOCTOR_QUERY_STORE)
-    state = str(rows[0][0]) if rows else "OFF"
-    if state in ("READ_WRITE", "READ_ONLY"):
-        return Check("Query Store", Status.OK, state.replace("_", " ").lower())
+    state = query_store_state(held_permissions(conn), conn)
+    if state is QueryStoreState.ON:
+        return Check("Query Store", Status.OK, "on")
+    if state is QueryStoreState.UNKNOWN:
+        return Check(
+            "Query Store",
+            Status.WARN,
+            "unknown",
+            "Query Store cannot be read without VIEW DATABASE STATE, so it is reported as "
+            "unknown, not off. Query-based join hints are skipped.",
+        )
     return Check(
         "Query Store",
         Status.WARN,

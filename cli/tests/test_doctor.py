@@ -32,8 +32,12 @@ class FakeConnection:
 
 GREEN: dict[QueryName, Any] = {
     QueryName.DOCTOR_SERVER_INFO: [("16.0.4135.4", "Developer Edition (64-bit)", 3, "Sales")],
-    QueryName.DOCTOR_PERMISSIONS: [("VIEW DATABASE STATE",), ("VIEW DEFINITION",)],
-    QueryName.DOCTOR_QUERY_STORE: [("READ_WRITE",)],
+    QueryName.PERMISSIONS: [
+        ("SELECT ON sys.sql_expression_dependencies",),
+        ("VIEW DATABASE STATE",),
+        ("VIEW DEFINITION",),
+    ],
+    QueryName.QUERY_STORE_STATE: [("READ_WRITE",)],
 }
 
 
@@ -57,23 +61,63 @@ def test_all_green(monkeypatch: pytest.MonkeyPatch) -> None:
         "Server",
         "VIEW DEFINITION",
         "VIEW DATABASE STATE",
+        "SELECT sys.sql_expression_dependencies",
         "Query Store",
     ]
 
 
 def test_missing_permissions_and_query_store_warn(monkeypatch: pytest.MonkeyPatch) -> None:
-    patch(
-        monkeypatch, {**GREEN, QueryName.DOCTOR_PERMISSIONS: [], QueryName.DOCTOR_QUERY_STORE: []}
-    )
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: [], QueryName.QUERY_STORE_STATE: []})
     report = diagnose(config())
     warned = {c.name for c in report.checks if c.status is Status.WARN}
-    assert warned == {"VIEW DEFINITION", "VIEW DATABASE STATE", "Query Store"}
+    assert warned == {
+        "VIEW DEFINITION",
+        "VIEW DATABASE STATE",
+        "SELECT sys.sql_expression_dependencies",
+        "Query Store",
+    }
     assert all(c.next_step for c in report.checks if c.status is Status.WARN)
     assert report.connected
 
 
+def checks_by_name(report: Any) -> dict[str, Any]:
+    return {c.name: c for c in report.checks}
+
+
+def test_missing_dependencies_select_warns_with_the_exact_grant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    without = [("VIEW DATABASE STATE",), ("VIEW DEFINITION",)]
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: without})
+    check = checks_by_name(diagnose(config()))["SELECT sys.sql_expression_dependencies"]
+    assert check.status is Status.WARN
+    assert check.detail == "missing"
+    assert "GRANT SELECT ON sys.sql_expression_dependencies TO <login>;" in check.next_step
+    assert "dependency and impact information is skipped" in check.next_step
+
+
+def test_query_store_is_unknown_not_off_without_view_database_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The catalog says OFF to a login without VIEW DATABASE STATE; the doctor must not repeat it.
+    held = [("VIEW DEFINITION",)]
+    patch(
+        monkeypatch, {**GREEN, QueryName.PERMISSIONS: held, QueryName.QUERY_STORE_STATE: [("OFF",)]}
+    )
+    check = checks_by_name(diagnose(config()))["Query Store"]
+    assert check.status is Status.WARN
+    assert check.detail == "unknown"
+    assert "not off" in check.next_step
+
+
+def test_query_store_off_when_readable_and_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, {**GREEN, QueryName.QUERY_STORE_STATE: [("OFF",)]})
+    check = checks_by_name(diagnose(config()))["Query Store"]
+    assert check.detail == "off"
+
+
 def test_failed_probe_degrades_to_warning(monkeypatch: pytest.MonkeyPatch) -> None:
-    patch(monkeypatch, {**GREEN, QueryName.DOCTOR_QUERY_STORE: RuntimeError("denied")})
+    patch(monkeypatch, {**GREEN, QueryName.QUERY_STORE_STATE: RuntimeError("denied")})
     report = diagnose(config())
     assert report.connected
     assert report.checks[-1].status is Status.WARN
@@ -81,7 +125,7 @@ def test_failed_probe_degrades_to_warning(monkeypatch: pytest.MonkeyPatch) -> No
 
 def test_refused_query_is_a_bug_not_a_warning(monkeypatch: pytest.MonkeyPatch) -> None:
     refused = QueryRefusedError("Query is not on the allowlist.")
-    patch(monkeypatch, {**GREEN, QueryName.DOCTOR_PERMISSIONS: refused})
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: refused})
     with pytest.raises(QueryRefusedError):
         diagnose(config())
 

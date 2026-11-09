@@ -146,3 +146,12 @@ class DependencyRow(NamedTuple):
     target_name: str
     resolved_schema_name: str | None
     resolved_name: str | None
+
+
+class RowCountRow(NamedTuple):
+    """queries/row_counts.sql"""
+
+    schema_name: str
+    table_name: str
+    row_count: int
+    reserved_bytes: int

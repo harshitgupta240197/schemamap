@@ -188,7 +188,7 @@ def snapshot_doc() -> dict[str, Any]:
         "warnings": [
             {"section": "query_history", "code": "permission_missing", "message": "skipped"}
         ],
-        "row_counts": {"items": [{"object": customers, "rows": 42}]},
+        "row_counts": {"items": [{"object": customers, "rows": 42, "reserved_bytes": 65536}]},
         "query_history": None,
         "join_evidence": {
             "entries": [
@@ -246,6 +246,29 @@ def test_optional_sections_are_null_when_not_collected() -> None:
     assert dumped["row_counts"] is None
     assert dumped["query_history"] is None
     assert dumped["join_evidence"] is None
+
+
+def test_query_store_defaults_to_unknown_never_off() -> None:
+    doc = snapshot_doc()
+    doc["source"].pop("query_store", None)
+    snap = Snapshot.model_validate(doc)
+    assert snap.source.query_store.value == "unknown"
+    for state in ("on", "off", "unknown"):
+        doc["source"]["query_store"] = state
+        assert Snapshot.model_validate(doc).source.query_store.value == state
+    doc["source"]["query_store"] = "enabled"
+    with pytest.raises(ValidationError):
+        Snapshot.model_validate(doc)
+
+
+def test_row_count_size_is_optional_and_never_negative() -> None:
+    doc = snapshot_doc()
+    item = doc["row_counts"]["items"][0]
+    item.pop("reserved_bytes")
+    assert Snapshot.model_validate(doc).row_counts.items[0].reserved_bytes is None  # type: ignore[union-attr]
+    item["reserved_bytes"] = -1
+    with pytest.raises(ValidationError):
+        Snapshot.model_validate(doc)
 
 
 def test_query_history_section_holds_counts_only() -> None:

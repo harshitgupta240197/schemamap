@@ -96,7 +96,7 @@ def test_closes_the_cursor_when_the_driver_fails() -> None:
 
     raw = Raw()
     with pytest.raises(RuntimeError):
-        MetadataExecutor(raw).run(QueryName.DOCTOR_PERMISSIONS)
+        MetadataExecutor(raw).run(QueryName.PERMISSIONS)
     assert raw.cursors[0].closed
 
 

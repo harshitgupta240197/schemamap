@@ -32,3 +32,16 @@ class QueryRefusedError(SchemaMapError):
 
     This is always a bug in Schema Map, never a problem with user input.
     """
+
+
+class PermissionMissing(SchemaMapError):
+    """A section needs a permission the login does not hold.
+
+    Raised inside extraction and always caught there: the section is skipped and recorded as
+    one warning. It never reaches the CLI as an error.
+    """
+
+    def __init__(self, permission: str, message: str) -> None:
+        super().__init__(message)
+        self.permission = permission
+        self.message = message

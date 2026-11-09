@@ -70,6 +70,10 @@ def reader_config(lab: ModuleType, password: str, database: str) -> ConnectionCo
     )
 
 
+# Queries that fail by design for a reader without VIEW DATABASE STATE.
+NEEDS_VIEW_DATABASE_STATE = frozenset({QueryName.ROW_COUNTS})
+
+
 @pytest.mark.parametrize(("database", "query"), PROTECTED_TABLES)
 def test_reader_cannot_read_rows(
     lab: ModuleType, passwords: tuple[str, str], database: str, query: str
@@ -94,6 +98,8 @@ def test_executor_runs_every_named_query(
 ) -> None:
     with connect(reader_config(lab, passwords[1], database)) as executor:
         for name in QueryName:
+            if name in NEEDS_VIEW_DATABASE_STATE:
+                continue  # run with that permission in test_extract_sections_integration.py
             executor.run(name)
 
 

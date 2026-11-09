@@ -48,6 +48,7 @@ BACKUP_DIR_IN_CONTAINER = "/backups"
 DATA_DIR_IN_CONTAINER = "/var/opt/mssql/data"
 
 READER_LOGIN = "schemamap_reader"
+READER_MIN_LOGIN = "schemamap_reader_min"
 EDGE_CASES_DB = "SchemaMapEdgeCases"
 ENV_SA = "SCHEMAMAP_LAB_SA_PASSWORD"
 ENV_READER = "SCHEMAMAP_LAB_READER_PASSWORD"
@@ -668,7 +669,11 @@ def cmd_up(_: argparse.Namespace) -> None:
 
 
 def grant_reader(creds: Credentials, database: str, view_database_state: bool) -> None:
-    """Create the reader login and user in `database` with VIEW DEFINITION and no SELECT."""
+    """Create both reader logins and their users in `database`; neither can SELECT user data.
+
+    The reader gets VIEW DEFINITION and SELECT on sys.sql_expression_dependencies (and VIEW
+    DATABASE STATE if asked). The minimal reader gets VIEW DEFINITION only.
+    """
     if not _DB_NAME.match(database):
         raise LabError(f"Unsafe database name {database!r}.")
     sql_or_raise(
@@ -682,7 +687,8 @@ def grant_reader(creds: Credentials, database: str, view_database_state: bool) -
         },
     )
     state = " + VIEW DATABASE STATE" if view_database_state else ""
-    print(f"{database}: {READER_LOGIN} has VIEW DEFINITION{state}, no SELECT.")
+    print(f"{database}: {READER_LOGIN} has VIEW DEFINITION{state}, no SELECT on user tables.")
+    print(f"{database}: {READER_MIN_LOGIN} has VIEW DEFINITION only.")
 
 
 def restore_one(creds: Credentials, backup: Backup) -> None:

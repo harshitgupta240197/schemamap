@@ -16,9 +16,14 @@ def real_queries() -> list[tuple[str, str]]:
     return sorted((entry.name, entry.read_text(encoding="utf-8")) for entry in files)
 
 
-def test_real_queries_include_the_doctor_queries() -> None:
+def test_real_queries_include_the_doctor_and_optional_queries() -> None:
     names = {name for name, _ in real_queries()}
-    assert {"doctor_permissions.sql", "doctor_query_store.sql", "doctor_server_info.sql"} <= names
+    assert {
+        "permissions.sql",
+        "query_store_state.sql",
+        "doctor_server_info.sql",
+        "row_counts.sql",
+    } <= names
 
 
 @pytest.mark.parametrize(("name", "sql"), real_queries(), ids=[n for n, _ in real_queries()])
@@ -52,6 +57,7 @@ ALLOWED = {
     "declared parameters": (
         "-- params: schema_id, name\nSELECT name FROM sys.tables WHERE schema_id = ? AND name = ?;"
     ),
+    "approved dmv": "SELECT object_id, row_count FROM sys.dm_db_partition_stats;",
     "question mark inside a literal is not a placeholder": "SELECT N'?' AS q FROM sys.tables;",
 }
 
@@ -179,8 +185,8 @@ REFUSED = {
         "table-valued function sys.fn_dblog is not on the approved list",
     ),
     "dmv awaiting its first query": (
-        "SELECT object_id, row_count FROM sys.dm_db_partition_stats;",
-        "sys.dm_db_partition_stats is not on the approved list of DMVs",
+        "SELECT object_id, user_seeks FROM sys.dm_db_index_usage_stats;",
+        "sys.dm_db_index_usage_stats is not on the approved list of DMVs",
     ),
     "query store view awaiting its first query": (
         "SELECT query_sql_text FROM sys.query_store_query_text;",

@@ -18,15 +18,18 @@ A snapshot never contains credentials, connection strings or query text.
 
 ### 1. The login has no SELECT
 
-Schema Map needs `VIEW DEFINITION` on the database, and optionally `VIEW DATABASE STATE` for Query Store and usage hints. It needs no `SELECT`, `INSERT`, `UPDATE`, `DELETE` or `EXECUTE`, and no role such as `db_datareader`. With only those grants, **SQL Server itself** refuses to return a single table row, whatever a client sends. This is the layer that matters most, because the server enforces it.
+Schema Map needs `VIEW DEFINITION` on the database, and optionally `VIEW DATABASE STATE` for row counts, sizes, Query Store and usage hints. It needs no `INSERT`, `UPDATE`, `DELETE` or `EXECUTE`, and no role such as `db_datareader`. **There is no SELECT on any user table; there is one SELECT on the system catalog view `sys.sql_expression_dependencies`, for dependency tracking** (SQL Server grants it only to `db_owner` by default). That view lists which objects refer to which; it holds no user data. With only these grants, **SQL Server itself** refuses to return a single table row, whatever a client sends. This is the layer that matters most, because the server enforces it.
 
 ```sql
 CREATE LOGIN schemamap_reader WITH PASSWORD = N'<a strong password>';
 USE [YourDatabase];
 CREATE USER schemamap_reader FOR LOGIN schemamap_reader;
 GRANT VIEW DEFINITION TO schemamap_reader;
-GRANT VIEW DATABASE STATE TO schemamap_reader;  -- optional: Query Store and usage hints
+GRANT SELECT ON sys.sql_expression_dependencies TO schemamap_reader;  -- system catalog view, for dependency tracking
+GRANT VIEW DATABASE STATE TO schemamap_reader;  -- optional: row counts, sizes, Query Store and usage hints
 ```
+
+Each grant beyond `VIEW DEFINITION` is optional. Without `SELECT` on the dependencies view, the dependencies section (and so impact analysis) is skipped; without `VIEW DATABASE STATE`, row counts and sizes are skipped and Query Store is reported as `unknown`. Either way the snapshot records one warning per skipped section, naming the exact `GRANT` line, and everything else is still extracted.
 
 ### 2. The connection declares read-only intent
 
@@ -37,7 +40,7 @@ Every connection sets `ApplicationIntent=ReadOnly`. On an Availability Group lis
 Every SQL statement Schema Map can send is a `.sql` file in `cli/src/schemamap/queries/`. The only code in the package that touches a driver cursor is `MetadataExecutor` (`connect/executor.py`). It accepts a query *name* (an enum of those files), never SQL text, and raises `QueryRefusedError` otherwise. Before every run it parses the file again and refuses it unless it is:
 
 - exactly one `SELECT` (CTEs and `UNION` allowed);
-- over `sys.*` and `INFORMATION_SCHEMA.*` only, with DMVs (`sys.dm_*`) and Query Store views (`sys.query_store_*`) each approved by name;
+- over `sys.*` and `INFORMATION_SCHEMA.*` only, with DMVs (`sys.dm_*`) and Query Store views (`sys.query_store_*`) each approved by name (today only `sys.dm_db_partition_stats`, for row counts and sizes);
 - calling only functions on an explicit list of built-ins (such as `SERVERPROPERTY`, `OBJECT_NAME`, `HAS_PERMS_BY_NAME`);
 - free of `SELECT INTO`, temp tables, table variables, variables, `EXEC`, `sp_executesql`, `OPENROWSET`, `OPENQUERY`, `OPENDATASOURCE`, `OPENXML`, and three- or four-part names (other databases, linked servers).
 
@@ -56,7 +59,7 @@ CI runs these on Windows, macOS and Linux:
 
 You do not have to take our word for any of this. A DBA can check each layer directly.
 
-**What the login can do.** Run this as an administrator in the target database. You should see `CONNECT`, `VIEW DEFINITION` and optionally `VIEW DATABASE STATE`, and no role memberships:
+**What the login can do.** Run this as an administrator in the target database. You should see `CONNECT`, `VIEW DEFINITION`, `SELECT` on `sys.sql_expression_dependencies` only, optionally `VIEW DATABASE STATE`, and no role memberships:
 
 ```sql
 SELECT pe.permission_name, pe.state_desc
@@ -77,7 +80,7 @@ JOIN sys.server_principals AS l ON l.principal_id = m.member_principal_id
 WHERE l.name = N'schemamap_reader';
 ```
 
-Then sign in as that login and run `SELECT TOP 1 * FROM <any table>;`. It must fail with error 229, "The SELECT permission was denied". `schemamap doctor` also lists which of the two permissions the login holds.
+Then sign in as that login and run `SELECT TOP 1 * FROM <any table>;`. It must fail with error 229, "The SELECT permission was denied". `schemamap doctor` also lists which of the three permissions the login holds.
 
 **Every statement it can send.** Read the `.sql` files. In an installed copy they are in the folder this prints:
 

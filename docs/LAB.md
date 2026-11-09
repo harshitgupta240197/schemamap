@@ -38,18 +38,19 @@ cd cli && uv run pytest -m integration
 | Container | `schemamap-lab`, image `mcr.microsoft.com/mssql/server:2022-latest`, Developer edition |
 | Host and port | `localhost,14330` (bound to loopback only) |
 | Admin login | `sa` |
-| Reader login | `schemamap_reader`: `VIEW DEFINITION` in each database and `SELECT` on `sys.sql_expression_dependencies` only; **no SELECT on any user table** |
+| Reader login | `schemamap_reader`: `VIEW DEFINITION` in each database, plus one `SELECT` on the system catalog view `sys.sql_expression_dependencies` for dependency tracking; **no SELECT on any user table** |
+| Minimal login | `schemamap_reader_min`: `VIEW DEFINITION` only (no `VIEW DATABASE STATE`, no `SELECT` on `sys.sql_expression_dependencies`), same password as the reader. It exists to test that extraction degrades gracefully: row counts and dependencies are skipped with one warning each |
 | Databases | `AdventureWorks2022`, `AdventureWorksDW2022`, `WideWorldImporters` |
 | Data | `lab-data/mssql/` (SQL Server files) and `lab-data/backups/` (downloads), both gitignored |
 
 The reader login is what Schema Map should connect as. It can read catalog metadata (`sys.tables`, ...) and cannot read a single row of any user table, which is the access level real users are asked to grant.
 
-Add `--view-database-state` to `restore` (or to `grant`, below) to also give the reader `VIEW DATABASE STATE`, which Query Store views and some DMVs need:
+Add `--view-database-state` to `restore` (or to `grant`, below) to also give `schemamap_reader` `VIEW DATABASE STATE`, which row counts and sizes, Query Store views and some DMVs need (`schemamap_reader_min` never gets it):
 
 ```
 uv run tools/lab.py restore all --view-database-state
-uv run tools/lab.py grant AdventureWorks2022                       # re-apply, flag off
-uv run tools/lab.py grant AdventureWorks2022 --view-database-state # re-apply, flag on
+uv run tools/lab.py grant AdventureWorks2022                       # re-apply both logins, flag off
+uv run tools/lab.py grant AdventureWorks2022 --view-database-state # re-apply both logins, flag on
 ```
 
 ## Edge cases database

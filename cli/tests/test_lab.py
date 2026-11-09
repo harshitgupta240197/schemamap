@@ -249,3 +249,11 @@ def test_ensure_backup_skips_complete_file_and_replaces_wrong_size(
     assert "downloading" in capsys.readouterr().out
     lab.ensure_backup(backup, tmp_path)
     assert "already downloaded" in capsys.readouterr().out
+
+
+def test_minimal_reader_is_granted_view_definition_and_nothing_else(lab: ModuleType) -> None:
+    script = (Path(lab.REPO_ROOT) / "tools" / "lab-sql" / "grant_reader.sql").read_text()
+    statements = [s.strip() for s in script.split(";") if "schemamap_reader_min" in s]
+    grants = [s.splitlines()[-1] for s in statements if s.splitlines()[-1].startswith("GRANT")]
+    assert grants == ["GRANT VIEW DEFINITION TO [schemamap_reader_min]"]
+    assert lab.READER_MIN_LOGIN == "schemamap_reader_min"

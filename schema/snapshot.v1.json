@@ -661,6 +661,16 @@
       "title": "QueryHistory",
       "type": "object"
     },
+    "QueryStoreState": {
+      "description": "Whether Query Store is enabled. ``unknown`` means the login cannot read the setting.",
+      "enum": [
+        "on",
+        "off",
+        "unknown"
+      ],
+      "title": "QueryStoreState",
+      "type": "string"
+    },
     "Reference": {
       "description": "A reference from SQL to another object.",
       "properties": {
@@ -875,6 +885,20 @@
           "title": "Object",
           "type": "string"
         },
+        "reserved_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Space reserved by the table and all its indexes, from the same statistics.",
+          "title": "Reserved Bytes"
+        },
         "rows": {
           "minimum": 0,
           "title": "Rows",
@@ -1011,6 +1035,11 @@
           ],
           "default": null,
           "title": "Product Version"
+        },
+        "query_store": {
+          "$ref": "#/$defs/QueryStoreState",
+          "default": "unknown",
+          "description": "Never ``off`` unless the login was allowed to read the setting and it was off."
         },
         "server": {
           "anyOf": [
