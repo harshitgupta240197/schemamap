@@ -10,3 +10,4 @@
 2026-11-09 | 0.9 | eb3b6a7 | Architecture doc, snapshot v1 Pydantic models + committed JSON Schema, canonical ID scheme (incl. index/constraint/FK/edge), D-013..D-026
 2026-11-09 | 0.9a | feb3766 | Gate 0 architecture fixes: redaction scope, stage commands, join edge direction, collation matching; added test for two FKs with identical columns sharing one edge
 2026-11-09 | 1.1 | f9aafe9 | Driver spike: mssql-python chosen over pymssql (no Entra ID) and pyodbc (system driver, no py3.10); prototype in cli/spikes/
+2026-11-09 | 1.2 | d8ead1f | Connection layer (mssql-python, read-only intent, redacted ConnectError) and schemamap doctor; reader-permission tests moved off sqlcmd
