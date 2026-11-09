@@ -32,6 +32,7 @@ class QueryName(enum.Enum):
     ROW_COUNTS = "row_counts"
     ROUTINES = "routines"
     SCHEMAS = "schemas"
+    SOURCE_INFO = "source_info"
     SYNONYMS = "synonyms"
     TABLES = "tables"
     VIEW_COLUMNS = "view_columns"

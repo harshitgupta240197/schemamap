@@ -2,19 +2,32 @@
 
 from __future__ import annotations
 
-import os
+from pathlib import Path
 from typing import Annotated
 
 import typer
 from rich.console import Console
 
 from schemamap import __version__
-from schemamap.connect import AuthMode, ConnectionConfig, Status, diagnose
-from schemamap.errors import ConnectError
+from schemamap.cli_connection import (
+    EXIT_CONNECT,
+    AuthOption,
+    ConnectTimeoutOption,
+    DatabaseOption,
+    PortOption,
+    QueryTimeoutOption,
+    ServerOption,
+    TrustCertificateOption,
+    connection_config,
+    fail_connect,
+)
+from schemamap.connect import AuthMode, Status, connect, diagnose
+from schemamap.errors import ConnectError, SchemaMapError
+from schemamap.extract import extract_snapshot
+from schemamap.snapshot.io import default_output_path, redact_server, write_snapshot
+from schemamap.snapshot.models import Snapshot
 
-EXIT_CONNECT = 3
-ENV_USER = "SCHEMAMAP_USER"
-ENV_PASSWORD = "SCHEMAMAP_PASSWORD"
+EXIT_FAILURE = 1
 
 # Locals can hold the password, so crash output must never show them.
 app = typer.Typer(
@@ -42,60 +55,34 @@ def main(
     """Map a SQL Server database from system metadata only."""
 
 
-def _credentials(auth: AuthMode) -> tuple[str | None, str | None]:
-    """User and password from the environment, else a hidden prompt. Never stored."""
-    user = os.environ.get(ENV_USER) if auth.needs_user else None
-    if auth.needs_user and not user:
-        user = typer.prompt("User")
-    password = os.environ.get(ENV_PASSWORD) if auth.needs_password else None
-    if auth.needs_password and not password:
-        password = typer.prompt("Password", hide_input=True)
-    return user, password
-
-
 _STYLES = {Status.OK: "green", Status.WARN: "yellow", Status.FAIL: "red"}
 
 
 @app.command()
 def doctor(
-    server: Annotated[str, typer.Option(help="Server host name or address.")],
-    database: Annotated[str, typer.Option(help="Database to inspect.")],
-    port: Annotated[int, typer.Option(help="TCP port.")] = 1433,
-    auth: Annotated[
-        AuthMode, typer.Option(help="Authentication mode. Windows works on Windows only.")
-    ] = AuthMode.SQL,
-    trust_server_certificate: Annotated[
-        bool,
-        typer.Option(
-            "--trust-server-certificate",
-            help="Accept a self-signed server certificate (local labs only).",
-        ),
-    ] = False,
-    connect_timeout: Annotated[int, typer.Option(help="Login timeout in seconds.")] = 15,
-    query_timeout: Annotated[int, typer.Option(help="Per-query timeout in seconds.")] = 60,
+    server: ServerOption,
+    database: DatabaseOption,
+    port: PortOption = 1433,
+    auth: AuthOption = AuthMode.SQL,
+    trust_server_certificate: TrustCertificateOption = False,
+    connect_timeout: ConnectTimeoutOption = 15,
+    query_timeout: QueryTimeoutOption = 60,
 ) -> None:
     """Check the driver, the connection and the permissions Schema Map needs.
 
     Credentials come from SCHEMAMAP_USER and SCHEMAMAP_PASSWORD, or a hidden prompt.
     """
     console = Console(highlight=False)
-    try:
-        user, password = _credentials(auth)
-        config = ConnectionConfig(
-            server=server,
-            database=database,
-            port=port,
-            auth=auth,
-            user=user,
-            password=password,
-            trust_server_certificate=trust_server_certificate,
-            connect_timeout=connect_timeout,
-            query_timeout=query_timeout,
-        )
-    except ConnectError as exc:
-        console.print(str(exc), style="red", markup=False, soft_wrap=True)
-        raise typer.Exit(EXIT_CONNECT) from None
-
+    config = connection_config(
+        console,
+        server=server,
+        database=database,
+        port=port,
+        auth=auth,
+        trust_server_certificate=trust_server_certificate,
+        connect_timeout=connect_timeout,
+        query_timeout=query_timeout,
+    )
     report = diagnose(config)
     steps: list[str] = []
     for check in report.checks:
@@ -114,3 +101,94 @@ def doctor(
             console.print(f"  - {step}", markup=False, soft_wrap=True)
     if not report.connected:
         raise typer.Exit(EXIT_CONNECT)
+
+
+def _summary(snapshot: Snapshot, path: Path) -> list[str]:
+    """The lines printed to stderr after a successful extract."""
+    counts = (
+        ("schemas", snapshot.schemas),
+        ("tables", snapshot.tables),
+        ("views", snapshot.views),
+        ("routines", snapshot.routines),
+        ("synonyms", snapshot.synonyms),
+        ("relationships", snapshot.relationships),
+        ("dependencies", snapshot.dependencies),
+    )
+    lines = [f"Wrote {path}", "  " + ", ".join(f"{len(items)} {name}" for name, items in counts)]
+    if snapshot.warnings:
+        sections = sorted({warning.section.value for warning in snapshot.warnings})
+        lines.append(f"  {len(snapshot.warnings)} warning(s): {', '.join(sections)}")
+        lines.extend(
+            f"    {warning.section.value}: {warning.message}" for warning in snapshot.warnings
+        )
+    else:
+        lines.append("  No warnings")
+    return lines
+
+
+@app.command()
+def extract(
+    server: ServerOption,
+    database: DatabaseOption,
+    port: PortOption = 1433,
+    auth: AuthOption = AuthMode.SQL,
+    trust_server_certificate: TrustCertificateOption = False,
+    connect_timeout: ConnectTimeoutOption = 15,
+    query_timeout: QueryTimeoutOption = 60,
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            "-o",
+            help="File to write. Default: <database>.snapshot.json in the current directory.",
+        ),
+    ] = None,
+    redact: Annotated[
+        bool,
+        typer.Option(
+            "--redact-server",
+            help=(
+                "Remove host names only: the server name and linked-server names. "
+                "Definitions and object names stay in the file."
+            ),
+        ),
+    ] = False,
+    compress: Annotated[
+        bool,
+        typer.Option("--gzip", help="Write a gzip file (.json.gz); .gz is added to the name."),
+    ] = False,
+) -> None:
+    """Read the database's metadata and write one snapshot file.
+
+    Only system metadata is read, never table rows. The summary goes to stderr.
+    Credentials come from SCHEMAMAP_USER and SCHEMAMAP_PASSWORD, or a hidden prompt.
+    """
+    console = Console(stderr=True, highlight=False)
+    config = connection_config(
+        console,
+        server=server,
+        database=database,
+        port=port,
+        auth=auth,
+        trust_server_certificate=trust_server_certificate,
+        connect_timeout=connect_timeout,
+        query_timeout=query_timeout,
+    )
+    try:
+        with connect(config) as executor:
+            snapshot = extract_snapshot(executor, server=server, database=database)
+    except ConnectError as exc:
+        fail_connect(console, exc)
+    except SchemaMapError as exc:
+        console.print(f"Extraction failed: {exc}", style="red", markup=False, soft_wrap=True)
+        raise typer.Exit(EXIT_FAILURE) from None
+    if redact:
+        snapshot = redact_server(snapshot)
+    target = output or default_output_path(snapshot.source.database, compress)
+    try:
+        written = write_snapshot(snapshot, target, compress)
+    except OSError as exc:
+        console.print(f"Cannot write {target}: {exc}", style="red", markup=False, soft_wrap=True)
+        raise typer.Exit(EXIT_FAILURE) from None
+    for line in _summary(snapshot, written):
+        console.print(line, markup=False, soft_wrap=True)

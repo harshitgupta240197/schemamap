@@ -18,6 +18,7 @@ from schemamap.extract.relationships import build_relationships, extract_relatio
 from schemamap.extract.row_counts import build_row_counts, extract_row_counts
 from schemamap.extract.runner import Requirement, SectionRunner
 from schemamap.extract.schemas import build_schemas, extract_schemas
+from schemamap.extract.snapshot import build_snapshot, build_source, extract_snapshot
 from schemamap.extract.tables import build_tables, extract_tables
 
 __all__ = [
@@ -29,6 +30,8 @@ __all__ = [
     "build_routines",
     "build_row_counts",
     "build_schemas",
+    "build_snapshot",
+    "build_source",
     "build_synonyms",
     "build_tables",
     "build_views",
@@ -38,6 +41,7 @@ __all__ = [
     "extract_routines",
     "extract_row_counts",
     "extract_schemas",
+    "extract_snapshot",
     "extract_synonyms",
     "extract_tables",
     "extract_views",

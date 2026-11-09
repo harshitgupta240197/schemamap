@@ -5,6 +5,16 @@ from __future__ import annotations
 from typing import NamedTuple
 
 
+class SourceInfoRow(NamedTuple):
+    """queries/source_info.sql"""
+
+    product_version: str | None
+    engine_edition: int | None
+    compatibility_level: int | None
+    collation_name: str | None
+    database_name: str
+
+
 class TableRow(NamedTuple):
     """queries/tables.sql"""
 
