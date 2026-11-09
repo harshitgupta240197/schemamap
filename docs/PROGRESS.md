@@ -8,3 +8,4 @@
 2026-11-08 | 0.8 | 2d8a73d | SQL Server 2022 lab: tools/lab.py (up/restore/status/down/grant), 3 sample DBs, schemamap_reader without SELECT, integration tests
 2026-11-08 | 0.8a | b484a53 | Lab downloads: 3-attempt backoff, Range resume via .part, GitHub API fallback, manual-download hint; tested on local server only
 2026-11-09 | 0.9 | eb3b6a7 | Architecture doc, snapshot v1 Pydantic models + committed JSON Schema, canonical ID scheme (incl. index/constraint/FK/edge), D-013..D-026
+2026-11-09 | 0.9a | feb3766 | Gate 0 architecture fixes: redaction scope, stage commands, join edge direction, collation matching; added test for two FKs with identical columns sharing one edge
