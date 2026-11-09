@@ -14,3 +14,4 @@
 2026-11-09 | 1.3 | 1844998 | MetadataExecutor runs only allowlisted named queries (sqlglot T-SQL allowlist, bound params); raw cursor removed; static AST guard; SECURITY.md read-only section
 2026-11-09 | 1.4 | 5b18466 | Extract schemas, tables, columns, keys, indexes and checks into snapshot models; AdventureWorks2022 in 2.5 s (budget 10 s); allowlist trimmed to used views
 2026-11-09 | 1.5 | 6db4fe0 | Extract foreign keys, views, routines, synonyms and dependencies; lab.py edgecases; reader needs SELECT on sys.sql_expression_dependencies; PARSENAME allowlisted
+2026-11-09 | 1.6 | 0a1a50d | Optional row counts/sizes (dm_db_partition_stats), per-section permission warnings via probing (driver has no error numbers, D-033), Query Store on/off/unknown, doctor dependencies check, schemamap_reader_min lab login
