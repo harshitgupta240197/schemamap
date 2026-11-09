@@ -148,3 +148,21 @@ Dependency: `sqlglot>=30.30,<31` (runtime, on the approved stack): the executor 
 **Mapping rules.** `length` is characters for `nchar`/`nvarchar` (catalog bytes / 2) and bytes for `char`, `varchar`, `binary`, `varbinary`; `max` sets `is_max` and leaves `length` null. `precision` is set only for `decimal`/`numeric`, `scale` also for `time`, `datetime2`, `datetimeoffset`, so an `int` does not claim a precision of 10. An alias type reports its base type in `data_type` and `schema.name` in `user_type`. `collation` is stored for every string column. Index columns: included ones go to `included_columns` (columnstore columns are listed that way by the catalog); a non-included column is a key if it has a key ordinal, or has no partition ordinal (this keeps the column of an XML or spatial index while dropping columns that only partition the index). Rows for an object dropped between two queries are ignored.
 
 **Allowlist trimmed.** The pre-approved Query Store views and DMVs (D-029) are removed because no query uses them yet; each returns with a reason in the crumb that first needs it. The three-part-name refusal is unchanged.
+
+## D-031 Extract relationships, code objects and dependencies (2026-11-09)
+
+Six new queries (`foreign_keys`, `views`, `view_columns`, `routines`, `synonyms`, `dependencies`; views reuse the column mapper). The pure `build_*` functions are tested with hand-written rows, and the extractors against AdventureWorks2022, WideWorldImporters and the lab's `SchemaMapEdgeCases` database (`lab.py edgecases`).
+
+**Foreign keys** are grouped from one row per column pair; columns follow key order and the edge ID comes from the ordered column IDs, so two keys on the same columns share an edge and keep their own `foreign_key` IDs.
+
+**Definitions** come from `sys.sql_modules`. `definition` is null with status `encrypted` (`OBJECTPROPERTY(..., 'IsEncrypted')`), `not_applicable` (CLR objects, which have no module row) or `not_permitted` (a module row exists but the text is hidden from this login).
+
+**Dependencies** are one entry per distinct reference (the catalog has one row per referenced column). A name with a server part is `cross_server`, with a database part `cross_database`; both are kept as written and never resolved. A local name is `resolved` only if it points to a table, view, routine or synonym in the snapshot, otherwise it is recorded as unresolved. Note that SQL Server itself records XML and UDT method calls (`Demographics.exist(...)`, `OrganizationNode.GetAncestor(...)`) as three-part names, so AdventureWorks reports 14 `cross_database` dependencies whose "database" is really a column or alias. They are kept as written; a later crumb that draws or scores dependencies may want to discount them.
+
+**Synonym targets** are split with `PARSENAME` because `sys.sql_expression_dependencies` does not list synonyms. `PARSENAME` is added to the function allowlist: it is a pure string function over its argument and reads nothing.
+
+**Reader permission.** `sys.sql_expression_dependencies` needs an explicit `SELECT` (SQL Server grants it to `db_owner` only). The lab's `grant_reader.sql` now grants it; it is a catalog view with no user data, so the "no SELECT on user tables" guarantee is unchanged. Real users need the same grant for the dependencies section.
+
+## D-032 Snapshot format versioning until v0.1.0 (2026-11-09)
+
+Until v0.1.0 ships, new optional fields may stay in format 1.0. After release, any added field bumps the minor version. Reason: nothing outside this repo reads snapshots yet, so a minor bump now would only create churn; after release readers exist and the version must say what a file contains.

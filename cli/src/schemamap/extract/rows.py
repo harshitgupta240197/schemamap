@@ -79,3 +79,70 @@ class CheckConstraintRow(NamedTuple):
     column_name: str | None
     is_disabled: bool
     is_not_trusted: bool
+
+
+class ForeignKeyRow(NamedTuple):
+    """queries/foreign_keys.sql: one row per column pair."""
+
+    fk_schema_name: str
+    fk_name: str
+    from_schema_name: str
+    from_table_name: str
+    to_schema_name: str
+    to_table_name: str
+    ordinal: int
+    from_column_name: str
+    to_column_name: str
+    on_delete: int
+    on_update: int
+    is_disabled: bool
+    is_not_trusted: bool
+
+
+class ViewRow(NamedTuple):
+    """queries/views.sql"""
+
+    schema_name: str
+    view_name: str
+    is_schema_bound: bool
+    definition: str | None
+    is_encrypted: bool
+
+
+class RoutineRow(NamedTuple):
+    """queries/routines.sql"""
+
+    schema_name: str
+    routine_name: str
+    type_code: str
+    parent_schema_name: str | None
+    parent_name: str | None
+    definition: str | None
+    is_encrypted: bool
+    has_module: bool
+
+
+class SynonymRow(NamedTuple):
+    """queries/synonyms.sql"""
+
+    schema_name: str
+    synonym_name: str
+    target_server: str | None
+    target_database: str | None
+    target_schema: str | None
+    target_name: str
+    resolved_schema_name: str | None
+    resolved_name: str | None
+
+
+class DependencyRow(NamedTuple):
+    """queries/dependencies.sql"""
+
+    from_schema_name: str
+    from_name: str
+    target_server: str | None
+    target_database: str | None
+    target_schema: str | None
+    target_name: str
+    resolved_schema_name: str | None
+    resolved_name: str | None

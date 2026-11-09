@@ -1,0 +1,240 @@
+{
+  "dependencies": {
+    "object:HumanResources.dEmployee": [],
+    "object:Person.vStateProvinceCountryRegion": [
+      {
+        "from_object": "object:Person.vStateProvinceCountryRegion",
+        "target": {
+          "name": {
+            "database": null,
+            "name": "CountryRegion",
+            "schema_name": "Person",
+            "server": null
+          },
+          "resolved": "object:Person.CountryRegion",
+          "scope": "local"
+        }
+      },
+      {
+        "from_object": "object:Person.vStateProvinceCountryRegion",
+        "target": {
+          "name": {
+            "database": null,
+            "name": "StateProvince",
+            "schema_name": "Person",
+            "server": null
+          },
+          "resolved": "object:Person.StateProvince",
+          "scope": "local"
+        }
+      }
+    ]
+  },
+  "dependency_counts": {
+    "cross_database": 14,
+    "local": 173
+  },
+  "multi_column_relationship_count": 1,
+  "relationship_count": 90,
+  "relationships": {
+    "foreign_key:Sales.FK_SalesOrderDetail_SalesOrderHeader_SalesOrderID": {
+      "disabled": false,
+      "edge": "edge:Sales.SalesOrderDetail(SalesOrderID)>Sales.SalesOrderHeader(SalesOrderID)",
+      "from_columns": [
+        "column:Sales.SalesOrderDetail.SalesOrderID"
+      ],
+      "from_object": "object:Sales.SalesOrderDetail",
+      "id": "foreign_key:Sales.FK_SalesOrderDetail_SalesOrderHeader_SalesOrderID",
+      "name": "FK_SalesOrderDetail_SalesOrderHeader_SalesOrderID",
+      "on_delete": "cascade",
+      "on_update": "no_action",
+      "to_columns": [
+        "column:Sales.SalesOrderHeader.SalesOrderID"
+      ],
+      "to_object": "object:Sales.SalesOrderHeader",
+      "trusted": true
+    },
+    "foreign_key:Sales.FK_SalesOrderDetail_SpecialOfferProduct_SpecialOfferIDProductID": {
+      "disabled": false,
+      "edge": "edge:Sales.SalesOrderDetail(SpecialOfferID,ProductID)>Sales.SpecialOfferProduct(SpecialOfferID,ProductID)",
+      "from_columns": [
+        "column:Sales.SalesOrderDetail.SpecialOfferID",
+        "column:Sales.SalesOrderDetail.ProductID"
+      ],
+      "from_object": "object:Sales.SalesOrderDetail",
+      "id": "foreign_key:Sales.FK_SalesOrderDetail_SpecialOfferProduct_SpecialOfferIDProductID",
+      "name": "FK_SalesOrderDetail_SpecialOfferProduct_SpecialOfferIDProductID",
+      "on_delete": "no_action",
+      "on_update": "no_action",
+      "to_columns": [
+        "column:Sales.SpecialOfferProduct.SpecialOfferID",
+        "column:Sales.SpecialOfferProduct.ProductID"
+      ],
+      "to_object": "object:Sales.SpecialOfferProduct",
+      "trusted": true
+    }
+  },
+  "routine_counts": {
+    "procedure": 10,
+    "scalar_function": 10,
+    "table_function": 1,
+    "trigger": 10
+  },
+  "routines": {
+    "object:HumanResources.dEmployee": {
+      "definition": "\r\nCREATE TRIGGER [HumanResources].[dEmployee] ON [HumanResources].[Employee] \r\nINSTEAD OF DELETE NOT FOR REPLICATION AS \r\nBEGIN\r\n    DECLARE @Count int;\r\n\r\n    SET @Count = @@ROWCOUNT;\r\n    IF @Count = 0 \r\n        RETURN;\r\n\r\n    SET NOCOUNT ON;\r\n\r\n    BEGIN\r\n        RAISERROR\r\n            (N'Employees cannot be deleted. They can only be marked as not current.', -- Message\r\n            10, -- Severity.\r\n            1); -- State.\r\n\r\n        -- Rollback any active or uncommittable transactions\r\n        IF @@TRANCOUNT > 0\r\n        BEGIN\r\n            ROLLBACK TRANSACTION;\r\n        END\r\n    END;\r\nEND;\r\n",
+      "definition_status": "available",
+      "description": null,
+      "id": "object:HumanResources.dEmployee",
+      "kind": "trigger",
+      "name": "dEmployee",
+      "parent": "object:HumanResources.Employee",
+      "schema_id": "schema:HumanResources"
+    },
+    "object:dbo.ufnGetStock": {
+      "definition": "\r\nCREATE FUNCTION [dbo].[ufnGetStock](@ProductID [int])\r\nRETURNS [int] \r\nAS \r\n-- Returns the stock level for the product. This function is used internally only\r\nBEGIN\r\n    DECLARE @ret int;\r\n    \r\n    SELECT @ret = SUM(p.[Quantity]) \r\n    FROM [Production].[ProductInventory] p \r\n    WHERE p.[ProductID] = @ProductID \r\n        AND p.[LocationID] = '6'; -- Only look at inventory in the misc storage\r\n    \r\n    IF (@ret IS NULL) \r\n        SET @ret = 0\r\n    \r\n    RETURN @ret\r\nEND;\r\n",
+      "definition_status": "available",
+      "description": null,
+      "id": "object:dbo.ufnGetStock",
+      "kind": "scalar_function",
+      "name": "ufnGetStock",
+      "parent": null,
+      "schema_id": "schema:dbo"
+    }
+  },
+  "unresolved_local_dependency_count": 12,
+  "view_column_count": 258,
+  "view_count": 20,
+  "views": {
+    "object:Person.vStateProvinceCountryRegion": {
+      "columns": [
+        {
+          "collation": null,
+          "computed": null,
+          "data_type": "int",
+          "default": null,
+          "description": null,
+          "id": "column:Person.vStateProvinceCountryRegion.StateProvinceID",
+          "identity": false,
+          "is_max": false,
+          "length": null,
+          "name": "StateProvinceID",
+          "nullable": false,
+          "ordinal": 1,
+          "precision": null,
+          "scale": null,
+          "user_type": null
+        },
+        {
+          "collation": "SQL_Latin1_General_CP1_CI_AS",
+          "computed": null,
+          "data_type": "nchar",
+          "default": null,
+          "description": null,
+          "id": "column:Person.vStateProvinceCountryRegion.StateProvinceCode",
+          "identity": false,
+          "is_max": false,
+          "length": 3,
+          "name": "StateProvinceCode",
+          "nullable": false,
+          "ordinal": 2,
+          "precision": null,
+          "scale": null,
+          "user_type": null
+        },
+        {
+          "collation": null,
+          "computed": null,
+          "data_type": "bit",
+          "default": null,
+          "description": null,
+          "id": "column:Person.vStateProvinceCountryRegion.IsOnlyStateProvinceFlag",
+          "identity": false,
+          "is_max": false,
+          "length": null,
+          "name": "IsOnlyStateProvinceFlag",
+          "nullable": false,
+          "ordinal": 3,
+          "precision": null,
+          "scale": null,
+          "user_type": "dbo.Flag"
+        },
+        {
+          "collation": "SQL_Latin1_General_CP1_CI_AS",
+          "computed": null,
+          "data_type": "nvarchar",
+          "default": null,
+          "description": null,
+          "id": "column:Person.vStateProvinceCountryRegion.StateProvinceName",
+          "identity": false,
+          "is_max": false,
+          "length": 50,
+          "name": "StateProvinceName",
+          "nullable": false,
+          "ordinal": 4,
+          "precision": null,
+          "scale": null,
+          "user_type": "dbo.Name"
+        },
+        {
+          "collation": null,
+          "computed": null,
+          "data_type": "int",
+          "default": null,
+          "description": null,
+          "id": "column:Person.vStateProvinceCountryRegion.TerritoryID",
+          "identity": false,
+          "is_max": false,
+          "length": null,
+          "name": "TerritoryID",
+          "nullable": false,
+          "ordinal": 5,
+          "precision": null,
+          "scale": null,
+          "user_type": null
+        },
+        {
+          "collation": "SQL_Latin1_General_CP1_CI_AS",
+          "computed": null,
+          "data_type": "nvarchar",
+          "default": null,
+          "description": null,
+          "id": "column:Person.vStateProvinceCountryRegion.CountryRegionCode",
+          "identity": false,
+          "is_max": false,
+          "length": 3,
+          "name": "CountryRegionCode",
+          "nullable": false,
+          "ordinal": 6,
+          "precision": null,
+          "scale": null,
+          "user_type": null
+        },
+        {
+          "collation": "SQL_Latin1_General_CP1_CI_AS",
+          "computed": null,
+          "data_type": "nvarchar",
+          "default": null,
+          "description": null,
+          "id": "column:Person.vStateProvinceCountryRegion.CountryRegionName",
+          "identity": false,
+          "is_max": false,
+          "length": 50,
+          "name": "CountryRegionName",
+          "nullable": false,
+          "ordinal": 7,
+          "precision": null,
+          "scale": null,
+          "user_type": "dbo.Name"
+        }
+      ],
+      "definition": "\r\nCREATE VIEW [Person].[vStateProvinceCountryRegion] \r\nWITH SCHEMABINDING \r\nAS \r\nSELECT \r\n    sp.[StateProvinceID] \r\n    ,sp.[StateProvinceCode] \r\n    ,sp.[IsOnlyStateProvinceFlag] \r\n    ,sp.[Name] AS [StateProvinceName] \r\n    ,sp.[TerritoryID] \r\n    ,cr.[CountryRegionCode] \r\n    ,cr.[Name] AS [CountryRegionName]\r\nFROM [Person].[StateProvince] sp \r\n    INNER JOIN [Person].[CountryRegion] cr \r\n    ON sp.[CountryRegionCode] = cr.[CountryRegionCode];\r\n",
+      "definition_status": "available",
+      "description": null,
+      "id": "object:Person.vStateProvinceCountryRegion",
+      "name": "vStateProvinceCountryRegion",
+      "schema_bound": true,
+      "schema_id": "schema:Person"
+    }
+  }
+}

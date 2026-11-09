@@ -48,6 +48,7 @@ BACKUP_DIR_IN_CONTAINER = "/backups"
 DATA_DIR_IN_CONTAINER = "/var/opt/mssql/data"
 
 READER_LOGIN = "schemamap_reader"
+EDGE_CASES_DB = "SchemaMapEdgeCases"
 ENV_SA = "SCHEMAMAP_LAB_SA_PASSWORD"
 ENV_READER = "SCHEMAMAP_LAB_READER_PASSWORD"
 ENV_KEYS = (ENV_SA, ENV_READER)
@@ -722,6 +723,13 @@ def cmd_grant(args: argparse.Namespace) -> None:
     grant_reader(creds, args.database, args.view_database_state)
 
 
+def cmd_edgecases(_: argparse.Namespace) -> None:
+    creds = require_running()
+    print(f"{EDGE_CASES_DB}: creating (lab only; the sample databases are not touched)...")
+    sql_or_raise(creds, f"Creating {EDGE_CASES_DB}", "edgecases.sql")
+    grant_reader(creds, EDGE_CASES_DB, False)
+
+
 def cmd_status(_: argparse.Namespace) -> None:
     check_docker()
     state = container_state()
@@ -793,6 +801,11 @@ def build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help=f"also grant VIEW DATABASE STATE to {READER_LOGIN} (Query Store, DMVs)",
         )
+
+    sub.add_parser(
+        "edgecases",
+        help=f"create the small {EDGE_CASES_DB} database of awkward schema shapes (lab only)",
+    ).set_defaults(func=cmd_edgecases)
 
     sub.add_parser("status", help="show container, backups and databases").set_defaults(
         func=cmd_status

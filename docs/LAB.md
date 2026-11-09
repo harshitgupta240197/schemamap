@@ -15,6 +15,7 @@ A one-command local SQL Server 2022 with the official sample databases and a rea
 uv run tools/lab.py up                       # start the container, wait until it accepts logins
 uv run tools/lab.py restore all              # download, verify and restore all three databases
 uv run tools/lab.py restore AdventureWorks2022   # or one: AdventureWorksDW2022, WideWorldImporters
+uv run tools/lab.py edgecases                # create the small SchemaMapEdgeCases database (see below)
 uv run tools/lab.py status                   # container, backups, databases, reader login
 uv run tools/lab.py down                     # stop and remove the container, keep the data
 uv run tools/lab.py down --purge             # also wipe the SQL Server data (keeps downloaded backups)
@@ -37,7 +38,7 @@ cd cli && uv run pytest -m integration
 | Container | `schemamap-lab`, image `mcr.microsoft.com/mssql/server:2022-latest`, Developer edition |
 | Host and port | `localhost,14330` (bound to loopback only) |
 | Admin login | `sa` |
-| Reader login | `schemamap_reader`: `VIEW DEFINITION` in each database, **no SELECT** |
+| Reader login | `schemamap_reader`: `VIEW DEFINITION` in each database and `SELECT` on `sys.sql_expression_dependencies` only; **no SELECT on any user table** |
 | Databases | `AdventureWorks2022`, `AdventureWorksDW2022`, `WideWorldImporters` |
 | Data | `lab-data/mssql/` (SQL Server files) and `lab-data/backups/` (downloads), both gitignored |
 
@@ -50,6 +51,26 @@ uv run tools/lab.py restore all --view-database-state
 uv run tools/lab.py grant AdventureWorks2022                       # re-apply, flag off
 uv run tools/lab.py grant AdventureWorks2022 --view-database-state # re-apply, flag on
 ```
+
+## Edge cases database
+
+```
+uv run tools/lab.py edgecases
+```
+
+Creates `SchemaMapEdgeCases` (and a tiny `SchemaMapEdgeCasesOther` for cross-database references) as `sa`, replacing them if they exist, and grants the reader `VIEW DEFINITION`. The sample databases are never touched. It holds the awkward shapes the sample databases lack:
+
+| Object | Why |
+| --- | --- |
+| `dbo.SecretProc` | encrypted procedure: no definition, status `encrypted` |
+| `dbo.FK_Child_Parent_A`, `dbo.FK_Child_Parent_B` | two foreign keys on identical columns: one edge, two constraints |
+| `dbo.RemoteView`, `dbo.RemoteSynonym` | refer to `SchemaMapEdgeCasesOther`: cross-database, never resolved |
+| `dbo.UsesMissing` | refers to `dbo.DoesNotExist`: an unresolved local reference |
+| `dbo.IX_Child_Active` (on `dbo.Child`) | filtered index |
+| `dbo.Versioned`, `dbo.VersionedHistory` | system-versioned temporal table and its history table |
+| `dbo.[Odd.Table [x] Ü☃]` | a name with a dot, brackets and non-ASCII characters |
+
+The integration tests for crumb 1.5 expect it, and fail with this command in the message if it is missing.
 
 ## Passwords
 

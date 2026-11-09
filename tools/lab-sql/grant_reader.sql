@@ -11,6 +11,8 @@ GO
 IF USER_ID(N'schemamap_reader') IS NULL
     CREATE USER [schemamap_reader] FOR LOGIN [schemamap_reader];
 GRANT VIEW DEFINITION TO [schemamap_reader];
+-- A catalog view, not user data; SQL Server grants it only to db_owner by default.
+GRANT SELECT ON sys.sql_expression_dependencies TO [schemamap_reader];
 IF $(LAB_VIEW_DB_STATE) = 1
     GRANT VIEW DATABASE STATE TO [schemamap_reader];
 ELSE

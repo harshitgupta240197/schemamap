@@ -22,13 +22,19 @@ class QueryName(enum.Enum):
 
     CHECK_CONSTRAINTS = "check_constraints"
     COLUMNS = "columns"
+    DEPENDENCIES = "dependencies"
     DOCTOR_PERMISSIONS = "doctor_permissions"
     DOCTOR_QUERY_STORE = "doctor_query_store"
     DOCTOR_SERVER_INFO = "doctor_server_info"
+    FOREIGN_KEYS = "foreign_keys"
     INDEX_COLUMNS = "index_columns"
     INDEXES = "indexes"
+    ROUTINES = "routines"
     SCHEMAS = "schemas"
+    SYNONYMS = "synonyms"
     TABLES = "tables"
+    VIEW_COLUMNS = "view_columns"
+    VIEWS = "views"
 
 
 def load_query(name: QueryName) -> str:

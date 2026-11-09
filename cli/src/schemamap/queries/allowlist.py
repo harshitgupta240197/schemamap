@@ -45,6 +45,7 @@ APPROVED_FUNCTIONS = frozenset(
         "OBJECT_SCHEMA_NAME",
         "OBJECTPROPERTY",
         "OBJECTPROPERTYEX",
+        "PARSENAME",
         "SCHEMA_ID",
         "SCHEMA_NAME",
         "SERVERPROPERTY",

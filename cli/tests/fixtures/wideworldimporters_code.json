@@ -1,0 +1,232 @@
+{
+  "dependencies": {
+    "object:Website.CalculateCustomerPrice": [
+      {
+        "from_object": "object:Website.CalculateCustomerPrice",
+        "target": {
+          "name": {
+            "database": null,
+            "name": "Customers",
+            "schema_name": "Sales",
+            "server": null
+          },
+          "resolved": "object:Sales.Customers",
+          "scope": "local"
+        }
+      },
+      {
+        "from_object": "object:Website.CalculateCustomerPrice",
+        "target": {
+          "name": {
+            "database": null,
+            "name": "SpecialDeals",
+            "schema_name": "Sales",
+            "server": null
+          },
+          "resolved": "object:Sales.SpecialDeals",
+          "scope": "local"
+        }
+      },
+      {
+        "from_object": "object:Website.CalculateCustomerPrice",
+        "target": {
+          "name": {
+            "database": null,
+            "name": "StockItemStockGroups",
+            "schema_name": "Warehouse",
+            "server": null
+          },
+          "resolved": "object:Warehouse.StockItemStockGroups",
+          "scope": "local"
+        }
+      },
+      {
+        "from_object": "object:Website.CalculateCustomerPrice",
+        "target": {
+          "name": {
+            "database": null,
+            "name": "StockItems",
+            "schema_name": "Warehouse",
+            "server": null
+          },
+          "resolved": "object:Warehouse.StockItems",
+          "scope": "local"
+        }
+      }
+    ],
+    "object:Website.VehicleTemperatures": [
+      {
+        "from_object": "object:Website.VehicleTemperatures",
+        "target": {
+          "name": {
+            "database": null,
+            "name": "VehicleTemperatures",
+            "schema_name": "Warehouse",
+            "server": null
+          },
+          "resolved": "object:Warehouse.VehicleTemperatures",
+          "scope": "local"
+        }
+      }
+    ]
+  },
+  "dependency_counts": {
+    "local": 120
+  },
+  "multi_column_relationship_count": 0,
+  "relationship_count": 98,
+  "relationships": {
+    "foreign_key:Sales.FK_Sales_Orders_CustomerID_Sales_Customers": {
+      "disabled": false,
+      "edge": "edge:Sales.Orders(CustomerID)>Sales.Customers(CustomerID)",
+      "from_columns": [
+        "column:Sales.Orders.CustomerID"
+      ],
+      "from_object": "object:Sales.Orders",
+      "id": "foreign_key:Sales.FK_Sales_Orders_CustomerID_Sales_Customers",
+      "name": "FK_Sales_Orders_CustomerID_Sales_Customers",
+      "on_delete": "no_action",
+      "on_update": "no_action",
+      "to_columns": [
+        "column:Sales.Customers.CustomerID"
+      ],
+      "to_object": "object:Sales.Customers",
+      "trusted": true
+    }
+  },
+  "routine_counts": {
+    "inline_table_function": 1,
+    "procedure": 42,
+    "scalar_function": 1
+  },
+  "routines": {
+    "object:Website.CalculateCustomerPrice": {
+      "definition": "\r\nCREATE FUNCTION Website.CalculateCustomerPrice\r\n(\r\n    @CustomerID int,\r\n    @StockItemID int,\r\n    @PricingDate date\r\n)\r\nRETURNS decimal(18,2)\r\nWITH EXECUTE AS OWNER\r\nAS\r\nBEGIN\r\n    DECLARE @CalculatedPrice decimal(18,2);\r\n    DECLARE @UnitPrice decimal(18,2);\r\n    DECLARE @LowestUnitPrice decimal(18,2);\r\n    DECLARE @HighestDiscountAmount decimal(18,2);\r\n    DECLARE @HighestDiscountPercentage decimal(18,3);\r\n    DECLARE @BuyingGroupID int;\r\n    DECLARE @CustomerCategoryID int;\r\n    DECLARE @DiscountedUnitPrice decimal(18,2);\r\n\r\n    SELECT @BuyingGroupID = BuyingGroupID,\r\n           @CustomerCategoryID = CustomerCategoryID\r\n    FROM Sales.Customers\r\n    WHERE CustomerID = @CustomerID;\r\n\r\n    SELECT @UnitPrice = si.UnitPrice\r\n    FROM Warehouse.StockItems AS si\r\n    WHERE si.StockItemID = @StockItemID;\r\n\r\n    SET @CalculatedPrice = @UnitPrice;\r\n\r\n    SET @LowestUnitPrice = (SELECT MIN(sd.UnitPrice)\r\n                            FROM Sales.SpecialDeals AS sd\r\n                            WHERE ((sd.StockItemID = @StockItemID) OR (sd.StockItemID IS NULL))\r\n                            AND ((sd.CustomerID = @CustomerID) OR (sd.CustomerID IS NULL))\r\n                            AND ((sd.BuyingGroupID = @BuyingGroupID) OR (sd.BuyingGroupID IS NULL))\r\n                            AND ((sd.CustomerCategoryID = @CustomerCategoryID) OR (sd.CustomerCategoryID IS NULL))\r\n                            AND ((sd.StockGroupID IS NULL) OR EXISTS (SELECT 1 FROM Warehouse.StockItemStockGroups AS sisg\r\n                                                                               WHERE sisg.StockItemID = @StockItemID\r\n                                                                               AND sisg.StockGroupID = sd.StockGroupID))\r\n                            AND sd.UnitPrice IS NOT NULL\r\n                            AND @PricingDate BETWEEN sd.StartDate AND sd.EndDate);\r\n\r\n    IF @LowestUnitPrice IS NOT NULL AND @LowestUnitPrice < @UnitPrice\r\n    BEGIN\r\n        SET @CalculatedPrice = @LowestUnitPrice;\r\n    END;\r\n\r\n    SET @HighestDiscountAmount = (SELECT MAX(sd.DiscountAmount)\r\n                                  FROM Sales.SpecialDeals AS sd\r\n                                  WHERE ((sd.StockItemID = @StockItemID) OR (sd.StockItemID IS NULL))\r\n                                  AND ((sd.CustomerID = @CustomerID) OR (sd.CustomerID IS NULL))\r\n                                  AND ((sd.BuyingGroupID = @BuyingGroupID) OR (sd.BuyingGroupID IS NULL))\r\n                                  AND ((sd.CustomerCategoryID = @CustomerCategoryID) OR (sd.CustomerCategoryID IS NULL))\r\n                                  AND ((sd.StockGroupID IS NULL) OR EXISTS (SELECT 1 FROM Warehouse.StockItemStockGroups AS sisg\r\n                                                                                     WHERE sisg.StockItemID = @StockItemID\r\n                                                                                     AND sisg.StockGroupID = sd.StockGroupID))\r\n                                  AND sd.DiscountAmount IS NOT NULL\r\n                                  AND @PricingDate BETWEEN sd.StartDate AND sd.EndDate);\r\n\r\n    IF @HighestDiscountAmount IS NOT NULL AND (@UnitPrice - @HighestDiscountAmount) < @CalculatedPrice\r\n    BEGIN\r\n        SET @CalculatedPrice = @UnitPrice - @HighestDiscountAmount;\r\n    END;\r\n\r\n    SET @HighestDiscountPercentage = (SELECT MAX(sd.DiscountPercentage)\r\n                                      FROM Sales.SpecialDeals AS sd\r\n                                      WHERE ((sd.StockItemID = @StockItemID) OR (sd.StockItemID IS NULL))\r\n                                      AND ((sd.CustomerID = @CustomerID) OR (sd.CustomerID IS NULL))\r\n                                      AND ((sd.BuyingGroupID = @BuyingGroupID) OR (sd.BuyingGroupID IS NULL))\r\n                                      AND ((sd.CustomerCategoryID = @CustomerCategoryID) OR (sd.CustomerCategoryID IS NULL))\r\n                                      AND ((sd.StockGroupID IS NULL) OR EXISTS (SELECT 1 FROM Warehouse.StockItemStockGroups AS sisg\r\n                                                                                         WHERE sisg.StockItemID = @StockItemID\r\n                                                                                         AND sisg.StockGroupID = sd.StockGroupID))\r\n                                      AND sd.DiscountPercentage IS NOT NULL\r\n                                      AND @PricingDate BETWEEN sd.StartDate AND sd.EndDate);\r\n\r\n    IF @HighestDiscountPercentage IS NOT NULL\r\n    BEGIN\r\n        SET @DiscountedUnitPrice = ROUND(@UnitPrice * @HighestDiscountPercentage / 100.0, 2);\r\n        IF @DiscountedUnitPrice < @CalculatedPrice SET @CalculatedPrice = @DiscountedUnitPrice;\r\n    END;\r\n\r\n\r\n    RETURN @CalculatedPrice;\r\nEND;\r\n",
+      "definition_status": "available",
+      "description": null,
+      "id": "object:Website.CalculateCustomerPrice",
+      "kind": "scalar_function",
+      "name": "CalculateCustomerPrice",
+      "parent": null,
+      "schema_id": "schema:Website"
+    }
+  },
+  "unresolved_local_dependency_count": 10,
+  "view_column_count": 32,
+  "view_count": 3,
+  "views": {
+    "object:Website.VehicleTemperatures": {
+      "columns": [
+        {
+          "collation": null,
+          "computed": null,
+          "data_type": "bigint",
+          "default": null,
+          "description": null,
+          "id": "column:Website.VehicleTemperatures.VehicleTemperatureID",
+          "identity": true,
+          "is_max": false,
+          "length": null,
+          "name": "VehicleTemperatureID",
+          "nullable": false,
+          "ordinal": 1,
+          "precision": null,
+          "scale": null,
+          "user_type": null
+        },
+        {
+          "collation": "Latin1_General_100_CI_AS",
+          "computed": null,
+          "data_type": "nvarchar",
+          "default": null,
+          "description": null,
+          "id": "column:Website.VehicleTemperatures.VehicleRegistration",
+          "identity": false,
+          "is_max": false,
+          "length": 20,
+          "name": "VehicleRegistration",
+          "nullable": false,
+          "ordinal": 2,
+          "precision": null,
+          "scale": null,
+          "user_type": null
+        },
+        {
+          "collation": null,
+          "computed": null,
+          "data_type": "int",
+          "default": null,
+          "description": null,
+          "id": "column:Website.VehicleTemperatures.ChillerSensorNumber",
+          "identity": false,
+          "is_max": false,
+          "length": null,
+          "name": "ChillerSensorNumber",
+          "nullable": false,
+          "ordinal": 3,
+          "precision": null,
+          "scale": null,
+          "user_type": null
+        },
+        {
+          "collation": null,
+          "computed": null,
+          "data_type": "datetime2",
+          "default": null,
+          "description": null,
+          "id": "column:Website.VehicleTemperatures.RecordedWhen",
+          "identity": false,
+          "is_max": false,
+          "length": null,
+          "name": "RecordedWhen",
+          "nullable": false,
+          "ordinal": 4,
+          "precision": null,
+          "scale": 7,
+          "user_type": null
+        },
+        {
+          "collation": null,
+          "computed": null,
+          "data_type": "decimal",
+          "default": null,
+          "description": null,
+          "id": "column:Website.VehicleTemperatures.Temperature",
+          "identity": false,
+          "is_max": false,
+          "length": null,
+          "name": "Temperature",
+          "nullable": false,
+          "ordinal": 5,
+          "precision": 10,
+          "scale": 2,
+          "user_type": null
+        },
+        {
+          "collation": "Latin1_General_100_CI_AS",
+          "computed": null,
+          "data_type": "nvarchar",
+          "default": null,
+          "description": null,
+          "id": "column:Website.VehicleTemperatures.FullSensorData",
+          "identity": false,
+          "is_max": false,
+          "length": 1000,
+          "name": "FullSensorData",
+          "nullable": true,
+          "ordinal": 6,
+          "precision": null,
+          "scale": null,
+          "user_type": null
+        }
+      ],
+      "definition": "\r\nCREATE VIEW Website.VehicleTemperatures\r\nAS\r\nSELECT vt.VehicleTemperatureID,\r\n       vt.VehicleRegistration,\r\n       vt.ChillerSensorNumber,\r\n       vt.RecordedWhen,\r\n       vt.Temperature,\r\n       CASE WHEN vt.IsCompressed <> 0\r\n            THEN CAST(DECOMPRESS(vt.CompressedSensorData) AS nvarchar(1000))\r\n            ELSE vt.FullSensorData\r\n       END AS FullSensorData\r\nFROM Warehouse.VehicleTemperatures AS vt;\r\n",
+      "definition_status": "available",
+      "description": null,
+      "id": "object:Website.VehicleTemperatures",
+      "name": "VehicleTemperatures",
+      "schema_bound": false,
+      "schema_id": "schema:Website"
+    }
+  }
+}
