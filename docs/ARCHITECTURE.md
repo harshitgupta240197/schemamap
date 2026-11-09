@@ -51,15 +51,17 @@ telemetry ──> errors                                  (never snapshot conten
 snapshot ──> errors                                   (leaf)
 ```
 
-The SQL Server driver is chosen in a later crumb. It is hidden behind `MetadataExecutor`:
+The SQL Server driver (mssql-python, D-027) is hidden behind `MetadataExecutor`
+(`connect/executor.py`), the only code in the package that touches a driver cursor (D-029):
 
 ```python
-class MetadataExecutor(Protocol):
-    def run(self, query: QueryName, params: Mapping[str, str | int]) -> Iterator[Row]: ...
+class MetadataExecutor:
+    def run(self, query: QueryName, params: Mapping[str, str | int] | None = None) -> list[Row]: ...
 ```
 
 `QueryName` is an enum of files in `queries/`, so arbitrary SQL cannot even be expressed.
-The executor checks the file against the allowlist again before executing it.
+The executor checks the file against the allowlist again before executing it, and binds
+parameters positionally (`?`) in the order the file's `-- params:` header declares.
 
 ## 3. Data flow
 
@@ -216,7 +218,7 @@ SchemaMapError
     SnapshotVersionError  unsupported format major version
   ConnectError          cannot connect or authenticate (message never holds secrets)
     DriverUnavailableError  the SQL Server driver or its native library cannot load
-  QueryRefusedError     (crumb 1.x) SQL not in the allowlist: a bug, never user-facing input
+  QueryRefusedError     SQL not in the allowlist: a bug, never user-facing input
   PermissionMissing     (crumb 1.x) raised inside extract for one section, caught there and
                         turned into an ExtractionWarning; never escapes extract
 ```

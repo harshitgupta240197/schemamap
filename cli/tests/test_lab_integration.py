@@ -1,8 +1,10 @@
 """Integration tests: the lab SQL Server must be up and restored.
 
 Start it with `uv run tools/lab.py up && uv run tools/lab.py restore all`, then run
-`uv run pytest -m integration`. The reader checks and doctor use the connect module (the
-real driver); only the sa check of the restored databases still goes through `docker exec`.
+`uv run pytest -m integration`. Package code can only run allowlisted queries, so the
+checks that deliberately run other SQL (proving SELECT on a user table is denied) use the
+test-only helper in raw_sql.py, which opens the driver directly. Only the sa check of the
+restored databases still goes through `docker exec`.
 """
 
 import os
@@ -10,11 +12,13 @@ import subprocess
 from types import ModuleType
 
 import pytest
+from raw_sql import run_raw_sql
 from typer.testing import CliRunner
 
 from schemamap.cli import app
 from schemamap.connect import ConnectionConfig, Status, connect, diagnose
-from schemamap.errors import ConnectError
+from schemamap.errors import ConnectError, QueryRefusedError
+from schemamap.queries import QueryName
 
 pytestmark = pytest.mark.integration
 
@@ -88,21 +92,36 @@ def reader_config(lab: ModuleType, password: str, database: str) -> ConnectionCo
 def test_reader_cannot_read_rows(
     lab: ModuleType, passwords: tuple[str, str], database: str, query: str
 ) -> None:
-    with connect(reader_config(lab, passwords[1], database)) as conn:
-        cursor = conn.cursor()
-        with pytest.raises(Exception, match="SELECT permission was denied"):
-            cursor.execute(query)
-            cursor.fetchall()
+    with pytest.raises(Exception, match="SELECT permission was denied"):
+        run_raw_sql(reader_config(lab, passwords[1], database), query)
 
 
 @pytest.mark.parametrize("database", [db for db, _ in PROTECTED_TABLES])
 def test_reader_can_read_catalog_metadata(
     lab: ModuleType, passwords: tuple[str, str], database: str
 ) -> None:
-    with connect(reader_config(lab, passwords[1], database)) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM sys.tables")
-        assert cursor.fetchone()[0] > 0
+    rows = run_raw_sql(
+        reader_config(lab, passwords[1], database), "SELECT COUNT(*) FROM sys.tables"
+    )
+    assert rows[0][0] > 0
+
+
+@pytest.mark.parametrize("database", [db for db, _ in PROTECTED_TABLES])
+def test_executor_runs_every_named_query(
+    lab: ModuleType, passwords: tuple[str, str], database: str
+) -> None:
+    with connect(reader_config(lab, passwords[1], database)) as executor:
+        for name in QueryName:
+            executor.run(name)
+
+
+def test_executor_refuses_raw_sql_on_a_live_connection(
+    lab: ModuleType, passwords: tuple[str, str]
+) -> None:
+    with connect(reader_config(lab, passwords[1], "AdventureWorks2022")) as executor:
+        with pytest.raises(QueryRefusedError, match="only named queries"):
+            executor.run("SELECT TOP 1 * FROM Person.Person")  # type: ignore[arg-type]
+        assert not hasattr(executor, "cursor")
 
 
 def test_wrong_password_is_connect_error_without_secrets(
@@ -139,6 +158,10 @@ def test_doctor_reports_lab_all_green(lab: ModuleType, passwords: tuple[str, str
     assert statuses["Connection"] is Status.OK
     assert statuses["Server"] is Status.OK
     assert statuses["VIEW DEFINITION"] is Status.OK
+    # Every probe ran through the executor. VIEW DATABASE STATE and Query Store are optional
+    # and depend on how the lab was restored, so they may be WARN, but never unchecked.
+    assert all(c.status is not Status.FAIL for c in report.checks), detail
+    assert all(c.detail != "could not be checked" for c in report.checks), detail
 
 
 def test_doctor_command_exit_code(lab: ModuleType, passwords: tuple[str, str]) -> None:

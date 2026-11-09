@@ -1,24 +1,49 @@
+from importlib import resources
+
 import pytest
 
-from schemamap.queries import load_query
+from schemamap.errors import QueryRefusedError
+from schemamap.queries import QueryName, load_query, query_params
 
 
-@pytest.mark.parametrize("name", ["doctor_server_info", "doctor_permissions", "doctor_query_store"])
-def test_doctor_queries_are_select_only(name: str) -> None:
-    body = "\n".join(
-        line for line in load_query(name).splitlines() if not line.startswith("--")
-    ).strip()
-    assert body.upper().startswith("SELECT")
-    assert body.count(";") == 1
-    assert body.endswith(";")
+def sql_files() -> set[str]:
+    folder = resources.files("schemamap.queries")
+    return {entry.name[: -len(".sql")] for entry in folder.iterdir() if entry.name.endswith(".sql")}
 
 
-@pytest.mark.parametrize("name", ["../x", "a/b", "Doctor", "", "x.sql"])
-def test_unsafe_query_names_are_rejected(name: str) -> None:
-    with pytest.raises(ValueError, match="invalid query name"):
-        load_query(name)
+def test_query_name_enum_matches_sql_files_exactly() -> None:
+    assert {member.value for member in QueryName} == sql_files()
 
 
-def test_missing_query_raises() -> None:
-    with pytest.raises(FileNotFoundError):
-        load_query("does_not_exist")
+@pytest.mark.parametrize("name", list(QueryName))
+def test_every_query_name_loads(name: QueryName) -> None:
+    assert load_query(name).strip()
+
+
+@pytest.mark.parametrize("name", ["doctor_server_info", "SELECT 1", "../x"])
+def test_load_query_refuses_anything_but_a_query_name(name: str) -> None:
+    with pytest.raises(QueryRefusedError, match="QueryName only"):
+        load_query(name)  # type: ignore[arg-type]
+
+
+def test_query_params_reads_the_header_in_order() -> None:
+    sql = "-- About.\n-- params: schema_id, object_name\nSELECT 1 FROM sys.tables;"
+    assert query_params(sql) == ("schema_id", "object_name")
+
+
+def test_query_params_defaults_to_none() -> None:
+    assert query_params("SELECT 1 FROM sys.tables;") == ()
+
+
+@pytest.mark.parametrize(
+    ("header", "message"),
+    [
+        ("-- params: a\n-- params: b\n", "only once"),
+        ("-- params: Bad-Name\n", "Invalid parameter name"),
+        ("-- params: a,\n", "Invalid parameter name"),
+        ("-- params: a, a\n", "declared twice"),
+    ],
+)
+def test_query_params_refuses_malformed_headers(header: str, message: str) -> None:
+    with pytest.raises(QueryRefusedError, match=message):
+        query_params(header + "SELECT 1 FROM sys.tables;")

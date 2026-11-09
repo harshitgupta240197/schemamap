@@ -2,45 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from schemamap.connect.config import ConnectionConfig
 from schemamap.connect.driver import load_driver
+from schemamap.connect.executor import MetadataExecutor
 from schemamap.connect.redact import redact
 from schemamap.errors import ConnectError
-from schemamap.queries import load_query
 
 _MAX_DETAIL = 300
-
-
-class Connection:
-    """An open connection. Runs queries by name from ``queries/``."""
-
-    def __init__(self, driver_connection: Any) -> None:
-        self._connection = driver_connection
-
-    def query(self, name: str) -> list[tuple[Any, ...]]:
-        """Run ``queries/<name>.sql`` and return all rows as tuples."""
-        cursor = self._connection.cursor()
-        try:
-            cursor.execute(load_query(name))
-            return [tuple(row) for row in cursor.fetchall()]
-        finally:
-            cursor.close()
-
-    def cursor(self) -> Any:
-        """A raw driver cursor. Crumb 1.3 replaces this with the allowlisting executor."""
-        return self._connection.cursor()
-
-    def close(self) -> None:
-        """Close the connection; safe to call twice."""
-        self._connection.close()
-
-    def __enter__(self) -> Connection:
-        return self
-
-    def __exit__(self, *_: object) -> None:
-        self.close()
 
 
 def describe_failure(exc: BaseException, config: ConnectionConfig) -> str:
@@ -62,8 +30,8 @@ def describe_failure(exc: BaseException, config: ConnectionConfig) -> str:
     return f"{hint} Driver said: {detail[:_MAX_DETAIL]}" if detail else hint
 
 
-def connect(config: ConnectionConfig) -> Connection:
-    """Open a read-only intent, encrypted-by-default connection.
+def connect(config: ConnectionConfig) -> MetadataExecutor:
+    """Open a read-only intent, encrypted-by-default connection wrapped in the executor.
 
     Raises DriverUnavailableError if the driver cannot load and ConnectError for any
     connection or authentication failure. The driver exception is never chained, because
@@ -83,4 +51,4 @@ def connect(config: ConnectionConfig) -> Connection:
     if failure is not None:
         # Raised outside the except block so the driver exception is not even in __context__.
         raise ConnectError(failure)
-    return Connection(connection)
+    return MetadataExecutor(connection)

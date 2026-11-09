@@ -8,6 +8,7 @@ dependencies = [
     "mssql-python>=1.17",
     "pydantic>=2.9",
     "rich>=13",
+    "sqlglot>=30.30,<31",
     "typer>=0.15",
 ]
 

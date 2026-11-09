@@ -4,9 +4,10 @@ from typing import Any
 
 import pytest
 
-from schemamap.connect import ConnectionConfig, connect, redact
+from schemamap.connect import ConnectionConfig, MetadataExecutor, connect, redact
 from schemamap.connect import connection as connection_module
 from schemamap.errors import ConnectError
+from schemamap.queries import QueryName
 
 PASSWORD = "Sup3rSecret;pw"
 
@@ -118,8 +119,9 @@ def test_successful_connect_sets_timeouts_and_runs_named_query(
 
     monkeypatch.setattr(connection_module, "load_driver", lambda: Driver())
     with connect(make_config()) as conn:
-        assert conn.query("doctor_server_info") == [(1, 2)]
-        assert conn.cursor() is raw.cursor_obj
+        assert isinstance(conn, MetadataExecutor)
+        assert conn.run(QueryName.DOCTOR_SERVER_INFO) == [(1, 2)]
+        assert not hasattr(conn, "cursor")
     assert raw.cursor_obj.closed
     assert raw.closed
     assert raw.timeout == 60

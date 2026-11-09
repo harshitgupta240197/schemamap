@@ -7,16 +7,17 @@ from schemamap import cli
 from schemamap.cli import app
 from schemamap.connect import AuthMode, ConnectionConfig, Status, diagnose
 from schemamap.connect import doctor as doctor_module
-from schemamap.errors import ConnectError, DriverUnavailableError
+from schemamap.errors import ConnectError, DriverUnavailableError, QueryRefusedError
+from schemamap.queries import QueryName
 
 PASSWORD = "Sup3rSecret"
 
 
 class FakeConnection:
-    def __init__(self, answers: dict[str, Any]) -> None:
+    def __init__(self, answers: dict[QueryName, Any]) -> None:
         self.answers = answers
 
-    def query(self, name: str) -> list[tuple[Any, ...]]:
+    def run(self, name: QueryName) -> list[tuple[Any, ...]]:
         answer = self.answers[name]
         if isinstance(answer, Exception):
             raise answer
@@ -29,10 +30,10 @@ class FakeConnection:
         return None
 
 
-GREEN = {
-    "doctor_server_info": [("16.0.4135.4", "Developer Edition (64-bit)", 3, "Sales")],
-    "doctor_permissions": [("VIEW DATABASE STATE",), ("VIEW DEFINITION",)],
-    "doctor_query_store": [("READ_WRITE",)],
+GREEN: dict[QueryName, Any] = {
+    QueryName.DOCTOR_SERVER_INFO: [("16.0.4135.4", "Developer Edition (64-bit)", 3, "Sales")],
+    QueryName.DOCTOR_PERMISSIONS: [("VIEW DATABASE STATE",), ("VIEW DEFINITION",)],
+    QueryName.DOCTOR_QUERY_STORE: [("READ_WRITE",)],
 }
 
 
@@ -40,7 +41,7 @@ def config() -> ConnectionConfig:
     return ConnectionConfig(server="h", database="d", user="u", password=PASSWORD)
 
 
-def patch(monkeypatch: pytest.MonkeyPatch, answers: dict[str, Any]) -> None:
+def patch(monkeypatch: pytest.MonkeyPatch, answers: dict[QueryName, Any]) -> None:
     monkeypatch.setattr(doctor_module, "load_driver", lambda: object())
     monkeypatch.setattr(doctor_module, "connect", lambda _c: FakeConnection(answers))
 
@@ -61,7 +62,9 @@ def test_all_green(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_missing_permissions_and_query_store_warn(monkeypatch: pytest.MonkeyPatch) -> None:
-    patch(monkeypatch, {**GREEN, "doctor_permissions": [], "doctor_query_store": []})
+    patch(
+        monkeypatch, {**GREEN, QueryName.DOCTOR_PERMISSIONS: [], QueryName.DOCTOR_QUERY_STORE: []}
+    )
     report = diagnose(config())
     warned = {c.name for c in report.checks if c.status is Status.WARN}
     assert warned == {"VIEW DEFINITION", "VIEW DATABASE STATE", "Query Store"}
@@ -70,10 +73,17 @@ def test_missing_permissions_and_query_store_warn(monkeypatch: pytest.MonkeyPatc
 
 
 def test_failed_probe_degrades_to_warning(monkeypatch: pytest.MonkeyPatch) -> None:
-    patch(monkeypatch, {**GREEN, "doctor_query_store": RuntimeError("denied")})
+    patch(monkeypatch, {**GREEN, QueryName.DOCTOR_QUERY_STORE: RuntimeError("denied")})
     report = diagnose(config())
     assert report.connected
     assert report.checks[-1].status is Status.WARN
+
+
+def test_refused_query_is_a_bug_not_a_warning(monkeypatch: pytest.MonkeyPatch) -> None:
+    refused = QueryRefusedError("Query is not on the allowlist.")
+    patch(monkeypatch, {**GREEN, QueryName.DOCTOR_PERMISSIONS: refused})
+    with pytest.raises(QueryRefusedError):
+        diagnose(config())
 
 
 def test_connect_failure_is_failed_check(monkeypatch: pytest.MonkeyPatch) -> None:

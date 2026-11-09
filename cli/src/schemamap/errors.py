@@ -25,3 +25,10 @@ class ConnectError(SchemaMapError):
 
 class DriverUnavailableError(ConnectError):
     """The SQL Server driver or its native library cannot be loaded on this machine."""
+
+
+class QueryRefusedError(SchemaMapError):
+    """The executor refused to run SQL: not a named query, off the allowlist, or bad parameters.
+
+    This is always a bug in Schema Map, never a problem with user input.
+    """

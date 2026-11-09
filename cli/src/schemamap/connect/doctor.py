@@ -7,9 +7,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from schemamap.connect.config import ConnectionConfig
-from schemamap.connect.connection import Connection, connect
+from schemamap.connect.connection import connect
 from schemamap.connect.driver import load_driver
-from schemamap.errors import ConnectError, DriverUnavailableError
+from schemamap.connect.executor import MetadataExecutor
+from schemamap.errors import ConnectError, DriverUnavailableError, QueryRefusedError
+from schemamap.queries import QueryName
 
 # EngineEdition values: 5 = Azure SQL Database, 8 = Azure SQL Managed Instance.
 _AZURE_ENGINES = {5, 8}
@@ -46,15 +48,15 @@ class DoctorReport:
         return all(check.status is Status.OK for check in self.checks)
 
 
-def _server_check(conn: Connection) -> Check:
-    rows = conn.query("doctor_server_info")
+def _server_check(conn: MetadataExecutor) -> Check:
+    rows = conn.run(QueryName.DOCTOR_SERVER_INFO)
     version, edition, engine, database = rows[0]
     kind = "Azure SQL" if engine in _AZURE_ENGINES else "SQL Server"
     return Check("Server", Status.OK, f"{kind} {version}, {edition}, database {database}")
 
 
-def _permission_checks(conn: Connection) -> list[Check]:
-    held = {row[0] for row in conn.query("doctor_permissions")}
+def _permission_checks(conn: MetadataExecutor) -> list[Check]:
+    held = {row[0] for row in conn.run(QueryName.DOCTOR_PERMISSIONS)}
     checks: list[Check] = []
     definition = "VIEW DEFINITION" in held
     checks.append(
@@ -83,8 +85,8 @@ def _permission_checks(conn: Connection) -> list[Check]:
     return checks
 
 
-def _query_store_check(conn: Connection) -> Check:
-    rows = conn.query("doctor_query_store")
+def _query_store_check(conn: MetadataExecutor) -> Check:
+    rows = conn.run(QueryName.DOCTOR_QUERY_STORE)
     state = str(rows[0][0]) if rows else "OFF"
     if state in ("READ_WRITE", "READ_ONLY"):
         return Check("Query Store", Status.OK, state.replace("_", " ").lower())
@@ -124,6 +126,8 @@ def diagnose(config: ConnectionConfig) -> DoctorReport:
         for label, step in steps:
             try:
                 checks.extend(step())
+            except QueryRefusedError:
+                raise  # a bug in Schema Map, not a permission problem: never hide it
             except Exception:  # a failed probe is a warning, never a crash
                 checks.append(
                     Check(
