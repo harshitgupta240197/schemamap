@@ -75,9 +75,10 @@ flowchart LR
   S -. later .-> P[Pulse]
 ```
 
-Typical run: `schemamap scan` = connect → extract → write snapshot → infer → export.
-Each stage can also run alone (`extract` to a file, `export` from a file), which makes bug
-reports reproducible: a user can send a (redacted) snapshot instead of database access.
+The stages are separate commands: `extract` (connect → read metadata → write snapshot),
+`view` (infer → export the map), `docs` and `path`. Each reads a snapshot file, so every stage
+after `extract` runs without database access, which makes bug reports reproducible: a user can
+send a snapshot instead of database access. Snapshots are not anonymous; see section 10.
 
 ### Extract, section by section
 
@@ -93,6 +94,11 @@ Query text can contain literals copied from rows, so it never enters the snapsho
 the only stage that ever holds it is extract, so extract parses it (sqlglot), keeps only
 **typed column pairs with counts**, and throws the text away. Module definitions are parsed
 there too so all join evidence has one source, one parser and one shape.
+
+Name matching while parsing SQL text must follow the database collation (see crumbs 3.3 and
+4.2). `Customer_Id` and `customer_id` are the same column in a case-insensitive database and
+different columns in a case-sensitive one, so the parser compares names with the collation of
+the database it is reading, never with a fixed case rule.
 
 Infer then reads `join_evidence` as plain data. Keeping infer pure means it has no database,
 clock, network or parser dependency, it is deterministic, it can be unit-tested with
@@ -141,7 +147,7 @@ Snapshot
 | Forward compatible | Readers ignore unknown fields. Minor versions only add optional fields or sections. |
 | Cross-database | `Reference.scope` is `local`, `cross_database` or `cross_server`. Only local references get `resolved`; others keep the name exactly as written and are never followed. |
 | Optional sections | `row_counts`, `query_history`, `join_evidence` are `null` when not collected, which is distinct from an empty list (collected, nothing found). |
-| No credentials | No field can hold a login, password, token or connection string; a test rejects such field names. `--redact-server` drops `source.server` and every linked-server name. |
+| No credentials | No field can hold a login, password, token or connection string; a test rejects such field names. `--redact-server` drops `source.server` and every linked-server name. It removes host names only: definitions, object names and the database name remain, so review a snapshot before sharing it. |
 | Integrity | Validation checks that every referenced object and column exists and that columns, indexes and objects belong to their parent. |
 
 ### Definitions are free text
@@ -161,6 +167,10 @@ Each entry says "columns A and B were compared by equality in a join" with a `so
 modules or queries. Pairs are unordered, so they are stored with `from_column < to_column`.
 `parse_failure_count` records statements the parser could not read, so infer can tell
 "no evidence" from "evidence unavailable". No SQL text is stored anywhere in this section.
+
+Pairs are unordered, so the snapshot does not say which side is the key. Infer chooses the
+edge direction from the key side: the primary key or unique column is the target, and the
+other column is the source. Direction is never taken from the order of the pair.
 
 ## 5. Object IDs
 
@@ -268,6 +278,6 @@ so it is easy to audit.
 
 * Credentials: prompt or environment variables only; never logged, stored or in a snapshot.
 * Read-only connection plus allowlisted SELECT-only queries over system objects.
-* Snapshots and maps stay local; `--redact-server` for sharing.
+* Snapshots and maps stay local. `--redact-server` removes host names only; definitions, object names and the database name remain, so review a snapshot before sharing it.
 * Hostile object names are handled by escaped IDs, text-only rendering and safe JSON inlining.
 * Definitions may contain literals (section 4); `--no-definitions` is planned.

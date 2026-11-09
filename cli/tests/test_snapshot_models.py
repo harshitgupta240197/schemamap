@@ -305,6 +305,21 @@ def test_duplicates_are_rejected() -> None:
         Snapshot.model_validate(doc)
 
 
+def test_two_foreign_keys_with_identical_columns_share_one_edge() -> None:
+    doc = snapshot_doc()
+    original = doc["relationships"][0]
+    duplicate = {
+        **original,
+        "id": foreign_key_id("dbo", "FK_Orders_Customers_Again"),
+        "name": "FK_Orders_Customers_Again",
+    }
+    doc["relationships"].append(duplicate)
+    snap = Snapshot.model_validate(doc)
+    assert len(snap.relationships) == 2
+    assert {r.edge for r in snap.relationships} == {original["edge"]}
+    assert len({r.id for r in snap.relationships}) == 2
+
+
 def test_object_ids_are_unique_across_kinds() -> None:
     doc = snapshot_doc()
     doc["routines"][0]["id"] = object_id("dbo", "vCustomers")
