@@ -5,6 +5,7 @@ description = "Map a SQL Server database from system metadata only."
 requires-python = ">=3.10"
 license = "Apache-2.0"
 dependencies = [
+    "mssql-python>=1.17",
     "pydantic>=2.9",
     "typer>=0.15",
 ]

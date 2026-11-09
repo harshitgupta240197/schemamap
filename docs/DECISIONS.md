@@ -77,3 +77,40 @@ Dev only: `hypothesis` generates hostile and arbitrary names for the ID round-tr
 
 ## D-026 Redaction covers linked-server names (2026-11-09)
 `--redact-server` (`redact_server()`) drops `source.server` and the server part of every cross-server reference; dependencies that become identical collapse into one. Reason: linked-server names are host names too. Rejected: redacting only the source host.
+
+## D-027 SQL Server driver: mssql-python (2026-11-09)
+Dependency: `mssql-python>=1.17` (runtime, the chosen SQL Server driver: Microsoft's GA driver, `pip install` brings everything it needs, and it supports Entra ID on every OS).
+
+**Why.** It is the only candidate that installs with pip alone on Windows, supports Entra ID on Windows, macOS and Linux, and accepts the full ODBC Driver 18 keyword set (`ApplicationIntent=ReadOnly`, `Encrypt=yes|strict`, `TrustServerCertificate`, `HostnameInCertificate`). The native driver ships as the `mssql-python-odbc` wheel, a pinned dependency, so users never install msodbcsql18 or unixODBC and never accept a EULA by hand.
+
+**Comparison** (sources checked 2026-11-09):
+
+| | mssql-python 1.17.0 (chosen) | pyodbc 5.5.0 + ODBC Driver 18.7.1.1 | pymssql 2.4.6 |
+|---|---|---|---|
+| System install | Windows: none. macOS: `brew install openssl`. Linux: `libltdl7 libkrb5-3 libgssapi-krb5-2` (Debian/Ubuntu), `libtool-ltdl krb5-libs` (RHEL) [1] | ODBC Driver 18 on every OS, plus unixODBC on macOS and Linux. macOS: `brew tap microsoft/mssql-release …; brew trust …; HOMEBREW_ACCEPT_EULA=Y brew install msodbcsql18`. Linux: add the Microsoft package repo, then `ACCEPT_EULA=Y apt-get/yum install msodbcsql18`. Windows: run the MSI installer [4][5][6] | None: FreeTDS and OpenSSL are statically linked into the wheels [8] |
+| Wheels | CPython 3.10–3.15. win_amd64, win_arm64 (3.11+), macOS 15+ universal2, manylinux_2_28 and musllinux x86_64/aarch64 [2] | **CPython 3.11+ only** (`requires_python >=3.11`; we support 3.10). win32/amd64/arm64, macOS x86_64/arm64, manylinux/musllinux [3] | CPython 3.9–3.15. win_amd64/arm64, macOS 15+ x86_64/arm64, manylinux_2_28 and musllinux x86_64/aarch64 [8] |
+| Windows authentication | `Trusted_Connection=yes` (SSPI), Kerberos via `ActiveDirectoryIntegrated` [1][9] | SSPI on Windows, Kerberos on macOS/Linux [7] | Only `DOMAIN\user` with a password (NTLM); no SSPI option [10] |
+| Azure SQL / Entra ID | Password, Interactive, DeviceCode, MSI, ServicePrincipal, Integrated, Default on all OSes; `token_provider` hook [9] | Interactive on Windows only; MSI, ServicePrincipal and Integrated on all OSes; Password deprecated; access token [7] | Azure SQL with SQL logins only; **no Entra ID** [11] |
+| Read-only intent | `ApplicationIntent=ReadOnly` [12] | `ApplicationIntent=ReadOnly` [6] | `read_only=True` (FreeTDS `read-only intent`) [10] |
+| Encryption / certificates | `Encrypt=yes|no|strict`, `TrustServerCertificate` [12] | Default `Encrypt=yes` (18+), `strict` (TDS 8), `TrustServerCertificate` default no, `ServerCertificate` [6] | `encryption=off|request|require`; certificate validation only through `ca file` in `freetds.conf`, and **any certificate is accepted when it is not set** [10][13] |
+| Maintenance | Microsoft, GA since 1.0.0 (2025-11-18); 18 releases, every 2–4 weeks [2] | Community; 5.3.0 2025-10, 5.4.0 and 5.5.0 2026-11 [3]; ODBC Driver 18.7.1.1 2026-09-07 [5] | One maintainer; 19 releases since 2024-11, with a 6.5-month gap in 2026 [8] |
+| License | MIT; the bundled driver libraries are under Microsoft Software License Terms [1] | MIT-0; ODBC Driver EULA [3][5] | LGPL-2.1 [8] |
+
+**Prototype** (`cli/spikes/driver_spike.py`, kept for reference; outside the package, mypy and coverage). Each driver connected to the lab (`localhost,14330`, AdventureWorks2022, `schemamap_reader`, read-only intent, encrypted) and ran `SELECT name FROM sys.tables`, 5 runs per driver, on macOS 26 arm64. No system install was needed: Homebrew `openssl@3` 3.6.3 was already present.
+
+| | Python | Install (cold uv cache) | Packages | Tables | Cold connect | Warm connect | Query (warm) |
+|---|---|---|---|---|---|---|---|
+| mssql-python 1.17.0 | 3.10 | 20.7 s | 17 (azure-identity and others) | 71 | 2100 ms | 2 ms (pooled) | 4.8 ms |
+| mssql-python 1.17.0 | 3.13 | 3.0 s | 17 | 71 | 1340 ms | 1 ms (pooled) | 4.8 ms |
+| pymssql 2.4.6 | 3.10 | 5.9 s | 1 | 71 | 2258 ms | 13 ms | 4.7 ms |
+| pymssql 2.4.6 | 3.13 | 6.3 s | 1 | 71 | 1685 ms | 14 ms | 5.0 ms |
+
+Most of the cold-connect time is the first login to the lab server, and the two drivers are close. On a failed login, neither driver put the password or a `PWD=` fragment in its exception message (checked with a fake password).
+
+**Trade-offs we accept.** 17 transitive packages (mostly from `azure-identity`). macOS wheels need macOS 15+ and Homebrew OpenSSL. Linux needs libltdl and Kerberos libraries, which most distributions already have. Connection pooling is on by default. The wiki contradicts itself on the default autocommit setting, so the connect layer will set autocommit explicitly. Error messages are still redacted in our CLI layer, whatever the driver does.
+
+**Rejected.**
+- **pyodbc + ODBC Driver 18:** every user needs a system-level driver install with EULA acceptance, plus unixODBC on macOS and Linux. That is the most install friction of the three, and the current release drops Python 3.10.
+- **pymssql:** the easiest install, but it has no Entra ID support, so it cannot reach most Azure SQL setups. Certificate validation needs a `freetds.conf` file and is off by default. The LGPL licence and single maintainer are further risks.
+
+Sources: [1] https://github.com/microsoft/mssql-python (README) and https://github.com/microsoft/mssql-python/wiki/Installation · [2] https://pypi.org/project/mssql-python/ · [3] https://pypi.org/project/pyodbc/ and https://github.com/mkleehammer/pyodbc/wiki/Install · [4] https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/install-microsoft-odbc-driver-sql-server-macos · [5] https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server · [6] https://learn.microsoft.com/en-us/sql/connect/odbc/dsn-connection-string-attribute and https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server · [7] https://learn.microsoft.com/en-us/sql/connect/odbc/using-azure-active-directory · [8] https://pypi.org/project/pymssql/ and https://pymssql.readthedocs.io/en/latest/changelog.html · [9] https://github.com/microsoft/mssql-python/wiki/Microsoft-Entra-ID-support · [10] https://pymssql.readthedocs.io/en/latest/ref/pymssql.html · [11] https://pymssql.readthedocs.io/en/latest/azure.html · [12] https://github.com/microsoft/mssql-python/wiki/Connection-to-SQL-Database · [13] https://www.freetds.org/userguide/freetdsconf.html
