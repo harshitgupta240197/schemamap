@@ -1,8 +1,10 @@
 """`schemamap extract` end to end against the lab's AdventureWorks2022, as ``schemamap_reader``.
 
-The golden file in tests/fixtures/ is the whole snapshot with two environment-dependent values
-normalised: ``captured_at`` (the clock) and ``source.product_version`` (the lab image is
-``2022-latest``, so its build number moves). Everything else must match byte for byte.
+The golden file in tests/fixtures/ is the whole snapshot with three environment-dependent values
+normalised: ``captured_at`` (the clock), ``source.product_version`` (the lab image is
+``2022-latest`` locally and a pinned CU in CI, so its build number differs) and
+``source.server`` (the lab is reached at 127.0.0.1, see ``lab.HOST``). Everything else must
+match byte for byte.
 """
 
 from __future__ import annotations
@@ -32,9 +34,9 @@ CAPTURED_AT_LINE = re.compile(r'^  "captured_at": ".*",$', re.MULTILINE)
 
 
 def normalised(text: str) -> str:
-    """The snapshot text with the clock and the server build number replaced."""
+    """The snapshot text with the clock, the server build number and the host name replaced."""
     snapshot = load_snapshot(text)
-    source = snapshot.source.model_copy(update={"product_version": None})
+    source = snapshot.source.model_copy(update={"product_version": None, "server": "localhost"})
     return dump_snapshot(snapshot.model_copy(update={"captured_at": FROZEN, "source": source}))
 
 
@@ -61,14 +63,14 @@ class Runner:
         self.count = 0
 
     def run(
-        self, *extra: str, server: str = "localhost", password: str | None = None
+        self, *extra: str, server: str | None = None, password: str | None = None
     ) -> Extraction:
         self.count += 1
         path = self.folder / f"run{self.count}.json"
         args = [
             "extract",
             "--server",
-            server,
+            server or self.lab.HOST,
             "--port",
             str(self.lab.HOST_PORT),
             "--database",
@@ -101,12 +103,12 @@ def first(runner: Runner) -> Extraction:
     return run
 
 
-def test_writes_a_valid_snapshot_and_prints_a_summary(first: Extraction) -> None:
+def test_writes_a_valid_snapshot_and_prints_a_summary(lab: ModuleType, first: Extraction) -> None:
     snapshot = read_snapshot(first.path)
     assert snapshot.format_version == "1.0"
     assert snapshot.generator.name == "schemamap"
     assert snapshot.source.database == DATABASE
-    assert snapshot.source.server == "localhost"
+    assert snapshot.source.server == lab.HOST
     assert snapshot.source.product_version
     assert snapshot.source.compatibility_level == 160
     assert snapshot.source.collation

@@ -36,7 +36,7 @@ DATABASES = [ADVENTUREWORKS, WIDE_WORLD, EDGE_DB]
 
 def min_config(lab: ModuleType, password: str, database: str) -> ConnectionConfig:
     return ConnectionConfig(
-        server="localhost",
+        server=lab.HOST,
         port=lab.HOST_PORT,
         database=database,
         user=lab.READER_MIN_LOGIN,

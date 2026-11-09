@@ -38,7 +38,7 @@ def test_extracting_500_tables_stays_within_the_ci_budget(
     args = [
         "extract",
         "--server",
-        "localhost",
+        lab.HOST,
         "--port",
         str(lab.HOST_PORT),
         "--database",

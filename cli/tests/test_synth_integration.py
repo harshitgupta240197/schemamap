@@ -36,7 +36,7 @@ def test_declared_foreign_keys_equal_the_declared_ground_truth(
     args = [
         "extract",
         "--server",
-        "localhost",
+        lab.HOST,
         "--port",
         str(lab.HOST_PORT),
         "--database",

@@ -155,7 +155,9 @@ def build_tables(
     keys_by_table: dict[_TableKey, list[KeyConstraint]] = defaultdict(list)
     for index_row in indexes:
         table_key = (index_row.schema_name, index_row.table_name)
-        keys, included = _index_columns(index_column_rows[(*table_key, index_row.index_id)])
+        keys, included = _index_columns(
+            index_column_rows[(table_key[0], table_key[1], index_row.index_id)]
+        )
         built = Index(
             id=index_id(index_row.schema_name, index_row.table_name, index_row.index_name),
             name=index_row.index_name,

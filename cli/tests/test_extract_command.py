@@ -297,10 +297,15 @@ def test_markup_in_paths_and_messages_is_printed_as_text(
     assert "Grant [bold]x[/bold]." in result.output
 
 
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
 def plain_help(command: str) -> str:
-    result = CliRunner().invoke(app, [command, "--help"], env={"COLUMNS": "200", "TERM": "dumb"})
+    result = CliRunner().invoke(
+        app, [command, "--help"], env={"COLUMNS": "200", "TERM": "xterm", "NO_COLOR": "1"}
+    )
     assert result.exit_code == 0
-    return re.sub(r"\s+", " ", re.sub(r"[│╭╮╰╯─]", " ", result.output))
+    return re.sub(r"\s+", " ", re.sub(r"[│╭╮╰╯─]", " ", ANSI.sub("", result.output)))
 
 
 def test_extract_shares_the_connection_options_with_doctor() -> None:

@@ -45,6 +45,10 @@ DATA_DIR = REPO_ROOT / "lab-data" / "mssql"
 
 CONTAINER = "schemamap-lab"
 SERVICE = "sqlserver"
+# Docker publishes the port on IPv4 loopback only. Connect to this address, not "localhost":
+# on Linux "localhost" resolves to ::1 first, where nothing listens, and the driver does
+# not fall back to IPv4.
+HOST = "127.0.0.1"
 HOST_PORT = 14330
 SQLCMD = "/opt/mssql-tools18/bin/sqlcmd"
 SQL_DIR_IN_CONTAINER = "/lab-sql"
@@ -702,7 +706,7 @@ def cmd_up(_: argparse.Namespace) -> None:
     print(f"Waiting for SQL Server (up to {READY_TIMEOUT_SECONDS}s)...")
     waited = wait_ready(creds)
     print(f"Ready after {waited:.0f}s.")
-    print(f"  Host: localhost,{HOST_PORT}   Admin login: sa   Reader login: {READER_LOGIN}")
+    print(f"  Host: {HOST},{HOST_PORT}   Admin login: sa   Reader login: {READER_LOGIN}")
     print("  Passwords are in .env or the environment (never printed). Next: `restore all`.")
 
 
@@ -818,7 +822,7 @@ def cmd_synth(args: argparse.Namespace) -> None:
 def cmd_status(_: argparse.Namespace) -> None:
     check_docker()
     state = container_state()
-    print(f"container {CONTAINER}: {state or 'not created'}  (localhost,{HOST_PORT})")
+    print(f"container {CONTAINER}: {state or 'not created'}  ({HOST},{HOST_PORT})")
     for backup in CATALOG.values():
         path = BACKUP_DIR / backup.filename
         have = path.exists() and path.stat().st_size == backup.size

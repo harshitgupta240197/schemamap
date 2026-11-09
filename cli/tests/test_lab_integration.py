@@ -61,7 +61,7 @@ def sqlcmd(
 
 def reader_config(lab: ModuleType, password: str, database: str) -> ConnectionConfig:
     return ConnectionConfig(
-        server="localhost",
+        server=lab.HOST,
         port=lab.HOST_PORT,
         database=database,
         user=lab.READER_LOGIN,
@@ -127,7 +127,7 @@ def test_untrusted_certificate_is_rejected_by_default(
     lab: ModuleType, passwords: tuple[str, str]
 ) -> None:
     config = ConnectionConfig(
-        server="localhost",
+        server=lab.HOST,
         port=lab.HOST_PORT,
         database="AdventureWorks2022",
         user=lab.READER_LOGIN,

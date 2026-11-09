@@ -362,10 +362,15 @@ def test_summary_shows_the_filters(monkeypatch: pytest.MonkeyPatch) -> None:
 # --- Help ---------------------------------------------------------------------------------
 
 
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
 def plain_help(*args: str) -> str:
-    result = CliRunner().invoke(app, [*args, "--help"], env={"COLUMNS": "200", "TERM": "dumb"})
+    result = CliRunner().invoke(
+        app, [*args, "--help"], env={"COLUMNS": "200", "TERM": "xterm", "NO_COLOR": "1"}
+    )
     assert result.exit_code == 0
-    return re.sub(r"[ \t]+", " ", re.sub(r"[│╭╮╰╯─]", " ", result.output))
+    return re.sub(r"[ \t]+", " ", re.sub(r"[│╭╮╰╯─]", " ", ANSI.sub("", result.output)))
 
 
 @pytest.mark.parametrize("command", [(), ("extract",), ("doctor",)])

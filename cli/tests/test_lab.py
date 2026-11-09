@@ -381,3 +381,10 @@ def test_down_with_environment_credentials_passes_the_password_only_as_environme
         assert not any(CI_SA in part or CI_READER in part for part in cmd)
         assert env is not None
         assert env[lab.ENV_SA] == CI_SA
+
+
+def test_lab_host_is_the_address_compose_publishes_on(lab: ModuleType) -> None:
+    # "localhost" resolves to ::1 first on Linux, where nothing listens (found in CI).
+    compose = (Path(lab.REPO_ROOT) / "docker-compose.yml").read_text(encoding="utf-8")
+    assert lab.HOST == "127.0.0.1"
+    assert f'"{lab.HOST}:{lab.HOST_PORT}:1433"' in compose
