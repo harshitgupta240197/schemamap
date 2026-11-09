@@ -73,6 +73,8 @@ Creates `SchemaMapEdgeCases` (and a tiny `SchemaMapEdgeCasesOther` for cross-dat
 | `dbo.Versioned`, `dbo.VersionedHistory` | system-versioned temporal table and its history table |
 | `dbo.[Odd.Table [x] Ü☃]` | a name with a dot, brackets and non-ASCII characters |
 
+`edgecases` also builds `SchemaMapEdgeCasesCS` (`Latin1_General_100_CS_AS`) and `SchemaMapEdgeCasesBIN2` (`Latin1_General_100_BIN2`). Each holds tables `dbo.Orders` and `dbo.orders` (columns `Name` and `name`, a foreign key between them), a view and a procedure that each use one of the two, and a user schema `SYS` with a table `TABLES`, to prove the allowlist treats only the real `sys` schema as system.
+
 The integration tests for crumb 1.5 expect it, and fail with this command in the message if it is missing.
 
 ## Synthetic databases

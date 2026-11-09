@@ -58,6 +58,7 @@ DATA_DIR_IN_CONTAINER = "/var/opt/mssql/data"
 READER_LOGIN = "schemamap_reader"
 READER_MIN_LOGIN = "schemamap_reader_min"
 EDGE_CASES_DB = "SchemaMapEdgeCases"
+EDGE_CASES_COLLATION_DBS = ("SchemaMapEdgeCasesCS", "SchemaMapEdgeCasesBIN2")
 ENV_SA = "SCHEMAMAP_LAB_SA_PASSWORD"
 ENV_READER = "SCHEMAMAP_LAB_READER_PASSWORD"
 ENV_KEYS = (ENV_SA, ENV_READER)
@@ -775,7 +776,8 @@ def cmd_edgecases(_: argparse.Namespace) -> None:
     creds = require_running()
     print(f"{EDGE_CASES_DB}: creating (lab only; the sample databases are not touched)...")
     sql_or_raise(creds, f"Creating {EDGE_CASES_DB}", "edgecases.sql")
-    grant_reader(creds, EDGE_CASES_DB, False)
+    for database in (EDGE_CASES_DB, *EDGE_CASES_COLLATION_DBS):
+        grant_reader(creds, database, False)
 
 
 def _load_synth() -> ModuleType:

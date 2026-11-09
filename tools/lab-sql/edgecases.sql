@@ -13,6 +13,16 @@ BEGIN
     ALTER DATABASE [SchemaMapEdgeCasesOther] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
     DROP DATABASE [SchemaMapEdgeCasesOther];
 END
+IF DB_ID(N'SchemaMapEdgeCasesCS') IS NOT NULL
+BEGIN
+    ALTER DATABASE [SchemaMapEdgeCasesCS] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE [SchemaMapEdgeCasesCS];
+END
+IF DB_ID(N'SchemaMapEdgeCasesBIN2') IS NOT NULL
+BEGIN
+    ALTER DATABASE [SchemaMapEdgeCasesBIN2] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE [SchemaMapEdgeCasesBIN2];
+END
 GO
 CREATE DATABASE [SchemaMapEdgeCasesOther];
 GO
@@ -81,4 +91,40 @@ GO
 CREATE VIEW dbo.XmlAliasLikeDatabaseView AS
 SELECT [SchemaMapEdgeCasesOther].Body.value('(/a)[1]', 'int') AS A
 FROM dbo.XmlDoc AS [SchemaMapEdgeCasesOther];
+GO
+
+-- SchemaMapEdgeCasesCS: names that differ only by case, and a user schema named like the system one.
+CREATE DATABASE [SchemaMapEdgeCasesCS] COLLATE Latin1_General_100_CS_AS;
+GO
+USE [SchemaMapEdgeCasesCS];
+GO
+CREATE TABLE dbo.Orders (Id int NOT NULL CONSTRAINT PK_Orders PRIMARY KEY, Name nvarchar(50) NULL, name nvarchar(50) NULL);
+CREATE TABLE dbo.orders (Id int NOT NULL CONSTRAINT PK_orders PRIMARY KEY, OrderRef int NULL,
+    CONSTRAINT FK_orders_Orders FOREIGN KEY (OrderRef) REFERENCES dbo.Orders (Id));
+GO
+CREATE VIEW dbo.LowerView AS SELECT Id, OrderRef FROM dbo.orders;
+GO
+CREATE PROCEDURE dbo.UpperProc AS SELECT Id, Name FROM dbo.Orders;
+GO
+CREATE SCHEMA [SYS];
+GO
+CREATE TABLE [SYS].[TABLES] (Id int NOT NULL CONSTRAINT PK_SYS_TABLES PRIMARY KEY);
+GO
+
+-- SchemaMapEdgeCasesBIN2: names that differ only by case, and a user schema named like the system one.
+CREATE DATABASE [SchemaMapEdgeCasesBIN2] COLLATE Latin1_General_100_BIN2;
+GO
+USE [SchemaMapEdgeCasesBIN2];
+GO
+CREATE TABLE dbo.Orders (Id int NOT NULL CONSTRAINT PK_Orders PRIMARY KEY, Name nvarchar(50) NULL, name nvarchar(50) NULL);
+CREATE TABLE dbo.orders (Id int NOT NULL CONSTRAINT PK_orders PRIMARY KEY, OrderRef int NULL,
+    CONSTRAINT FK_orders_Orders FOREIGN KEY (OrderRef) REFERENCES dbo.Orders (Id));
+GO
+CREATE VIEW dbo.LowerView AS SELECT Id, OrderRef FROM dbo.orders;
+GO
+CREATE PROCEDURE dbo.UpperProc AS SELECT Id, Name FROM dbo.Orders;
+GO
+CREATE SCHEMA [SYS];
+GO
+CREATE TABLE [SYS].[TABLES] (Id int NOT NULL CONSTRAINT PK_SYS_TABLES PRIMARY KEY);
 GO

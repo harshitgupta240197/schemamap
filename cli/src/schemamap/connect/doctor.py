@@ -65,6 +65,11 @@ class DoctorReport:
     connected: bool
 
     @property
+    def failed(self) -> bool:
+        """True when any check is FAIL; warnings alone do not count."""
+        return any(check.status is Status.FAIL for check in self.checks)
+
+    @property
     def all_green(self) -> bool:
         """True when every check is OK."""
         return all(check.status is Status.OK for check in self.checks)

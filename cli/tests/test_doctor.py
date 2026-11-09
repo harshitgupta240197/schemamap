@@ -251,3 +251,27 @@ def test_every_next_step_names_its_subject(monkeypatch: pytest.MonkeyPatch) -> N
     for step in steps:
         assert not re.search(r"\b[Ii]t\b", step), step
     assert any(step.startswith("VIEW DATABASE STATE is missing: ") for step in steps)
+
+
+def test_cli_exit_3_when_any_check_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: []})
+    result = run(ARGS, {"SCHEMAMAP_USER": "u", "SCHEMAMAP_PASSWORD": PASSWORD})
+    assert result.exit_code == 3
+    assert "FAIL" in result.output
+    assert PASSWORD not in result.output
+
+
+def test_cli_exit_0_when_only_warnings(monkeypatch: pytest.MonkeyPatch) -> None:
+    held = [("VIEW DEFINITION",)]
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: held, QueryName.QUERY_STORE_STATE: []})
+    result = run(ARGS, {"SCHEMAMAP_USER": "u", "SCHEMAMAP_PASSWORD": PASSWORD})
+    assert result.exit_code == 0
+    assert "WARN" in result.output
+    assert "FAIL" not in result.output
+
+
+def test_report_failed_ignores_warnings(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: [("VIEW DEFINITION",)]})
+    assert not diagnose(config()).failed
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: []})
+    assert diagnose(config()).failed

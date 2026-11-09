@@ -261,6 +261,9 @@ Grant hints name the database user: `GRANT ... TO [<user>];` with a note that it
 the login name. The real name is shown by the doctor, the exit-3 error and the partial-map
 summary, never stored in the snapshot.
 
+`schemamap doctor` exits 3 when any check is FAIL (including a missing `VIEW DEFINITION`) and
+0 when every check is OK or WARN, so it can gate a script.
+
 These codes are final for format 1.0 and are listed in the `--help` epilog of every command.
 Errors print one red message with a `Fix:` hint and no traceback; unexpected errors print only
 the exception type. `--debug` re-raises them so the full traceback shows.

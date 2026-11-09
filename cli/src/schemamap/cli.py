@@ -97,6 +97,8 @@ def doctor(
 
     Credentials come from SCHEMAMAP_USER and SCHEMAMAP_PASSWORD, or a hidden prompt.
 
+    Exits 3 when any check is FAIL; warnings alone exit 0, so it is safe in scripts.
+
     \b
     Examples:
       schemamap doctor --server localhost --database AdventureWorks2022
@@ -130,7 +132,7 @@ def doctor(
         console.print("Next steps:")
         for step in steps:
             console.print(f"  - {step}", markup=False, soft_wrap=True)
-    if not report.connected:
+    if report.failed or not report.connected:
         raise typer.Exit(EXIT_CONNECT)
 
 
