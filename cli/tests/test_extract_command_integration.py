@@ -1,8 +1,8 @@
 """`schemamap extract` end to end against the lab's AdventureWorks2022, as ``schemamap_reader``.
 
 The golden file in tests/fixtures/ is the whole snapshot with three environment-dependent values
-normalised: ``captured_at`` (the clock), ``source.product_version`` (the lab image is
-``2022-latest`` locally and a pinned CU in CI, so its build number differs) and
+normalised: ``captured_at`` (the clock), ``source.product_version`` (the build number changes
+whenever the pinned CU is bumped or ``SCHEMAMAP_LAB_IMAGE_TAG`` overrides it) and
 ``source.server`` (the lab is reached at 127.0.0.1, see ``lab.HOST``). Everything else must
 match byte for byte.
 """

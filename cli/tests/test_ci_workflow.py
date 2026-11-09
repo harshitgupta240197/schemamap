@@ -34,8 +34,11 @@ def test_sql_server_image_is_pinned_to_a_cumulative_update() -> None:
     assert "latest" not in tag
 
 
-def test_compose_reads_the_image_tag_from_the_environment() -> None:
-    assert "mssql/server:${SCHEMAMAP_LAB_IMAGE_TAG:-2022-latest}" in COMPOSE
+def test_compose_defaults_to_the_image_tag_ci_pins() -> None:
+    """The local lab and CI run the same SQL Server build unless someone overrides the tag."""
+    pinned = re.search(r"SCHEMAMAP_LAB_IMAGE_TAG: (\S+)", _integration_job())
+    assert pinned
+    assert f"mssql/server:${{SCHEMAMAP_LAB_IMAGE_TAG:-{pinned.group(1)}}}" in COMPOSE
 
 
 def test_passwords_are_masked_before_they_reach_the_environment_file() -> None:
