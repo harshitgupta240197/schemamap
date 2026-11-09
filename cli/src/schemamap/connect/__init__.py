@@ -5,10 +5,20 @@ from schemamap.connect.connection import connect
 from schemamap.connect.doctor import Check, DoctorReport, Status, diagnose
 from schemamap.connect.driver import driver_fix_message, load_driver
 from schemamap.connect.executor import MetadataExecutor
-from schemamap.connect.permissions import Permission, held_permissions, query_store_state
+from schemamap.connect.permissions import (
+    USER_NOTE,
+    USER_PLACEHOLDER,
+    Permission,
+    database_user,
+    grant_note,
+    held_permissions,
+    query_store_state,
+)
 from schemamap.connect.redact import redact
 
 __all__ = [
+    "USER_NOTE",
+    "USER_PLACEHOLDER",
     "AuthMode",
     "Check",
     "ConnectionConfig",
@@ -17,8 +27,10 @@ __all__ = [
     "Permission",
     "Status",
     "connect",
+    "database_user",
     "diagnose",
     "driver_fix_message",
+    "grant_note",
     "held_permissions",
     "load_driver",
     "query_store_state",

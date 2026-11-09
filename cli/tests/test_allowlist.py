@@ -91,6 +91,7 @@ FUNCTION_SAMPLES = {
     "SCHEMA_NAME": "SCHEMA_NAME(1)",
     "SERVERPROPERTY": "SERVERPROPERTY('Edition')",
     "TYPE_NAME": "TYPE_NAME(1)",
+    "USER_NAME": "USER_NAME()",
     "CAST": "CAST(1 AS int)",
     "COALESCE": "COALESCE(name, N'')",
     "CONVERT": "CONVERT(int, 1)",

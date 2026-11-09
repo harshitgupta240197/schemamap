@@ -39,7 +39,7 @@ cd cli && uv run pytest -m integration
 | Host and port | `127.0.0.1,14330` (bound to IPv4 loopback only; use `127.0.0.1`, not `localhost`, which resolves to `::1` first on Linux) |
 | Admin login | `sa` |
 | Reader login | `schemamap_reader`: `VIEW DEFINITION` in each database, plus one `SELECT` on the system catalog view `sys.sql_expression_dependencies` for dependency tracking; **no SELECT on any user table** |
-| Minimal login | `schemamap_reader_min`: `VIEW DEFINITION` only (no `VIEW DATABASE STATE`, no `SELECT` on `sys.sql_expression_dependencies`), same password as the reader. It exists to test that extraction degrades gracefully: row counts and dependencies are skipped with one warning each |
+| Minimal login | `schemamap_reader_min`: `VIEW DEFINITION` only (no `VIEW DATABASE STATE`, no `SELECT` on `sys.sql_expression_dependencies`), same password as the reader. It exists to test that extraction degrades gracefully: row counts and dependencies are skipped with one warning each . The visibility tests (`test_extract_visibility_integration.py`) revoke its `VIEW DEFINITION` on `SchemaMapEdgeCases` to prove `extract` exits 3 and writes no file, and put it back with `lab.py grant SchemaMapEdgeCases`; they also create and drop two throwaway databases (`SchemaMapVisibilityOwner`, `SchemaMapVisibilityEmpty`) and one lab-only login. If a run is killed half way, `uv run tools/lab.py grant SchemaMapEdgeCases` restores the grant |
 | Databases | `AdventureWorks2022`, `AdventureWorksDW2022`, `WideWorldImporters`; plus `SchemaMapEdgeCases` and `SchemaMapSynth*` when you build them (below) |
 | Data | `lab-data/mssql/` (SQL Server files) and `lab-data/backups/` (downloads), both gitignored |
 

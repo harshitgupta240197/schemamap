@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from time import perf_counter
 from typing import Protocol, TypeVar
 
-from schemamap.connect import Permission
+from schemamap.connect import USER_NOTE, Permission
 from schemamap.errors import PermissionMissing
 from schemamap.snapshot.models import ExtractionWarning, Section
 
@@ -89,5 +89,5 @@ def missing_message(requirement: Requirement) -> str:
     permission = requirement.permission
     return (
         f"{permission.value} is not granted. {requirement.skipped} "
-        f"Ask a DBA to run {permission.grant}"
+        f"Ask a DBA to run {permission.grant_for()} {USER_NOTE}"
     )

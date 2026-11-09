@@ -284,3 +284,23 @@ Correction to D-029: it lists four Query Store views and `sys.dm_db_index_usage_
 Gate 1 found that `write_snapshot` wrote to a fixed temporary name (`.<name>.tmp`) with a call that follows symlinks: anyone who could write to the output folder could plant that name as a symlink and have the snapshot overwrite another of the user's files. The temporary file is now created with `tempfile.mkstemp` in the target folder (random name, exclusive create), then moved into place as before. A side effect we keep on purpose: on POSIX the snapshot is created mode 0600, readable only by its owner, because it holds SQL definitions and the host name and the user decides when to share it. The default file name also gets a leading `_` when the database is named like a Windows device (`CON`, `NUL`, `COM1`...), which Windows opens as a device whatever the extension.
 
 **Dependencies.** None added (standard library).
+
+## D-042 Never write a silently empty snapshot (2026-11-09)
+
+Gate 1 found that a login without `VIEW DEFINITION` gets short catalog views and no error, so extract wrote a valid, empty map. The decision is made from the permission (probed as in D-033), not from row counts alone:
+
+| `VIEW DEFINITION` | Visible objects | Result |
+| --- | --- | --- |
+| missing | none (no tables, views, routines or synonyms) | `NoVisibleObjectsError`, exit 3, no file; the message names the permission and the exact `GRANT` |
+| missing | some | snapshot written, one `partial_visibility` warning, printed first in the stderr summary |
+| held | no tables | exit 0, plain note `0 user tables found` (not a warning; skipped when a schema filter was applied) |
+| held | tables | normal |
+
+**Model.** `Section` gains `objects` (additive, format stays 1.0, D-032) so the warning has an honest section. `NoVisibleObjectsError` is a `PermissionDeniedError`, so it already exits 3.
+
+**Doctor.** A missing `VIEW DEFINITION` is `FAIL`, not `WARN`. The doctor's exit code is unchanged (3 only when it cannot connect): extract still works for a partial login, so exit 3 for the doctor would disagree with extract.
+
+**Grants name the database user, not the login (Gate 1 O2).** The two can differ, so every hint reads `GRANT <permission> TO [<user>];` plus a note that the user name may differ from the login name. The real name comes from `USER_NAME()` (new query `database_user.sql`; `USER_NAME` added to the allowlist's function list: it returns the caller's own database principal name from the session and reads no object). The name is shown where it is not persisted or already expected: the doctor, the exit-3 error, and the partial-map summary. Snapshot warnings keep the placeholder `[<user>]`: a shared snapshot must not gain an account name. Ordinary `permission_missing` summaries also keep it, because `test_no_secret_is_in_the_file_or_the_output` forbids the login name anywhere in a normal run's output; that test was left as is. `guest` is never named in a hint (granting to it would open the permission to every login), and `]` in a name is doubled.
+
+**Changed wording.** `permission_missing` messages now end `GRANT ... TO [<user>]; <user> is the database user the login maps to, which may differ from the login name.` instead of `TO <login>;`. Tests and the AdventureWorks golden file were updated to match; nothing was loosened.
+

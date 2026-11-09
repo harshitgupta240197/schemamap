@@ -10,7 +10,13 @@ from schemamap.connect.config import ConnectionConfig
 from schemamap.connect.connection import connect
 from schemamap.connect.driver import load_driver
 from schemamap.connect.executor import MetadataExecutor
-from schemamap.connect.permissions import Permission, held_permissions, query_store_state
+from schemamap.connect.permissions import (
+    Permission,
+    database_user,
+    grant_note,
+    held_permissions,
+    query_store_state,
+)
 from schemamap.errors import ConnectError, DriverUnavailableError, QueryRefusedError
 from schemamap.queries import QueryName
 from schemamap.snapshot.models import QueryStoreState
@@ -19,7 +25,10 @@ from schemamap.snapshot.models import QueryStoreState
 _AZURE_ENGINES = {5, 8}
 
 
-_NO_DEFINITION = "Without VIEW DEFINITION, views, procedures and functions cannot be read."
+_NO_DEFINITION = (
+    "Without VIEW DEFINITION, SQL Server hides every object the login does not own or have "
+    "rights on, so the map would be empty or partial."
+)
 _NO_DATABASE_STATE = (
     "Without VIEW DATABASE STATE, row counts and sizes, Query Store and usage hints are "
     "skipped (optional)."
@@ -70,30 +79,40 @@ def _server_check(conn: MetadataExecutor) -> Check:
 
 def _permission_checks(conn: MetadataExecutor) -> list[Check]:
     held = held_permissions(conn)
+    user = database_user(conn)
     return [
-        _permission_check("VIEW DEFINITION", Permission.VIEW_DEFINITION, held, _NO_DEFINITION),
         _permission_check(
-            "VIEW DATABASE STATE", Permission.VIEW_DATABASE_STATE, held, _NO_DATABASE_STATE
+            "VIEW DEFINITION", Permission.VIEW_DEFINITION, held, _NO_DEFINITION, user, Status.FAIL
+        ),
+        _permission_check(
+            "VIEW DATABASE STATE", Permission.VIEW_DATABASE_STATE, held, _NO_DATABASE_STATE, user
         ),
         _permission_check(
             "SELECT sys.sql_expression_dependencies",
             Permission.SELECT_DEPENDENCIES,
             held,
             _NO_DEPENDENCIES,
+            user,
         ),
     ]
 
 
 def _permission_check(
-    name: str, permission: Permission, held: frozenset[Permission], consequence: str
+    name: str,
+    permission: Permission,
+    held: frozenset[Permission],
+    consequence: str,
+    user: str | None,
+    missing: Status = Status.WARN,
 ) -> Check:
     if permission in held:
         return Check(name, Status.OK, "granted")
     return Check(
         name,
-        Status.WARN,
+        missing,
         "missing",
-        f"{permission.value} is missing: {consequence} Ask a DBA to run {permission.grant}",
+        f"{permission.value} is missing: {consequence} "
+        f"Ask a DBA to run {permission.grant_for(user)} {grant_note(user)}",
     )
 
 

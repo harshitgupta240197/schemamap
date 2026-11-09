@@ -78,6 +78,7 @@ APPROVED_FUNCTIONS = frozenset(
         "SCHEMA_NAME",
         "SERVERPROPERTY",
         "TYPE_NAME",
+        "USER_NAME",
         # Conversion and null handling
         "CAST",
         "COALESCE",

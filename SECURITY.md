@@ -33,6 +33,8 @@ GRANT VIEW DATABASE STATE TO schemamap_reader;  -- optional: row counts, sizes, 
 
 Each grant beyond `VIEW DEFINITION` is optional. Without `SELECT` on the dependencies view, the dependencies section (and so impact analysis) is skipped; without `VIEW DATABASE STATE`, row counts and sizes are skipped and Query Store is reported as `unknown`. Either way the snapshot records one warning per skipped section, naming the exact `GRANT` line, and everything else is still extracted.
 
+`VIEW DEFINITION` is the one grant Schema Map cannot do without, because SQL Server does not refuse the catalog queries without it: it silently hides every object the login does not own or have other rights on. So Schema Map checks it and never writes a map that may be silently empty. With no `VIEW DEFINITION` and no visible objects, `extract` exits 3, writes no file and prints the exact `GRANT`. With no `VIEW DEFINITION` but some visible objects, it writes the snapshot, records a `partial_visibility` warning and prints it first in the summary. `schemamap doctor` reports the missing grant as `FAIL`. Grants are made to the **database user** the login maps to, which can have a different name from the login; the hints show `[<user>]` and, where the name is not stored, the real one.
+
 ### 2. The connection declares read-only intent
 
 Every connection sets `ApplicationIntent=ReadOnly`. On an Availability Group listener this routes to a readable secondary, which rejects writes. On a standalone server it is only a declaration, not enforcement, which is why it is one layer of four.

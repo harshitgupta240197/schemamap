@@ -39,6 +39,7 @@ GREEN: dict[QueryName, Any] = {
         ("VIEW DEFINITION",),
     ],
     QueryName.QUERY_STORE_STATE: [("READ_WRITE",)],
+    QueryName.DATABASE_USER: [("reader_user",)],
 }
 
 
@@ -71,13 +72,14 @@ def test_missing_permissions_and_query_store_warn(monkeypatch: pytest.MonkeyPatc
     patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: [], QueryName.QUERY_STORE_STATE: []})
     report = diagnose(config())
     warned = {c.name for c in report.checks if c.status is Status.WARN}
+    failed = {c.name for c in report.checks if c.status is Status.FAIL}
+    assert failed == {"VIEW DEFINITION"}
     assert warned == {
-        "VIEW DEFINITION",
         "VIEW DATABASE STATE",
         "SELECT sys.sql_expression_dependencies",
         "Query Store",
     }
-    assert all(c.next_step for c in report.checks if c.status is Status.WARN)
+    assert all(c.next_step for c in report.checks if c.status in (Status.WARN, Status.FAIL))
     assert report.connected
 
 
@@ -93,8 +95,32 @@ def test_missing_dependencies_select_warns_with_the_exact_grant(
     check = checks_by_name(diagnose(config()))["SELECT sys.sql_expression_dependencies"]
     assert check.status is Status.WARN
     assert check.detail == "missing"
-    assert "GRANT SELECT ON sys.sql_expression_dependencies TO <login>;" in check.next_step
+    assert "GRANT SELECT ON sys.sql_expression_dependencies TO [reader_user];" in check.next_step
     assert "dependency and impact information is skipped" in check.next_step
+
+
+def test_missing_view_definition_fails_with_the_grant_for_the_database_user(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    held = [("VIEW DATABASE STATE",), ("SELECT ON sys.sql_expression_dependencies",)]
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: held})
+    check = checks_by_name(diagnose(config()))["VIEW DEFINITION"]
+    assert check.status is Status.FAIL
+    assert check.detail == "missing"
+    assert check.next_step is not None
+    assert "GRANT VIEW DEFINITION TO [reader_user];" in check.next_step
+    assert "may differ from the login name" in check.next_step
+    assert "[reader_user]" in check.next_step
+
+
+def test_grant_hint_uses_a_placeholder_when_the_database_user_is_unknown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: [], QueryName.DATABASE_USER: [(None,)]})
+    check = checks_by_name(diagnose(config()))["VIEW DEFINITION"]
+    assert check.next_step is not None
+    assert "GRANT VIEW DEFINITION TO [<user>];" in check.next_step
+    assert "may differ from the login name" in check.next_step
 
 
 def test_query_store_is_unknown_not_off_without_view_database_state(

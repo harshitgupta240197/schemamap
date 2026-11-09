@@ -21,15 +21,23 @@ from schemamap.extract.runner import Requirement, SectionObserver, SectionRunner
 from schemamap.extract.schemas import build_schemas, extract_schemas
 from schemamap.extract.snapshot import build_snapshot, build_source, extract_snapshot
 from schemamap.extract.tables import build_tables, extract_tables
+from schemamap.extract.visibility import (
+    PARTIAL_VISIBILITY_CODE,
+    Visibility,
+    assess_visibility,
+)
 
 __all__ = [
+    "PARTIAL_VISIBILITY_CODE",
     "SECTION_COUNT",
     "DatabaseExtraction",
     "Requirement",
     "SchemaFilter",
     "SectionObserver",
     "SectionRunner",
+    "Visibility",
     "apply_schema_filter",
+    "assess_visibility",
     "build_dependencies",
     "build_relationships",
     "build_routines",

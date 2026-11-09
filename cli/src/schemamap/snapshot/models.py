@@ -464,6 +464,7 @@ class Dependency(_Model):
 class Section(str, Enum):
     """A part of the snapshot that extraction can skip."""
 
+    OBJECTS = "objects"
     SCHEMAS = "schemas"
     TABLES = "tables"
     VIEWS = "views"

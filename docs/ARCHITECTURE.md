@@ -231,6 +231,7 @@ SchemaMapError
     DriverUnavailableError  the SQL Server driver or its native library cannot load
     QueryTimeoutError       a metadata query ran past --query-timeout
     PermissionDeniedError   the server refused a metadata query (permission missing)
+      NoVisibleObjectsError   no VIEW DEFINITION and no visible objects: nothing is written
   QueryRefusedError     SQL not in the allowlist: a bug, never user-facing input
   PermissionMissing     raised inside extract for one section, caught there and turned
                         into an ExtractionWarning; never escapes extract
@@ -244,8 +245,21 @@ credentials or connection strings. The CLI maps errors to exit codes:
 | 0 | success (possibly with warnings, which are printed and stored in the snapshot) |
 | 1 | unexpected internal error (bug; traceback only with `--debug`) |
 | 2 | usage error (Typer default) |
-| 3 | cannot connect, log in or read: unreachable server, failed login, untrusted certificate, permission denied, timeout |
+| 3 | cannot connect, log in or read: unreachable server, failed login, untrusted certificate, permission denied, timeout, or no `VIEW DEFINITION` with no visible objects |
 | 4 | invalid or unsupported snapshot file |
+
+A missing `VIEW DEFINITION` is judged in `extract_database` (D-042), because SQL Server answers a
+login without it with short catalog views, not an error:
+
+| `VIEW DEFINITION` | Visible objects | Result |
+|---|---|---|
+| missing | none | `NoVisibleObjectsError`, exit 3, no file, message with the exact `GRANT` |
+| missing | some | snapshot written with one `partial_visibility` warning (section `objects`), shown first in the summary |
+| held | no tables | exit 0 and the note `0 user tables found`; not a warning |
+
+Grant hints name the database user: `GRANT ... TO [<user>];` with a note that it may differ from
+the login name. The real name is shown by the doctor, the exit-3 error and the partial-map
+summary, never stored in the snapshot.
 
 These codes are final for format 1.0 and are listed in the `--help` epilog of every command.
 Errors print one red message with a `Fix:` hint and no traceback; unexpected errors print only

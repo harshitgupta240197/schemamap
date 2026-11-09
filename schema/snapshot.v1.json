@@ -1014,6 +1014,7 @@
     "Section": {
       "description": "A part of the snapshot that extraction can skip.",
       "enum": [
+        "objects",
         "schemas",
         "tables",
         "views",

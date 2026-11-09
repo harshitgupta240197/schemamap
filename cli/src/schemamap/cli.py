@@ -23,8 +23,20 @@ from schemamap.cli_connection import (
     friendly_errors,
 )
 from schemamap.cli_progress import ExtractProgress
-from schemamap.connect import AuthMode, Status, connect, diagnose
-from schemamap.extract import SECTION_COUNT, SchemaFilter, extract_snapshot
+from schemamap.connect import (
+    USER_PLACEHOLDER,
+    AuthMode,
+    Status,
+    connect,
+    database_user,
+    diagnose,
+)
+from schemamap.extract import (
+    PARTIAL_VISIBILITY_CODE,
+    SECTION_COUNT,
+    SchemaFilter,
+    extract_snapshot,
+)
 from schemamap.snapshot.io import default_output_path, redact_server, write_snapshot
 from schemamap.snapshot.models import Snapshot
 
@@ -122,8 +134,21 @@ def doctor(
         raise typer.Exit(EXIT_CONNECT)
 
 
-def _summary(snapshot: Snapshot, path: Path) -> list[str]:
-    """The lines printed to stderr after a successful extract."""
+def _partial_headline(snapshot: Snapshot) -> str | None:
+    """A prominent first line when the login could not see every object, else None."""
+    if any(warning.code == PARTIAL_VISIBILITY_CODE for warning in snapshot.warnings):
+        return (
+            "WARNING: partial map. This login lacks VIEW DEFINITION, so objects it cannot "
+            "see are missing."
+        )
+    return None
+
+
+def _summary(snapshot: Snapshot, path: Path, user: str | None = None) -> list[str]:
+    """The lines printed to stderr after a successful extract.
+
+    ``user`` is the database user, given only for a partial map, whose GRANT hint it fills in.
+    """
     counts = (
         ("schemas", snapshot.schemas),
         ("tables", snapshot.tables),
@@ -144,8 +169,15 @@ def _summary(snapshot: Snapshot, path: Path) -> list[str]:
         lines.extend(
             f"    {warning.section.value}: {warning.message}" for warning in snapshot.warnings
         )
+        if user is not None:
+            lines.append(
+                f"  The database user here is [{user.replace(']', ']]')}]: use it in place of "
+                f"{USER_PLACEHOLDER} in the GRANT lines above. It may differ from the login name."
+            )
     else:
         lines.append("  No warnings")
+    if not snapshot.tables and snapshot.filters is None and _partial_headline(snapshot) is None:
+        lines.append("  0 user tables found")
     return lines
 
 
@@ -250,6 +282,8 @@ def extract(
             include_definitions=not no_definitions,
             observer=progress,
         )
+        partial = _partial_headline(snapshot) is not None
+        user = database_user(executor) if partial and not quiet else None
     if redact:
         snapshot = redact_server(snapshot)
     target = output or default_output_path(snapshot.source.database, compress)
@@ -259,5 +293,8 @@ def extract(
         console.print(f"Cannot write {target}: {exc}", style="red", markup=False, soft_wrap=True)
         raise typer.Exit(EXIT_FAILURE) from None
     if not quiet:
-        for line in _summary(snapshot, written):
+        headline = _partial_headline(snapshot)
+        if headline is not None:
+            console.print(headline, style="bold yellow", markup=False, soft_wrap=True)
+        for line in _summary(snapshot, written, user):
             console.print(line, markup=False, soft_wrap=True)

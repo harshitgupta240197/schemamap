@@ -14,6 +14,12 @@ from schemamap.snapshot.models import QueryStoreState
 
 _ON_STATES = frozenset({"READ_WRITE", "READ_ONLY"})
 
+USER_PLACEHOLDER = "[<user>]"
+"""Stands for the database user in a GRANT line when the name is not known, or must not be
+stored (snapshot warnings never hold a user name)."""
+
+USER_NOTE = "<user> is the database user the login maps to, which may differ from the login name."
+
 
 class Permission(str, enum.Enum):
     """A permission Schema Map uses. The value is how the permissions query names it."""
@@ -22,10 +28,35 @@ class Permission(str, enum.Enum):
     VIEW_DATABASE_STATE = "VIEW DATABASE STATE"
     SELECT_DEPENDENCIES = "SELECT ON sys.sql_expression_dependencies"
 
-    @property
-    def grant(self) -> str:
-        """The exact statement a DBA runs to grant it."""
-        return f"GRANT {self.value} TO <login>;"
+    def grant_for(self, user: str | None = None) -> str:
+        """The exact statement a DBA runs to grant it, to ``user`` or to ``[<user>]``.
+
+        Grants go to a database user, not a login, and the two names can differ.
+        """
+        return f"GRANT {self.value} TO {_principal(user)};"
+
+
+def _principal(user: str | None) -> str:
+    """``[user]`` with ``]`` doubled, or the placeholder. ``guest`` is never named: granting
+    to it would open the permission to every login."""
+    if user is None or user.lower() == "guest":
+        return USER_PLACEHOLDER
+    return f"[{user.replace(']', ']]')}]"
+
+
+def grant_note(user: str | None) -> str:
+    """The sentence after a GRANT hint: which user it names and why that may not be the login."""
+    principal = _principal(user)
+    if principal == USER_PLACEHOLDER:
+        return USER_NOTE
+    return f"The database user is {principal}, which may differ from the login name."
+
+
+def database_user(executor: MetadataExecutor) -> str | None:
+    """The database user the connected login maps to, or None when the server gives none."""
+    rows = executor.run(QueryName.DATABASE_USER)
+    name = rows[0][0] if rows else None
+    return str(name) if name else None
 
 
 def held_permissions(executor: MetadataExecutor) -> frozenset[Permission]:

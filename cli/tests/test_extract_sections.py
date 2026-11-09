@@ -90,7 +90,8 @@ def test_skips_a_section_without_its_permission_and_never_runs_it() -> None:
     assert warning.code == "permission_missing"
     assert warning.message == (
         "VIEW DATABASE STATE is not granted. Row counts were skipped. "
-        "Ask a DBA to run GRANT VIEW DATABASE STATE TO <login>;"
+        "Ask a DBA to run GRANT VIEW DATABASE STATE TO [<user>]; "
+        "<user> is the database user the login maps to, which may differ from the login name."
     )
 
 
@@ -256,9 +257,9 @@ def test_minimal_permissions_skip_exactly_the_gated_sections() -> None:
     assert [w.section for w in result.warnings] == [Section.DEPENDENCIES, Section.ROW_COUNTS]
     assert {w.code for w in result.warnings} == {"permission_missing"}
     assert (
-        "GRANT SELECT ON sys.sql_expression_dependencies TO <login>;" in result.warnings[0].message
+        "GRANT SELECT ON sys.sql_expression_dependencies TO [<user>];" in result.warnings[0].message
     )
-    assert "GRANT VIEW DATABASE STATE TO <login>;" in result.warnings[1].message
+    assert "GRANT VIEW DATABASE STATE TO [<user>];" in result.warnings[1].message
     # The sections that need nothing still ran, and the gated queries were never sent.
     assert [t.id for t in result.tables] == ["object:dbo.Orders"]
     assert QueryName.DEPENDENCIES not in executor.ran

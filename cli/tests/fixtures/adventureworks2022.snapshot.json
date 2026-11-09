@@ -23130,7 +23130,7 @@
     {
       "section": "row_counts",
       "code": "permission_missing",
-      "message": "VIEW DATABASE STATE is not granted. Row counts and sizes were skipped. Ask a DBA to run GRANT VIEW DATABASE STATE TO <login>;"
+      "message": "VIEW DATABASE STATE is not granted. Row counts and sizes were skipped. Ask a DBA to run GRANT VIEW DATABASE STATE TO [<user>]; <user> is the database user the login maps to, which may differ from the login name."
     }
   ],
   "row_counts": null,

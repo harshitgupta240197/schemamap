@@ -35,6 +35,14 @@ class PermissionDeniedError(ConnectError):
     """The server refused a metadata query for lack of permission, after the pre-checks passed."""
 
 
+class NoVisibleObjectsError(PermissionDeniedError):
+    """The login lacks VIEW DEFINITION and sees no user objects, so any map would be empty.
+
+    Raised instead of writing a snapshot that looks like an empty database. The message names
+    the permission and the exact GRANT.
+    """
+
+
 class QueryRefusedError(SchemaMapError):
     """The executor refused to run SQL: not a named query, off the allowlist, or bad parameters.
 

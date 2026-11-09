@@ -135,9 +135,9 @@ def test_minimal_login_completes_with_one_warning_per_skipped_section(
     assert [w.section for w in result.warnings] == [Section.DEPENDENCIES, Section.ROW_COUNTS]
     assert all(w.code == "permission_missing" for w in result.warnings)
     assert (
-        "GRANT SELECT ON sys.sql_expression_dependencies TO <login>;" in result.warnings[0].message
+        "GRANT SELECT ON sys.sql_expression_dependencies TO [<user>];" in result.warnings[0].message
     )
-    assert "GRANT VIEW DATABASE STATE TO <login>;" in result.warnings[1].message
+    assert "GRANT VIEW DATABASE STATE TO [<user>];" in result.warnings[1].message
     assert result.query_store is QueryStoreState.UNKNOWN
     snapshot = to_snapshot(result, database)
     assert snapshot.row_counts is None
@@ -191,7 +191,10 @@ def test_doctor_for_the_minimal_login_warns_with_the_exact_grant(
     dependencies = checks["SELECT sys.sql_expression_dependencies"]
     assert dependencies.status is Status.WARN
     assert dependencies.next_step is not None
-    assert "GRANT SELECT ON sys.sql_expression_dependencies TO <login>;" in dependencies.next_step
+    assert (
+        f"GRANT SELECT ON sys.sql_expression_dependencies TO [{lab.READER_MIN_LOGIN}];"
+        in dependencies.next_step
+    )
     assert checks["VIEW DEFINITION"].status is Status.OK
     assert checks["VIEW DATABASE STATE"].status is Status.WARN
     assert checks["Query Store"].detail == "unknown"
