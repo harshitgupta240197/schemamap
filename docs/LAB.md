@@ -66,6 +66,8 @@ Creates `SchemaMapEdgeCases` (and a tiny `SchemaMapEdgeCasesOther` for cross-dat
 | `dbo.SecretProc` | encrypted procedure: no definition, status `encrypted` |
 | `dbo.FK_Child_Parent_A`, `dbo.FK_Child_Parent_B` | two foreign keys on identical columns: one edge, two constraints |
 | `dbo.RemoteView`, `dbo.RemoteSynonym` | refer to `SchemaMapEdgeCasesOther`: cross-database, never resolved |
+| `dbo.RemoteFnView` | calls `SchemaMapEdgeCasesOther.dbo.RemoteFn(...)`: a genuine cross-database reference that looks like a method call |
+| `dbo.XmlDoc`, `dbo.XmlMethodView`, `dbo.XmlAliasLikeDatabaseView` | `Body.value(...)` on an XML column, also through an alias named like a real database: `column_method`, never `cross_database` |
 | `dbo.UsesMissing` | refers to `dbo.DoesNotExist`: an unresolved local reference |
 | `dbo.IX_Child_Active` (on `dbo.Child`) | filtered index |
 | `dbo.Versioned`, `dbo.VersionedHistory` | system-versioned temporal table and its history table |

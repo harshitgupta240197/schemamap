@@ -147,7 +147,7 @@ Snapshot
 | No row data | Every field has a concrete type: no `Any`, no open dicts, no bytes. A test walks every model field, another walks the JSON Schema. Free text is limited to names, descriptions and SQL definitions (see below). |
 | Deterministic | Unordered lists are sorted by ID (or by canonical content) on validation and duplicates are rejected. Ordered lists (columns by ordinal, key columns) keep catalog order. Fixed field order, indent 2, trailing newline. |
 | Forward compatible | Readers ignore unknown fields. Minor versions only add optional fields or sections. |
-| Cross-database | `Reference.scope` is `local`, `cross_database` or `cross_server`. Only local references get `resolved`; others keep the name exactly as written and are never followed. |
+| Cross-database | `Reference.scope` is `local`, `cross_database`, `cross_server` or `column_method` (an XML/UDT method call such as `Demographics.exist(...)`, see D-034). Only local references get `resolved`; others keep the name exactly as written and are never followed. |
 | Optional sections | `row_counts`, `query_history`, `join_evidence` are `null` when not collected, which is distinct from an empty list (collected, nothing found). |
 | No credentials | No field can hold a login, password, token or connection string; a test rejects such field names. `--redact-server` drops `source.server` and every linked-server name. It removes host names only: definitions, object names and the database name remain, so review a snapshot before sharing it. |
 | Integrity | Validation checks that every referenced object and column exists and that columns, indexes and objects belong to their parent. |

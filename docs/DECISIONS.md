@@ -157,7 +157,7 @@ Six new queries (`foreign_keys`, `views`, `view_columns`, `routines`, `synonyms`
 
 **Definitions** come from `sys.sql_modules`. `definition` is null with status `encrypted` (`OBJECTPROPERTY(..., 'IsEncrypted')`), `not_applicable` (CLR objects, which have no module row) or `not_permitted` (a module row exists but the text is hidden from this login).
 
-**Dependencies** are one entry per distinct reference (the catalog has one row per referenced column). A name with a server part is `cross_server`, with a database part `cross_database`; both are kept as written and never resolved. A local name is `resolved` only if it points to a table, view, routine or synonym in the snapshot, otherwise it is recorded as unresolved. Note that SQL Server itself records XML and UDT method calls (`Demographics.exist(...)`, `OrganizationNode.GetAncestor(...)`) as three-part names, so AdventureWorks reports 14 `cross_database` dependencies whose "database" is really a column or alias. They are kept as written; a later crumb that draws or scores dependencies may want to discount them.
+**Dependencies** are one entry per distinct reference (the catalog has one row per referenced column). A name with a server part is `cross_server`, with a database part `cross_database`; both are kept as written and never resolved. A local name is `resolved` only if it points to a table, view, routine or synonym in the snapshot, otherwise it is recorded as unresolved. Note that SQL Server itself records XML and UDT method calls (`Demographics.exist(...)`, `OrganizationNode.GetAncestor(...)`) as three-part names, so AdventureWorks reports 14 `cross_database` dependencies whose "database" is really a column or alias. D-034 reclassifies them as `column_method`.
 
 **Synonym targets** are split with `PARSENAME` because `sys.sql_expression_dependencies` does not list synonyms. `PARSENAME` is added to the function allowlist: it is a pure string function over its argument and reads nothing.
 
@@ -182,3 +182,21 @@ Until v0.1.0 ships, new optional fields may stay in format 1.0. After release, a
 **Lab.** `grant_reader.sql` also creates `schemamap_reader_min` with `VIEW DEFINITION` only, in every database, and revokes the other two grants so re-running `grant` resets it. It reuses the reader's lab password (a lab-only login on public data), which avoids a third `.env` secret. `test_executor_runs_every_named_query` now skips `row_counts` for the plain reader (it fails there by design); `test_extract_sections_integration.py` runs it with `VIEW DATABASE STATE` granted through `lab.grant_reader` and puts the previous grant back afterwards.
 
 **Docs.** SECURITY.md and LAB.md now say: no SELECT on any user table; one SELECT on the system catalog view `sys.sql_expression_dependencies` for dependency tracking, and show the full permission script with that line.
+
+## D-034 Column method calls are their own reference scope (2026-11-09)
+
+`Reference.scope` gains `column_method` (format stays 1.0, per D-032). SQL Server records `Demographics.exist(...)`, `s.Demographics.value(...)` and `OrganizationNode.GetAncestor(...)` as multi-part names, so they showed up as `cross_database` (14 rows in AdventureWorks) or as unresolved `local` references (2 more). Such a row keeps its name exactly as written: the parts are an alias, a column and a method, not a database, schema and object.
+
+**Rule.** A non-server reference is `column_method` when the catalog row has `is_ambiguous = 1` **and** `referenced_id IS NULL`. A server part always means `cross_server`.
+
+**Evidence** (AdventureWorks2022, WideWorldImporters, and a throwaway lab database with hand-built cases):
+- All 16 AdventureWorks method-call rows have `is_ambiguous = 1`, `referenced_id` NULL, `referenced_class = 1`, `referenced_minor_id = 0`, `is_caller_dependent = 0`, `is_schema_bound_reference = 0`. Those other columns do not separate anything.
+- Every genuine cross-database reference tested has `is_ambiguous = 0`: table, view, function call (`Db.dbo.Fn(1)`), `EXEC Db.dbo.Proc`, `Db..Table`, a missing object in a real database, and a database that does not exist.
+- `is_ambiguous` alone is not enough: WideWorldImporters `Website.CalculateCustomerPrice(...)` is flagged ambiguous but resolves to a real function (`referenced_id` set). It stays `local` and resolved.
+- `referenced_id IS NULL` alone is not enough: it is also true for every genuine cross-database reference and for references to missing local objects.
+- A `sys.databases` lookup is not used: an alias can share a real database's name (tested, and still a method call), and a login only sees the databases it can access.
+- A four-part method call (`dbo.T.Doc.value(...)`) is rejected by SQL Server, so a server part never carries a method call.
+
+**Recorded, not dropped.** Dropping was rejected: if the rule ever misfires, a dropped genuine reference is lost for good, while a mislabelled one is still in the snapshot with its full name. The cost of keeping them is one more scope value that consumers (viewer, scoring) must treat as "not an object".
+
+**Limit.** The rule reads the catalog's own ambiguity flag, which Microsoft describes as a reference that may resolve to a function, a UDT method or an XQuery reference to an XML column. A genuine call to a function that is both ambiguous and missing from the database would be labelled `column_method`; no such case was found in either sample database or in the lab. Not yet covered: the unresolved local `inserted` and `deleted` trigger pseudo-tables (not ambiguous, still `local` and unresolved), left for a later crumb.

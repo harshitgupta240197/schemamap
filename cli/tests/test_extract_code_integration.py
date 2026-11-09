@@ -199,7 +199,7 @@ def test_edge_duplicate_foreign_keys_share_an_edge(edge: Extracted) -> None:
 
 
 def test_edge_cross_database_references_are_flagged_and_unresolved(edge: Extracted) -> None:
-    (view_dependency,) = [d for d in edge.dependencies if d.from_object == "object:dbo.RemoteView"]
+    (view_dependency,) = targets(edge, "RemoteView")
     target = view_dependency.target
     assert target.scope is ReferenceScope.CROSS_DATABASE
     assert target.resolved is None
@@ -211,6 +211,67 @@ def test_edge_cross_database_references_are_flagged_and_unresolved(edge: Extract
     (synonym,) = edge.synonyms
     assert synonym.id == "object:dbo.RemoteSynonym"
     assert synonym.target == target
+
+
+def targets(edge: Extracted, view: str) -> list[Dependency]:
+    return [d for d in edge.dependencies if d.from_object == f"object:dbo.{view}"]
+
+
+def test_edge_xml_column_method_calls_are_column_methods(edge: Extracted) -> None:
+    dependencies = targets(edge, "XmlMethodView")
+    methods = [d.target for d in dependencies if d.target.scope is ReferenceScope.COLUMN_METHOD]
+    assert {(m.name.database, m.name.schema_name, m.name.name) for m in methods} == {
+        (None, "Body", "value"),
+        (None, "Body", "exist"),
+        ("d", "Body", "exist"),
+    }
+    assert all(m.resolved is None for m in methods)
+    # The real table the view reads is still an ordinary local reference.
+    (table,) = [d.target for d in dependencies if d.target.scope is ReferenceScope.LOCAL]
+    assert table.resolved == "object:dbo.XmlDoc"
+    assert not any(d.target.scope is ReferenceScope.CROSS_DATABASE for d in dependencies)
+
+
+def test_edge_alias_named_like_a_real_database_is_still_a_column_method(edge: Extracted) -> None:
+    (method,) = [
+        d.target
+        for d in targets(edge, "XmlAliasLikeDatabaseView")
+        if d.target.name.database == "SchemaMapEdgeCasesOther"
+    ]
+    assert method.scope is ReferenceScope.COLUMN_METHOD
+    assert (method.name.schema_name, method.name.name) == ("Body", "value")
+
+
+def test_edge_cross_database_function_call_is_still_cross_database(edge: Extracted) -> None:
+    (target,) = [d.target for d in targets(edge, "RemoteFnView")]
+    assert target.scope is ReferenceScope.CROSS_DATABASE
+    assert (target.name.database, target.name.schema_name, target.name.name) == (
+        "SchemaMapEdgeCasesOther",
+        "dbo",
+        "RemoteFn",
+    )
+
+
+def test_no_method_call_is_cross_database_in_the_sample_databases(
+    adventureworks: Extracted, wide_world: Extracted
+) -> None:
+    for result in (adventureworks, wide_world):
+        assert not any(d.target.scope is ReferenceScope.CROSS_DATABASE for d in result.dependencies)
+    methods = [
+        d.target
+        for d in adventureworks.dependencies
+        if d.target.scope is ReferenceScope.COLUMN_METHOD
+    ]
+    assert {m.name.name for m in methods} == {"GetAncestor", "ToString", "exist", "value"}
+    # Website.CalculateCustomerPrice(...) is flagged ambiguous but resolves: a real reference.
+    (price,) = [
+        d.target
+        for d in wide_world.dependencies
+        if d.from_object == "object:Website.InsertCustomerOrders"
+        and d.target.name.name == "CalculateCustomerPrice"
+    ]
+    assert price.scope is ReferenceScope.LOCAL
+    assert price.resolved == "object:Website.CalculateCustomerPrice"
 
 
 def test_edge_unresolved_reference_is_recorded(edge: Extracted) -> None:

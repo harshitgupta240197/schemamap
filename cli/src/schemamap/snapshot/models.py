@@ -372,6 +372,9 @@ class ReferenceScope(str, Enum):
     LOCAL = "local"
     CROSS_DATABASE = "cross_database"
     CROSS_SERVER = "cross_server"
+    COLUMN_METHOD = "column_method"
+    """An XML or UDT method call such as `Demographics.exist(...)`. SQL Server records it as a
+    multi-part name, so the name parts are a column or alias and a method, not an object."""
 
 
 class QualifiedName(_Model):

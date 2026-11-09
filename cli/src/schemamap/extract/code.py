@@ -107,6 +107,32 @@ def build_routines(rows: Iterable[RoutineRow]) -> tuple[Routine, ...]:
     return tuple(sorted(built, key=lambda r: r.id))
 
 
+def classify_scope(
+    server: str | None,
+    database: str | None,
+    *,
+    ambiguous: bool = False,
+    catalog_resolved: bool = True,
+) -> ReferenceScope:
+    """Where a referenced name lives.
+
+    SQL Server records `Demographics.exist(...)` and `s.Demographics.value(...)` as two- and
+    three-part names, so a method call looks like a reference to a database or schema. The
+    catalog marks these rows `is_ambiguous` and cannot resolve them to an object. Both signals
+    are required: `is_ambiguous` alone also flags genuine function calls that resolve, and
+    "unresolved" alone also covers real references to a missing object or database. A
+    `sys.databases` lookup is not used: an alias can share a database's name, and a login may
+    not see every database. A server part always means a linked server.
+    """
+    if server is not None:
+        return ReferenceScope.CROSS_SERVER
+    if ambiguous and not catalog_resolved:
+        return ReferenceScope.COLUMN_METHOD
+    if database is not None:
+        return ReferenceScope.CROSS_DATABASE
+    return ReferenceScope.LOCAL
+
+
 def build_reference(
     server: str | None,
     database: str | None,
@@ -114,14 +140,12 @@ def build_reference(
     name: str,
     resolved_schema: str | None,
     resolved_name: str | None,
+    *,
+    ambiguous: bool = False,
+    catalog_resolved: bool = True,
 ) -> Reference:
     """A reference exactly as written. Only a local name that exists carries ``resolved``."""
-    if server is not None:
-        scope = ReferenceScope.CROSS_SERVER
-    elif database is not None:
-        scope = ReferenceScope.CROSS_DATABASE
-    else:
-        scope = ReferenceScope.LOCAL
+    scope = classify_scope(server, database, ambiguous=ambiguous, catalog_resolved=catalog_resolved)
     resolved = (
         object_id(resolved_schema, resolved_name)
         if scope is ReferenceScope.LOCAL and resolved_schema is not None and resolved_name
@@ -161,7 +185,11 @@ def build_synonyms(rows: Iterable[SynonymRow]) -> tuple[Synonym, ...]:
 
 
 def build_dependencies(rows: Iterable[DependencyRow]) -> tuple[Dependency, ...]:
-    """Map dependency rows to dependencies, dropping repeats (one row exists per column)."""
+    """Map dependency rows to dependencies, dropping repeats (one row exists per column).
+
+    Method calls on XML or UDT columns are kept, with scope ``column_method``: nothing is
+    dropped, so a genuine reference can never be lost by a wrong guess.
+    """
     unique: dict[str, Dependency] = {}
     for row in rows:
         dependency = Dependency(
@@ -173,6 +201,8 @@ def build_dependencies(rows: Iterable[DependencyRow]) -> tuple[Dependency, ...]:
                 row.target_name,
                 row.resolved_schema_name,
                 row.resolved_name,
+                ambiguous=bool(row.is_ambiguous),
+                catalog_resolved=bool(row.has_referenced_id),
             ),
         )
         unique[dependency.model_dump_json()] = dependency

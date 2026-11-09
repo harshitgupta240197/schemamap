@@ -146,6 +146,8 @@ class DependencyRow(NamedTuple):
     target_name: str
     resolved_schema_name: str | None
     resolved_name: str | None
+    is_ambiguous: int
+    has_referenced_id: int
 
 
 class RowCountRow(NamedTuple):

@@ -234,6 +234,8 @@ def dependency_row(**overrides: object) -> DependencyRow:
         "target_name": "T",
         "resolved_schema_name": "dbo",
         "resolved_name": "T",
+        "is_ambiguous": 0,
+        "has_referenced_id": 1,
     }
     return DependencyRow(**{**base, **overrides})  # type: ignore[arg-type]
 
@@ -259,6 +261,83 @@ def test_dependency_scopes() -> None:
     assert by_name["C"].resolved is None
     assert by_name["D"].scope is ReferenceScope.CROSS_SERVER
     assert by_name["D"].name.server == "Far"
+
+
+def method_call_row(**overrides: object) -> DependencyRow:
+    """What the catalog records for `Demographics.exist(...)` or `s.Demographics.value(...)`."""
+    base: dict[str, object] = {
+        "target_database": "s",
+        "target_schema": "Demographics",
+        "target_name": "value",
+        "resolved_schema_name": None,
+        "resolved_name": None,
+        "is_ambiguous": 1,
+        "has_referenced_id": 0,
+    }
+    return dependency_row(**{**base, **overrides})
+
+
+def test_column_method_call_is_not_a_cross_database_dependency() -> None:
+    (dependency,) = build_dependencies([method_call_row()])
+    assert dependency.target.scope is ReferenceScope.COLUMN_METHOD
+    assert dependency.target.resolved is None
+    name = dependency.target.name
+    assert (name.database, name.schema_name, name.name) == ("s", "Demographics", "value")
+
+
+def test_column_method_on_a_bare_column_has_no_database_part() -> None:
+    (dependency,) = build_dependencies([method_call_row(target_database=None)])
+    assert dependency.target.scope is ReferenceScope.COLUMN_METHOD
+
+
+def test_method_call_on_an_alias_named_like_a_real_database_is_still_a_method_call() -> None:
+    # The signal is the catalog's own ambiguity flag, never a lookup of the name in sys.databases.
+    (dependency,) = build_dependencies([method_call_row(target_database="master")])
+    assert dependency.target.scope is ReferenceScope.COLUMN_METHOD
+
+
+def test_genuine_cross_database_reference_stays_cross_database() -> None:
+    (dependency,) = build_dependencies(
+        [dependency_row(target_database="Other", resolved_schema_name=None, resolved_name=None)]
+    )
+    assert dependency.target.scope is ReferenceScope.CROSS_DATABASE
+
+
+def test_cross_database_reference_to_a_missing_database_or_object_stays_cross_database() -> None:
+    # Unresolved, but not ambiguous: the catalog does not call it a method call.
+    row = dependency_row(
+        target_database="NoSuchDb",
+        resolved_schema_name=None,
+        resolved_name=None,
+        has_referenced_id=0,
+    )
+    (dependency,) = build_dependencies([row])
+    assert dependency.target.scope is ReferenceScope.CROSS_DATABASE
+
+
+def test_ambiguous_but_catalog_resolved_reference_is_a_genuine_local_reference() -> None:
+    # WideWorldImporters: Website.CalculateCustomerPrice(...) is flagged ambiguous yet resolves.
+    (dependency,) = build_dependencies(
+        [dependency_row(is_ambiguous=1, has_referenced_id=1, target_name="F", resolved_name="F")]
+    )
+    assert dependency.target.scope is ReferenceScope.LOCAL
+    assert dependency.target.resolved == "object:dbo.F"
+
+
+def test_ambiguous_cross_database_row_the_catalog_resolved_is_not_a_method_call() -> None:
+    (dependency,) = build_dependencies(
+        [dependency_row(target_database="Other", is_ambiguous=1, has_referenced_id=1)]
+    )
+    assert dependency.target.scope is ReferenceScope.CROSS_DATABASE
+
+
+def test_a_server_part_always_wins() -> None:
+    (dependency,) = build_dependencies([method_call_row(target_server="Far")])
+    assert dependency.target.scope is ReferenceScope.CROSS_SERVER
+
+
+def test_column_method_rows_collapse_like_any_other_dependency() -> None:
+    assert len(build_dependencies([method_call_row(), method_call_row()])) == 1
 
 
 def test_dependency_name_parts_are_kept_exactly_as_written() -> None:

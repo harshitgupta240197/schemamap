@@ -1,6 +1,8 @@
 -- Extract: what each user object's SQL refers to (sys.sql_expression_dependencies), one row
 -- per reference. Names are as written; resolved_* is set only for a local object that exists.
 -- Synonyms are covered by synonyms.sql, which the catalog does not track here.
+-- is_ambiguous with no referenced_id marks an XML/UDT method call (Demographics.exist(...)),
+-- which the catalog records as a multi-part name; the extractor classifies it, see code.py.
 SELECT
     s.name AS from_schema_name,
     o.name AS from_name,
@@ -9,7 +11,9 @@ SELECT
     d.referenced_schema_name AS target_schema,
     d.referenced_entity_name AS target_name,
     rs.name AS resolved_schema_name,
-    ro.name AS resolved_name
+    ro.name AS resolved_name,
+    d.is_ambiguous AS is_ambiguous,
+    CASE WHEN d.referenced_id IS NULL THEN 0 ELSE 1 END AS has_referenced_id
 FROM sys.sql_expression_dependencies AS d
 JOIN sys.objects AS o ON o.object_id = d.referencing_id
 JOIN sys.schemas AS s ON s.schema_id = o.schema_id

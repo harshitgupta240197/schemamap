@@ -20,6 +20,8 @@ USE [SchemaMapEdgeCasesOther];
 GO
 CREATE TABLE dbo.Remote (Id int NOT NULL CONSTRAINT PK_Remote PRIMARY KEY, Note nvarchar(50) NULL);
 GO
+CREATE FUNCTION dbo.RemoteFn (@value int) RETURNS int AS BEGIN RETURN @value; END;
+GO
 CREATE DATABASE [SchemaMapEdgeCases];
 GO
 USE [SchemaMapEdgeCases];
@@ -62,4 +64,21 @@ GO
 CREATE VIEW dbo.RemoteView AS SELECT Id, Note FROM [SchemaMapEdgeCasesOther].dbo.Remote;
 GO
 CREATE SYNONYM dbo.RemoteSynonym FOR [SchemaMapEdgeCasesOther].dbo.Remote;
+GO
+-- A genuine cross-database function call, written like a method call (name.name.name(...)).
+CREATE VIEW dbo.RemoteFnView AS SELECT [SchemaMapEdgeCasesOther].dbo.RemoteFn(1) AS Value;
+GO
+-- XML column method calls. SQL Server records these as multi-part names, which look like
+-- references to a database; they must not be classified as cross-database.
+CREATE TABLE dbo.XmlDoc (Id int NOT NULL CONSTRAINT PK_XmlDoc PRIMARY KEY, Body xml NULL);
+GO
+CREATE VIEW dbo.XmlMethodView AS
+SELECT Body.value('(/a)[1]', 'int') AS A, d.Body.exist('/a') AS HasA
+FROM dbo.XmlDoc AS d
+WHERE Body.exist('/a') = 1;
+GO
+-- A table alias that is also the name of a real database: still a method call.
+CREATE VIEW dbo.XmlAliasLikeDatabaseView AS
+SELECT [SchemaMapEdgeCasesOther].Body.value('(/a)[1]', 'int') AS A
+FROM dbo.XmlDoc AS [SchemaMapEdgeCasesOther];
 GO

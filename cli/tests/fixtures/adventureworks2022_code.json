@@ -31,8 +31,8 @@
     ]
   },
   "dependency_counts": {
-    "cross_database": 14,
-    "local": 173
+    "column_method": 16,
+    "local": 171
   },
   "multi_column_relationship_count": 1,
   "relationship_count": 90,
@@ -102,7 +102,7 @@
       "schema_id": "schema:dbo"
     }
   },
-  "unresolved_local_dependency_count": 12,
+  "unresolved_local_dependency_count": 10,
   "view_column_count": 258,
   "view_count": 20,
   "views": {

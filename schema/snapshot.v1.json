@@ -706,7 +706,8 @@
       "enum": [
         "local",
         "cross_database",
-        "cross_server"
+        "cross_server",
+        "column_method"
       ],
       "title": "ReferenceScope",
       "type": "string"
