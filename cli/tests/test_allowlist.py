@@ -34,7 +34,7 @@ def test_every_real_query_passes(name: str, sql: str) -> None:
 
 ALLOWED = {
     "catalog view": "SELECT name FROM sys.tables;",
-    "bracketed mixed case": "SELECT [name] FROM [SYS].[Tables];",
+    "bracketed": "SELECT [name] FROM [sys].[tables];",
     "information schema": "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES;",
     "approved table function": (
         "SELECT permission_name FROM sys.fn_my_permissions(NULL, N'DATABASE');"
@@ -44,6 +44,10 @@ ALLOWED = {
         "ON c.object_id = t.object_id WHERE t.schema_id IN (SELECT schema_id FROM sys.schemas);"
     ),
     "cte": "WITH t AS (SELECT name FROM sys.tables) SELECT name FROM t;",
+    "cte using an earlier cte": (
+        "WITH a AS (SELECT name FROM sys.tables), b AS (SELECT name FROM a) "
+        "SELECT name FROM b UNION ALL SELECT name FROM a;"
+    ),
     "recursive cte": (
         "WITH r AS (SELECT object_id FROM sys.objects UNION ALL "
         "SELECT o.object_id FROM sys.objects AS o JOIN r ON r.object_id = o.parent_object_id) "
@@ -140,6 +144,56 @@ REFUSED = {
         "SELECT name FROM c) AS d;",
         "unqualified name c",
     ),
+    # SQL Server does not let a CTE see the CTEs defined after it, so the server resolves this
+    # ErrorLog to the user table dbo.ErrorLog (proven against the lab in Gate 1).
+    "cte forward reference reaches a user table": (
+        "WITH a AS (SELECT ErrorLogID FROM ErrorLog), "
+        "ErrorLog AS (SELECT object_id AS ErrorLogID FROM sys.tables) SELECT ErrorLogID FROM a;",
+        "unqualified name ErrorLog",
+    ),
+    # In a case-sensitive database T is not the CTE t but a user table.
+    "cte name in another case": (
+        "WITH t AS (SELECT name FROM sys.tables) SELECT name FROM T;",
+        "unqualified name T",
+    ),
+    # In a case-sensitive database a user can create schema SYS and table SYS.TABLES, and
+    # SELECT * FROM SYS.TABLES returns its rows (proven against the lab in Gate 1).
+    "upper-case sys schema": (
+        "SELECT name FROM SYS.TABLES;",
+        "SYS.TABLES is not a system object; write the schema exactly as sys or INFORMATION_SCHEMA",
+    ),
+    "bracketed mixed-case sys schema": (
+        "SELECT [name] FROM [Sys].[tables];",
+        "[Sys].[tables] is not a system object",
+    ),
+    "lower-case information schema": (
+        "SELECT TABLE_NAME FROM information_schema.TABLES;",
+        "information_schema.TABLES is not a system object",
+    ),
+    "upper-case sys schema on a table function": (
+        "SELECT permission_name FROM SYS.fn_my_permissions(NULL, N'DATABASE');",
+        "table-valued function SYS.fn_my_permissions is not on the approved list",
+    ),
+    "upper-case sys schema on a scalar function": (
+        "SELECT SYS.fn_my_permissions(NULL, N'DATABASE') AS p FROM sys.tables;",
+        "function SYS.fn_my_permissions is not on the approved list",
+    ),
+    "catalog view in another case": (
+        "SELECT name FROM sys.Tables;",
+        "sys.Tables is not on the approved list of catalog views",
+    ),
+    "server-state compatibility view": (
+        "SELECT hostname, program_name FROM sys.sysprocesses;",
+        "sys.sysprocesses is not on the approved list of catalog views",
+    ),
+    "login password hashes": (
+        "SELECT name, password_hash FROM sys.sql_logins;",
+        "sys.sql_logins is not on the approved list of catalog views",
+    ),
+    "cached query text": (
+        "SELECT sql FROM sys.syscacheobjects;",
+        "sys.syscacheobjects is not on the approved list of catalog views",
+    ),
     "insert": ("INSERT INTO sys.objects (name) VALUES (N'x');", "INSERT is not allowed"),
     "update": ("UPDATE sys.objects SET name = N'x';", "UPDATE is not allowed"),
     "delete": ("DELETE FROM dbo.Customers;", "DELETE is not allowed"),
@@ -235,6 +289,13 @@ REFUSED = {
         "only positional ? placeholders",
     ),
 }
+
+
+def test_every_approved_system_view_is_used_by_a_real_query() -> None:
+    """An approval is added with the query that first needs it, so none may go stale."""
+    text = "\n".join(sql for _, sql in real_queries())
+    unused = sorted(view for view in allowlist.APPROVED_SYSTEM_VIEWS if view not in text)
+    assert unused == []
 
 
 def test_schema_qualified_scalar_function_needs_approval(monkeypatch: pytest.MonkeyPatch) -> None:
