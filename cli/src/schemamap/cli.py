@@ -14,25 +14,37 @@ from schemamap.cli_connection import (
     AuthOption,
     ConnectTimeoutOption,
     DatabaseOption,
+    DebugOption,
     PortOption,
     QueryTimeoutOption,
     ServerOption,
     TrustCertificateOption,
     connection_config,
-    fail_connect,
+    friendly_errors,
 )
+from schemamap.cli_progress import ExtractProgress
 from schemamap.connect import AuthMode, Status, connect, diagnose
-from schemamap.errors import ConnectError, SchemaMapError
-from schemamap.extract import extract_snapshot
+from schemamap.extract import SECTION_COUNT, SchemaFilter, extract_snapshot
 from schemamap.snapshot.io import default_output_path, redact_server, write_snapshot
 from schemamap.snapshot.models import Snapshot
 
 EXIT_FAILURE = 1
 
+EXIT_CODES_EPILOG = (
+    "\b\nExit codes:\n"
+    "  0  success, including warnings\n"
+    "  1  internal error (re-run with --debug for the traceback)\n"
+    "  2  usage error\n"
+    "  3  cannot connect, log in or read (also permission denied and timeouts)\n"
+    "  4  bad or unsupported snapshot file"
+)
+
 # Locals can hold the password, so crash output must never show them.
 app = typer.Typer(
     help="Map a SQL Server database from system metadata only.",
+    epilog=EXIT_CODES_EPILOG,
     pretty_exceptions_show_locals=False,
+    no_args_is_help=True,
 )
 
 
@@ -58,7 +70,7 @@ def main(
 _STYLES = {Status.OK: "green", Status.WARN: "yellow", Status.FAIL: "red"}
 
 
-@app.command()
+@app.command(epilog=EXIT_CODES_EPILOG)
 def doctor(
     server: ServerOption,
     database: DatabaseOption,
@@ -67,10 +79,16 @@ def doctor(
     trust_server_certificate: TrustCertificateOption = False,
     connect_timeout: ConnectTimeoutOption = 15,
     query_timeout: QueryTimeoutOption = 60,
+    debug: DebugOption = False,
 ) -> None:
     """Check the driver, the connection and the permissions Schema Map needs.
 
     Credentials come from SCHEMAMAP_USER and SCHEMAMAP_PASSWORD, or a hidden prompt.
+
+    \b
+    Examples:
+      schemamap doctor --server localhost --database AdventureWorks2022
+      schemamap doctor --server db.example.com --database Sales --auth entra
     """
     console = Console(highlight=False)
     config = connection_config(
@@ -83,7 +101,8 @@ def doctor(
         connect_timeout=connect_timeout,
         query_timeout=query_timeout,
     )
-    report = diagnose(config)
+    with friendly_errors(console, what="Doctor", debug=debug):
+        report = diagnose(config)
     steps: list[str] = []
     for check in report.checks:
         console.print(
@@ -115,6 +134,10 @@ def _summary(snapshot: Snapshot, path: Path) -> list[str]:
         ("dependencies", snapshot.dependencies),
     )
     lines = [f"Wrote {path}", "  " + ", ".join(f"{len(items)} {name}" for name, items in counts)]
+    if snapshot.filters is not None:
+        applied = [f"--schema {n}" for n in snapshot.filters.schemas]
+        applied += [f"--exclude-schema {n}" for n in snapshot.filters.exclude_schemas]
+        lines.append("  Filters: " + " ".join(applied))
     if snapshot.warnings:
         sections = sorted({warning.section.value for warning in snapshot.warnings})
         lines.append(f"  {len(snapshot.warnings)} warning(s): {', '.join(sections)}")
@@ -126,7 +149,7 @@ def _summary(snapshot: Snapshot, path: Path) -> list[str]:
     return lines
 
 
-@app.command()
+@app.command(epilog=EXIT_CODES_EPILOG)
 def extract(
     server: ServerOption,
     database: DatabaseOption,
@@ -157,12 +180,51 @@ def extract(
         bool,
         typer.Option("--gzip", help="Write a gzip file (.json.gz); .gz is added to the name."),
     ] = False,
+    schemas: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--schema",
+            help="Read only this schema. Repeat for several. Everything else is left out.",
+        ),
+    ] = None,
+    exclude_schemas: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--exclude-schema",
+            help="Leave this schema out. Repeat for several. Relationships into it are dropped.",
+        ),
+    ] = None,
+    no_definitions: Annotated[
+        bool,
+        typer.Option(
+            "--no-definitions",
+            help=(
+                "Leave out all SQL text: view, procedure, function and trigger bodies, "
+                "computed columns, defaults, check constraints and index filters."
+            ),
+        ),
+    ] = False,
+    quiet: Annotated[
+        bool, typer.Option("--quiet", "-q", help="Print errors only: no progress, no summary.")
+    ] = False,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", "-v", help="Print how long each section took.")
+    ] = False,
+    debug: DebugOption = False,
 ) -> None:
     """Read the database's metadata and write one snapshot file.
 
-    Only system metadata is read, never table rows. The summary goes to stderr.
+    Only system metadata is read, never table rows. Progress and the summary go to stderr.
     Credentials come from SCHEMAMAP_USER and SCHEMAMAP_PASSWORD, or a hidden prompt.
+
+    \b
+    Examples:
+      schemamap extract --server localhost --database AdventureWorks2022
+      schemamap extract --server db.example.com --database Sales --schema dbo --schema sales
+      schemamap extract --server db.example.com --database Sales --no-definitions --gzip
     """
+    if quiet and verbose:
+        raise typer.BadParameter("--quiet and --verbose cannot be used together.")
     console = Console(stderr=True, highlight=False)
     config = connection_config(
         console,
@@ -174,14 +236,20 @@ def extract(
         connect_timeout=connect_timeout,
         query_timeout=query_timeout,
     )
-    try:
-        with connect(config) as executor:
-            snapshot = extract_snapshot(executor, server=server, database=database)
-    except ConnectError as exc:
-        fail_connect(console, exc)
-    except SchemaMapError as exc:
-        console.print(f"Extraction failed: {exc}", style="red", markup=False, soft_wrap=True)
-        raise typer.Exit(EXIT_FAILURE) from None
+    schema_filter = SchemaFilter(include=tuple(schemas or ()), exclude=tuple(exclude_schemas or ()))
+    with (
+        friendly_errors(console, what="Extraction", debug=debug),
+        ExtractProgress(console, total=SECTION_COUNT, show=not quiet, verbose=verbose) as progress,
+        connect(config) as executor,
+    ):
+        snapshot = extract_snapshot(
+            executor,
+            server=server,
+            database=database,
+            schema_filter=schema_filter,
+            include_definitions=not no_definitions,
+            observer=progress,
+        )
     if redact:
         snapshot = redact_server(snapshot)
     target = output or default_output_path(snapshot.source.database, compress)
@@ -190,5 +258,6 @@ def extract(
     except OSError as exc:
         console.print(f"Cannot write {target}: {exc}", style="red", markup=False, soft_wrap=True)
         raise typer.Exit(EXIT_FAILURE) from None
-    for line in _summary(snapshot, written):
-        console.print(line, markup=False, soft_wrap=True)
+    if not quiet:
+        for line in _summary(snapshot, written):
+            console.print(line, markup=False, soft_wrap=True)

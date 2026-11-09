@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 import pytest
@@ -148,7 +149,10 @@ def test_driver_failure_stops_early(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(doctor_module, "load_driver", fail)
     report = diagnose(config())
     assert [c.name for c in report.checks] == ["Driver"]
-    assert report.checks[0].next_step == "fix: brew install openssl"
+    assert (
+        report.checks[0].next_step
+        == "The SQL Server driver is not loaded: fix: brew install openssl"
+    )
 
 
 ARGS = ["doctor", "--server", "h", "--database", "d"]
@@ -212,3 +216,12 @@ def test_cli_windows_auth_refused_off_windows(monkeypatch: pytest.MonkeyPatch) -
     result = run([*ARGS, "--auth", AuthMode.WINDOWS.value])
     assert result.exit_code == 3
     assert "only available on Windows" in result.output
+
+
+def test_every_next_step_names_its_subject(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: [], QueryName.QUERY_STORE_STATE: []})
+    steps = [c.next_step for c in diagnose(config()).checks if c.next_step]
+    assert steps
+    for step in steps:
+        assert not re.search(r"\b[Ii]t\b", step), step
+    assert any(step.startswith("VIEW DATABASE STATE is missing: ") for step in steps)

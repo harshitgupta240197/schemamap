@@ -1,5 +1,32 @@
 {
   "$defs": {
+    "AppliedFilters": {
+      "description": "Schema filters the extract ran with. Present only when a filter was given.",
+      "properties": {
+        "exclude_schemas": {
+          "default": [],
+          "description": "These schemas were left out (--exclude-schema).",
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Exclude Schemas",
+          "type": "array"
+        },
+        "schemas": {
+          "default": [],
+          "description": "Only these schemas were read (--schema); empty means no restriction.",
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Schemas",
+          "type": "array"
+        }
+      },
+      "title": "AppliedFilters",
+      "type": "object"
+    },
     "CheckConstraint": {
       "description": "A check constraint.",
       "properties": {
@@ -17,9 +44,17 @@
           "title": "Column"
         },
         "definition": {
-          "description": "SQL predicate. Free text that may contain literals.",
-          "title": "Definition",
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "SQL predicate. Free text that may contain literals. Null only with --no-definitions.",
+          "title": "Definition"
         },
         "disabled": {
           "default": false,
@@ -43,8 +78,7 @@
       },
       "required": [
         "id",
-        "name",
-        "definition"
+        "name"
       ],
       "title": "CheckConstraint",
       "type": "object"
@@ -198,9 +232,17 @@
       "description": "How a computed column is calculated.",
       "properties": {
         "definition": {
-          "description": "SQL expression. Free text that may contain literals.",
-          "title": "Definition",
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "SQL expression. Free text that may contain literals. Null only with --no-definitions.",
+          "title": "Definition"
         },
         "persisted": {
           "title": "Persisted",
@@ -208,7 +250,6 @@
         }
       },
       "required": [
-        "definition",
         "persisted"
       ],
       "title": "ComputedColumn",
@@ -218,9 +259,17 @@
       "description": "A column's default constraint.",
       "properties": {
         "definition": {
-          "description": "SQL expression. Free text that may contain literals.",
-          "title": "Definition",
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "SQL expression. Free text that may contain literals. Null only with --no-definitions.",
+          "title": "Definition"
         },
         "id": {
           "title": "Id",
@@ -234,8 +283,7 @@
       },
       "required": [
         "id",
-        "name",
-        "definition"
+        "name"
       ],
       "title": "DefaultConstraint",
       "type": "object"
@@ -246,7 +294,8 @@
         "available",
         "encrypted",
         "not_permitted",
-        "not_applicable"
+        "not_applicable",
+        "omitted"
       ],
       "title": "DefinitionStatus",
       "type": "string"
@@ -341,7 +390,7 @@
             }
           ],
           "default": null,
-          "description": "Filter predicate of a filtered index. Free text that may contain literals.",
+          "description": "Filter predicate of a filtered index. Free text that may contain literals. Null for an\nunfiltered index, and with --no-definitions.",
           "title": "Filter"
         },
         "id": {
@@ -976,7 +1025,8 @@
         "descriptions",
         "row_counts",
         "query_history",
-        "join_evidence"
+        "join_evidence",
+        "filters"
       ],
       "title": "Section",
       "type": "string"
@@ -1012,6 +1062,19 @@
           "minLength": 1,
           "title": "Database",
           "type": "string"
+        },
+        "edition": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Readable edition, for example \"Developer Edition (64-bit)\".",
+          "title": "Edition"
         },
         "engine_edition": {
           "anyOf": [
@@ -1269,6 +1332,18 @@
       },
       "title": "Dependencies",
       "type": "array"
+    },
+    "filters": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AppliedFilters"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional; the schema filters applied at extract time, null when none were."
     },
     "format": {
       "const": "schemamap.snapshot",

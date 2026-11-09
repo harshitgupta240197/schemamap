@@ -9,6 +9,16 @@ from schemamap.connect.redact import redact
 from schemamap.errors import ConnectError
 
 _MAX_DETAIL = 300
+_UNREACHABLE = (
+    "network-related",
+    "could not open a connection",
+    "connection refused",
+    "unreachable",
+    "name or service not known",
+    "no such host",
+    "nodename nor servname",
+    "08001",
+)
 
 
 def describe_failure(exc: BaseException, config: ConnectionConfig) -> str:
@@ -16,17 +26,30 @@ def describe_failure(exc: BaseException, config: ConnectionConfig) -> str:
     detail = redact(str(exc), config.secrets()).strip().replace("\n", " ")
     lowered = detail.lower()
     if "login failed" in lowered or "authentication" in lowered:
-        hint = "Login failed. Check the user name and password, and that the login can access "
-        hint += f"database {config.database!r}."
+        hint = (
+            f"Login failed for database {config.database!r}. Fix: Check the user name and "
+            "password, and that the login can access the database."
+        )
     elif "certificate" in lowered or "ssl" in lowered:
         hint = (
-            "The server certificate was not trusted. For a local lab you can pass "
-            "--trust-server-certificate."
+            "The server certificate was not trusted. Fix: install a trusted certificate on the "
+            "server, or for a local lab pass --trust-server-certificate."
         )
     elif "timeout" in lowered or "timed out" in lowered:
-        hint = "The server did not answer in time. Check the server name, port and firewall."
+        hint = (
+            f"The server {config.server!r} did not answer in time. Fix: check the server name, "
+            "port and firewall, or raise --connect-timeout."
+        )
+    elif any(word in lowered for word in _UNREACHABLE):
+        hint = (
+            f"Cannot reach {config.server!r} on port {config.port}. Fix: check the server name "
+            "and port, that SQL Server accepts TCP connections, and that no firewall blocks it."
+        )
     else:
-        hint = "Could not connect to the server."
+        hint = (
+            "Could not connect to the server. Fix: check the server name, port and credentials, "
+            "then run `schemamap doctor`."
+        )
     return f"{hint} Driver said: {detail[:_MAX_DETAIL]}" if detail else hint
 
 

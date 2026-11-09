@@ -13,18 +13,23 @@ from schemamap.extract.code import (
     extract_synonyms,
     extract_views,
 )
-from schemamap.extract.database import DatabaseExtraction, extract_database
+from schemamap.extract.database import SECTION_COUNT, DatabaseExtraction, extract_database
+from schemamap.extract.filters import SchemaFilter, apply_schema_filter, omit_definitions
 from schemamap.extract.relationships import build_relationships, extract_relationships
 from schemamap.extract.row_counts import build_row_counts, extract_row_counts
-from schemamap.extract.runner import Requirement, SectionRunner
+from schemamap.extract.runner import Requirement, SectionObserver, SectionRunner
 from schemamap.extract.schemas import build_schemas, extract_schemas
 from schemamap.extract.snapshot import build_snapshot, build_source, extract_snapshot
 from schemamap.extract.tables import build_tables, extract_tables
 
 __all__ = [
+    "SECTION_COUNT",
     "DatabaseExtraction",
     "Requirement",
+    "SchemaFilter",
+    "SectionObserver",
     "SectionRunner",
+    "apply_schema_filter",
     "build_dependencies",
     "build_relationships",
     "build_routines",
@@ -45,4 +50,5 @@ __all__ = [
     "extract_synonyms",
     "extract_tables",
     "extract_views",
+    "omit_definitions",
 ]

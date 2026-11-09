@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Annotated, NoReturn
 
 import typer
 from rich.console import Console
 
 from schemamap.connect import AuthMode, ConnectionConfig
-from schemamap.errors import ConnectError
+from schemamap.errors import ConnectError, SchemaMapError, SnapshotError
 
+EXIT_FAILURE = 1
 EXIT_CONNECT = 3
+EXIT_BAD_SNAPSHOT = 4
 ENV_USER = "SCHEMAMAP_USER"
 ENV_PASSWORD = "SCHEMAMAP_PASSWORD"
 
@@ -76,3 +80,41 @@ def fail_connect(console: Console, exc: ConnectError) -> NoReturn:
     """Print a connection failure in red and exit 3. The message never holds credentials."""
     console.print(str(exc), style="red", markup=False, soft_wrap=True)
     raise typer.Exit(EXIT_CONNECT) from None
+
+
+DebugOption = Annotated[
+    bool,
+    typer.Option("--debug", help="Show the full traceback for an unexpected error."),
+]
+
+
+@contextmanager
+def friendly_errors(console: Console, *, what: str, debug: bool) -> Iterator[None]:
+    """Turn errors into one clear message and an exit code; tracebacks only with ``debug``.
+
+    Connection, login, permission and timeout problems exit 3, an unreadable snapshot exits 4,
+    any other Schema Map error and any unexpected error exit 1. Click's own exits pass through.
+    """
+    try:
+        yield
+    except (typer.Exit, typer.Abort):
+        raise
+    except ConnectError as exc:
+        fail_connect(console, exc)
+    except SnapshotError as exc:
+        console.print(str(exc), style="red", markup=False, soft_wrap=True)
+        raise typer.Exit(EXIT_BAD_SNAPSHOT) from None
+    except SchemaMapError as exc:
+        console.print(f"{what} failed: {exc}", style="red", markup=False, soft_wrap=True)
+        raise typer.Exit(EXIT_FAILURE) from None
+    except Exception as exc:
+        if debug:
+            raise
+        console.print(
+            f"{what} failed with an unexpected {type(exc).__name__}. "
+            "This is a bug in Schema Map. Re-run with --debug for the full traceback.",
+            style="red",
+            markup=False,
+            soft_wrap=True,
+        )
+        raise typer.Exit(EXIT_FAILURE) from None

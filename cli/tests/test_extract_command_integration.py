@@ -19,6 +19,7 @@ from typer.testing import CliRunner
 
 from schemamap.cli import app
 from schemamap.snapshot.io import dump_snapshot, load_snapshot, read_snapshot
+from schemamap.snapshot.models import DefinitionStatus, Snapshot
 
 pytestmark = pytest.mark.integration
 
@@ -175,3 +176,84 @@ def test_wrong_password_exits_3_and_writes_nothing(runner: Runner) -> None:
     assert run.exit_code == 3
     assert "definitely-not-the-password" not in run.output
     assert not run.path.exists()
+
+
+def object_schemas(snapshot: Snapshot) -> set[str]:
+    ids = {t.schema_id for t in snapshot.tables} | {v.schema_id for v in snapshot.views}
+    ids |= {r.schema_id for r in snapshot.routines} | {s.schema_id for s in snapshot.synonyms}
+    return ids
+
+
+def test_exclude_schema_keeps_the_model_whole_and_says_what_it_dropped(
+    runner: Runner, first: Extraction
+) -> None:
+    run = runner.run("--exclude-schema", "Person")
+    assert run.exit_code == 0, run.output
+    snapshot = read_snapshot(run.path)  # validation proves no dangling reference remains
+    assert "schema:Person" not in {s.id for s in snapshot.schemas}
+    assert "schema:Person" not in object_schemas(snapshot)
+    assert len(snapshot.tables) < len(read_snapshot(first.path).tables)
+    dropped = [w for w in snapshot.warnings if w.code == "references_dropped"]
+    assert len(dropped) == 1
+    assert re.search(r"dropped [1-9][0-9]* ", dropped[0].message)
+    assert snapshot.filters is not None
+    assert snapshot.filters.exclude_schemas == ("Person",)
+    assert "Filters: --exclude-schema Person" in run.output
+
+
+def test_schema_option_keeps_only_that_schema(runner: Runner) -> None:
+    run = runner.run("--schema", "Sales", "--schema", "Person")
+    assert run.exit_code == 0, run.output
+    snapshot = read_snapshot(run.path)
+    assert {s.name for s in snapshot.schemas} == {"Sales", "Person"}
+    assert object_schemas(snapshot) <= {"schema:Sales", "schema:Person"}
+    assert snapshot.filters is not None
+    assert snapshot.filters.schemas == ("Person", "Sales")
+
+
+def test_unknown_schema_is_a_warning_not_a_failure(runner: Runner) -> None:
+    run = runner.run("--schema", "NoSuchSchema")
+    assert run.exit_code == 0, run.output
+    snapshot = read_snapshot(run.path)
+    assert snapshot.tables == ()
+    assert any(w.code == "schema_not_found" for w in snapshot.warnings)
+
+
+def test_no_definitions_leaves_no_definition_text(runner: Runner) -> None:
+    run = runner.run("--no-definitions")
+    assert run.exit_code == 0, run.output
+    snapshot = read_snapshot(run.path)
+    raw = json.loads(run.text)
+
+    def definitions(node: object) -> list[object]:
+        found: list[object] = []
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key in {"definition", "filter"} and value is not None:
+                    found.append(value)
+                found.extend(definitions(value))
+        elif isinstance(node, list):
+            for item in node:
+                found.extend(definitions(item))
+        return found
+
+    assert definitions(raw) == []
+    modules = [*snapshot.views, *snapshot.routines]
+    assert modules
+    assert {m.definition_status for m in modules} <= {
+        DefinitionStatus.OMITTED,
+        DefinitionStatus.ENCRYPTED,
+        DefinitionStatus.NOT_APPLICABLE,
+        DefinitionStatus.NOT_PERMITTED,
+    }
+    assert any(m.definition_status is DefinitionStatus.OMITTED for m in modules)
+    assert not any(m.definition_status is DefinitionStatus.AVAILABLE for m in modules)
+    assert len(snapshot.tables) == 71
+    assert "SELECT" not in run.text.upper().replace("SELECTED", "")  # no SQL body survives
+
+
+def test_quiet_run_prints_nothing_and_still_writes_the_file(runner: Runner) -> None:
+    run = runner.run("--quiet")
+    assert run.exit_code == 0
+    assert run.output == ""
+    assert read_snapshot(run.path).source.database == DATABASE

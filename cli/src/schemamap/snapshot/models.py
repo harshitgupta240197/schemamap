@@ -93,6 +93,8 @@ class DefinitionStatus(str, Enum):
     ENCRYPTED = "encrypted"
     NOT_PERMITTED = "not_permitted"
     NOT_APPLICABLE = "not_applicable"
+    OMITTED = "omitted"
+    """Left out on purpose (--no-definitions)."""
 
 
 class _HasDefinition(_Model):
@@ -133,6 +135,8 @@ class SourceInfo(_Model):
     database: Name
     product_version: str | None = None
     engine_edition: str | None = None
+    edition: str | None = None
+    """Readable edition, for example "Developer Edition (64-bit)"."""
     compatibility_level: int | None = None
     collation: str | None = None
     query_store: QueryStoreState = QueryStoreState.UNKNOWN
@@ -156,8 +160,8 @@ class Schema(_Model):
 class ComputedColumn(_Model):
     """How a computed column is calculated."""
 
-    definition: str
-    """SQL expression. Free text that may contain literals."""
+    definition: str | None = None
+    """SQL expression. Free text that may contain literals. Null only with --no-definitions."""
     persisted: bool
 
 
@@ -166,8 +170,8 @@ class DefaultConstraint(_Model):
 
     id: ConstraintId
     name: Name
-    definition: str
-    """SQL expression. Free text that may contain literals."""
+    definition: str | None = None
+    """SQL expression. Free text that may contain literals. Null only with --no-definitions."""
 
 
 class Column(_Model):
@@ -230,7 +234,8 @@ class Index(_Model):
     """Key columns in key order."""
     included_columns: tuple[ColumnId, ...] = ()
     filter: str | None = None
-    """Filter predicate of a filtered index. Free text that may contain literals."""
+    """Filter predicate of a filtered index. Free text that may contain literals. Null for an
+    unfiltered index, and with --no-definitions."""
     disabled: bool = False
 
 
@@ -258,8 +263,8 @@ class CheckConstraint(_Model):
 
     id: ConstraintId
     name: Name
-    definition: str
-    """SQL predicate. Free text that may contain literals."""
+    definition: str | None = None
+    """SQL predicate. Free text that may contain literals. Null only with --no-definitions."""
     column: ColumnId | None = None
     """Set for a column-level constraint."""
     disabled: bool = False
@@ -471,6 +476,7 @@ class Section(str, Enum):
     ROW_COUNTS = "row_counts"
     QUERY_HISTORY = "query_history"
     JOIN_EVIDENCE = "join_evidence"
+    FILTERS = "filters"
 
 
 class ExtractionWarning(_Model):
@@ -566,6 +572,20 @@ class JoinEvidence(_Model):
         )
 
 
+class AppliedFilters(_Model):
+    """Schema filters the extract ran with. Present only when a filter was given."""
+
+    schemas: tuple[Name, ...] = ()
+    """Only these schemas were read (--schema); empty means no restriction."""
+    exclude_schemas: tuple[Name, ...] = ()
+    """These schemas were left out (--exclude-schema)."""
+
+    @field_validator("schemas", "exclude_schemas")
+    @classmethod
+    def _sort(cls, names: tuple[str, ...]) -> tuple[str, ...]:
+        return _sorted_unique(names, lambda n: n, "schema name")
+
+
 class Snapshot(_Model):
     """Schema Map snapshot, format v1.
 
@@ -595,6 +615,8 @@ class Snapshot(_Model):
     """Optional section; null when not collected."""
     join_evidence: JoinEvidence | None = None
     """Optional section; null when not collected."""
+    filters: AppliedFilters | None = None
+    """Optional; the schema filters applied at extract time, null when none were."""
 
     @field_validator("captured_at")
     @classmethod

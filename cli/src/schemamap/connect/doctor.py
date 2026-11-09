@@ -19,13 +19,14 @@ from schemamap.snapshot.models import QueryStoreState
 _AZURE_ENGINES = {5, 8}
 
 
-_NO_DEFINITION = "Without it, views, procedures and functions cannot be read."
+_NO_DEFINITION = "Without VIEW DEFINITION, views, procedures and functions cannot be read."
 _NO_DATABASE_STATE = (
-    "Without it, row counts and sizes, Query Store and usage hints are skipped (optional)."
+    "Without VIEW DATABASE STATE, row counts and sizes, Query Store and usage hints are "
+    "skipped (optional)."
 )
 _NO_DEPENDENCIES = (
-    "This is a system catalog view, not user data. Without it, dependency and impact "
-    "information is skipped."
+    "sys.sql_expression_dependencies is a system catalog view, not user data. Without "
+    "this SELECT grant, dependency and impact information is skipped."
 )
 
 
@@ -88,7 +89,12 @@ def _permission_check(
 ) -> Check:
     if permission in held:
         return Check(name, Status.OK, "granted")
-    return Check(name, Status.WARN, "missing", f"{consequence} Ask a DBA to run {permission.grant}")
+    return Check(
+        name,
+        Status.WARN,
+        "missing",
+        f"{permission.value} is missing: {consequence} Ask a DBA to run {permission.grant}",
+    )
 
 
 def _query_store_check(conn: MetadataExecutor) -> Check:
@@ -100,15 +106,15 @@ def _query_store_check(conn: MetadataExecutor) -> Check:
             "Query Store",
             Status.WARN,
             "unknown",
-            "Query Store cannot be read without VIEW DATABASE STATE, so it is reported as "
-            "unknown, not off. Query-based join hints are skipped.",
+            "Query Store is unknown: Query Store cannot be read without VIEW DATABASE STATE, so "
+            "its state is reported as unknown, not off. Query-based join hints are skipped.",
         )
     return Check(
         "Query Store",
         Status.WARN,
         "off",
-        "Query Store is off, so query-based join hints will be skipped. "
-        "Schema Map still works without it.",
+        "Query Store is off: query-based join hints will be skipped. "
+        "Schema Map still works without Query Store.",
     )
 
 
@@ -118,14 +124,18 @@ def diagnose(config: ConnectionConfig) -> DoctorReport:
     try:
         load_driver()
     except DriverUnavailableError as exc:
-        checks.append(Check("Driver", Status.FAIL, "not loaded", str(exc)))
+        checks.append(
+            Check(
+                "Driver", Status.FAIL, "not loaded", f"The SQL Server driver is not loaded: {exc}"
+            )
+        )
         return DoctorReport(tuple(checks), connected=False)
     checks.append(Check("Driver", Status.OK, "mssql-python loaded"))
 
     try:
         conn = connect(config)
     except ConnectError as exc:
-        checks.append(Check("Connection", Status.FAIL, "failed", str(exc)))
+        checks.append(Check("Connection", Status.FAIL, "failed", f"The connection failed: {exc}"))
         return DoctorReport(tuple(checks), connected=False)
     checks.append(
         Check("Connection", Status.OK, f"{config.server},{config.port} ({config.auth.value})")
@@ -147,7 +157,8 @@ def diagnose(config: ConnectionConfig) -> DoctorReport:
                         label,
                         Status.WARN,
                         "could not be checked",
-                        "The login may lack permission to read this information.",
+                        f"{label} could not be checked: the login may lack permission to read "
+                        f"the {label.lower()} details.",
                     )
                 )
     return DoctorReport(tuple(checks), connected=True)

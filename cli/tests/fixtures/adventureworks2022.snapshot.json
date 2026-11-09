@@ -12,6 +12,7 @@
     "database": "AdventureWorks2022",
     "product_version": null,
     "engine_edition": "3",
+    "edition": "Developer Edition (64-bit)",
     "compatibility_level": 160,
     "collation": "SQL_Latin1_General_CP1_CI_AS",
     "query_store": "unknown"
@@ -23134,5 +23135,6 @@
   ],
   "row_counts": null,
   "query_history": null,
-  "join_evidence": null
+  "join_evidence": null,
+  "filters": null
 }

@@ -329,18 +329,21 @@ def test_build_source_without_a_catalog_row_records_the_requested_names() -> Non
 
 
 def test_build_source_maps_the_catalog_row() -> None:
-    row = SourceInfoRow("16.0.4250.1", 3, 160, "SQL_Latin1_General_CP1_CI_AS", "Sales")
+    row = SourceInfoRow(
+        "16.0.4250.1", 3, "Developer Edition (64-bit)", 160, "SQL_Latin1_General_CP1_CI_AS", "Sales"
+    )
     source = build_source(row, "h", "requested-name", QueryStoreState.ON)
     assert source.database == "Sales"
     assert source.product_version == "16.0.4250.1"
     assert source.engine_edition == "3"
+    assert source.edition == "Developer Edition (64-bit)"
     assert source.compatibility_level == 160
     assert source.collation == "SQL_Latin1_General_CP1_CI_AS"
     assert source.query_store is QueryStoreState.ON
 
 
 def test_build_source_keeps_unknown_values_null() -> None:
-    row = SourceInfoRow(None, None, None, None, "Sales")
+    row = SourceInfoRow(None, None, None, None, None, "Sales")
     source = build_source(row, "h", "Sales", QueryStoreState.OFF)
     assert source.engine_edition is None
     assert source.compatibility_level is None

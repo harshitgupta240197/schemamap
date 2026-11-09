@@ -121,7 +121,8 @@ Snapshot
   generator           {name, version}
   captured_at         UTC timestamp
   source              {server | null, server_redacted, database, product_version,
-                       engine_edition, compatibility_level, collation}
+                       engine_edition, edition, compatibility_level, collation,
+                       query_store}
   schemas[]           {id, name, description}
   tables[]            {id, schema_id, name, description, columns[], indexes[],
                        key_constraints[], check_constraints[]}
@@ -137,6 +138,7 @@ Snapshot
                                 items[]: {object, execution_count, last_executed_at}}
   join_evidence       OPTIONAL {entries[]: {from_column, to_column, source, count},
                                 parse_failure_count}
+  filters             OPTIONAL {schemas[], exclude_schemas[]}: schema filters applied at extract
   inferred_relationships   RESERVED for v1.1, not in v1
 ```
 
@@ -218,6 +220,8 @@ SchemaMapError
     SnapshotVersionError  unsupported format major version
   ConnectError          cannot connect or authenticate (message never holds secrets)
     DriverUnavailableError  the SQL Server driver or its native library cannot load
+    QueryTimeoutError       a metadata query ran past --query-timeout
+    PermissionDeniedError   the server refused a metadata query (permission missing)
   QueryRefusedError     SQL not in the allowlist: a bug, never user-facing input
   PermissionMissing     (crumb 1.x) raised inside extract for one section, caught there and
                         turned into an ExtractionWarning; never escapes extract
@@ -231,8 +235,12 @@ credentials or connection strings. The CLI maps errors to exit codes:
 | 0 | success (possibly with warnings, which are printed and stored in the snapshot) |
 | 1 | unexpected internal error (bug; traceback only with `--debug`) |
 | 2 | usage error (Typer default) |
-| 3 | cannot connect or authenticate |
+| 3 | cannot connect, log in or read: unreachable server, failed login, untrusted certificate, permission denied, timeout |
 | 4 | invalid or unsupported snapshot file |
+
+These codes are final for format 1.0 and are listed in the `--help` epilog of every command.
+Errors print one red message with a `Fix:` hint and no traceback; unexpected errors print only
+the exception type. `--debug` re-raises them so the full traceback shows.
 
 ## 7. Versioning
 

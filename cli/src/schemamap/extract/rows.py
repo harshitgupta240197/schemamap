@@ -10,6 +10,7 @@ class SourceInfoRow(NamedTuple):
 
     product_version: str | None
     engine_edition: int | None
+    edition: str | None
     compatibility_level: int | None
     collation_name: str | None
     database_name: str

@@ -13,7 +13,7 @@ from schemamap.extract.code import (
 )
 from schemamap.extract.relationships import extract_relationships
 from schemamap.extract.row_counts import extract_row_counts
-from schemamap.extract.runner import Requirement, SectionRunner
+from schemamap.extract.runner import Requirement, SectionObserver, SectionRunner
 from schemamap.extract.schemas import extract_schemas
 from schemamap.extract.tables import extract_tables
 from schemamap.snapshot.models import (
@@ -56,10 +56,16 @@ class DatabaseExtraction:
     warnings: tuple[ExtractionWarning, ...]
 
 
-def extract_database(executor: MetadataExecutor) -> DatabaseExtraction:
+SECTION_COUNT = 8
+"""How many sections extract_database runs, for progress totals."""
+
+
+def extract_database(
+    executor: MetadataExecutor, observer: SectionObserver | None = None
+) -> DatabaseExtraction:
     """Run every section, skipping (with one warning each) those the login cannot read."""
     held = held_permissions(executor)
-    runner = SectionRunner(held)
+    runner = SectionRunner(held, observer)
     schemas: tuple[Schema, ...] = runner.run(Section.SCHEMAS, lambda: extract_schemas(executor), ())
     tables: tuple[Table, ...] = runner.run(Section.TABLES, lambda: extract_tables(executor), ())
     views: tuple[View, ...] = runner.run(Section.VIEWS, lambda: extract_views(executor), ())
