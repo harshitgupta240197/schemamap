@@ -75,6 +75,16 @@ Creates `SchemaMapEdgeCases` (and a tiny `SchemaMapEdgeCasesOther` for cross-dat
 
 The integration tests for crumb 1.5 expect it, and fail with this command in the message if it is missing.
 
+## Synthetic databases
+
+```
+uv run tools/lab.py synth --tables 2000 --seed 1                 # builds SchemaMapSynth
+uv run tools/lab.py synth --tables 200 --name SchemaMapSynth200  # name must start with SchemaMapSynth
+uv run tools/synth.py --tables 500 --out some/folder             # files only, no database
+```
+
+Builds a messy database with known answers for speed tests and inference measurement, and writes `<name>.sql` and `<name>.truth.json` to `lab-data/synth/`. The ground truth lists every true relationship (declared or not), the traps that are not relationships, and what the generated views and procedures join. Reference: 2,000 tables build in about 6 s and extract in about 11 s. See D-037.
+
 ## Passwords
 
 `up` generates a random 24-character password for `sa` and for `schemamap_reader` and saves them to `.env` (mode 0600, gitignored; `.env.example` shows the shape). Nothing prints them. Existing values are never overwritten. To use a login by hand, read the value from `.env` yourself.

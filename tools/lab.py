@@ -3,6 +3,7 @@
 
     uv run tools/lab.py up                  start SQL Server 2022 in Docker, wait until ready
     uv run tools/lab.py restore all         download and restore the sample databases
+    uv run tools/lab.py synth               build a synthetic database with a ground-truth file
     uv run tools/lab.py status              show what is running and restored
     uv run tools/lab.py down [--purge]      stop the container (--purge also wipes its data)
 
@@ -29,6 +30,7 @@ import urllib.request
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PureWindowsPath
+from types import ModuleType
 from typing import TypeVar
 
 T = TypeVar("T")
@@ -480,11 +482,13 @@ def _run(
     *,
     env: dict[str, str] | None = None,
     timeout: float | None = None,
+    input_text: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     try:
         return subprocess.run(
             list(cmd),
             env=env,
+            input=input_text,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -559,15 +563,22 @@ def run_sqlcmd(
     extra_env: dict[str, str] | None = None,
     tabular: bool = False,
     timeout: float = 60,
+    script_text: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run sqlcmd inside the lab container.
+
+    `script_text` is piped to sqlcmd's standard input (GO separates batches), for scripts too
+    big or too generated to live under tools/lab-sql.
 
     Passwords and other variables travel as environment variables (`docker exec -e NAME`
     copies the value from this process), so they never appear in a command line. SQL
     files under tools/lab-sql read them as `$(NAME)` scripting variables.
     """
     extra_env = extra_env or {}
-    cmd = ["docker", "exec", "-e", "SQLCMDPASSWORD"]
+    cmd = ["docker", "exec"]
+    if script_text is not None:
+        cmd.append("-i")
+    cmd += ["-e", "SQLCMDPASSWORD"]
     for name in extra_env:
         cmd += ["-e", name]
     cmd += [CONTAINER, SQLCMD, "-S", "localhost", "-U", user, "-C", "-b", "-l", "10"]
@@ -580,7 +591,7 @@ def run_sqlcmd(
     elif query is not None:
         cmd += ["-Q", query]
     env = {**os.environ, "SQLCMDPASSWORD": password, **extra_env}
-    return _run(cmd, env=env, timeout=timeout)
+    return _run(cmd, env=env, timeout=timeout, input_text=script_text)
 
 
 def sql_or_raise(
@@ -736,6 +747,47 @@ def cmd_edgecases(_: argparse.Namespace) -> None:
     grant_reader(creds, EDGE_CASES_DB, False)
 
 
+def _load_synth() -> ModuleType:
+    """Import tools/synth.py (a sibling script) lazily."""
+    tools = str(Path(__file__).resolve().parent)
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+    import synth
+
+    return synth
+
+
+def build_synthetic(creds: Credentials, name: str, script: str, timeout: float = 3600) -> float:
+    """Apply a generated build script as SA and grant the reader; return build seconds."""
+    synth = _load_synth()
+    synth.validate_database_name(name)
+    start = time.monotonic()
+    result = run_sqlcmd("sa", creds.sa, script_text=script, timeout=timeout)
+    if result.returncode != 0:
+        output = redact((result.stdout + result.stderr).strip(), creds.secrets())
+        raise LabError(f"Building {name} failed:\n{output[-3000:]}")
+    seconds = time.monotonic() - start
+    grant_reader(creds, name, False)
+    return seconds
+
+
+def cmd_synth(args: argparse.Namespace) -> None:
+    synth = _load_synth()
+    try:
+        result = synth.generate(
+            args.seed, args.tables, args.schemas, args.declared_fk_share, args.name
+        )
+    except synth.SynthError as exc:
+        raise LabError(str(exc)) from exc
+    creds = require_running()
+    out = args.out if args.out.is_absolute() else REPO_ROOT / args.out
+    script_path, truth_path = synth.write_files(result, args.name, out)
+    print(f"{args.name}: building {args.tables} tables as sa (lab only)...")
+    seconds = build_synthetic(creds, args.name, result.script)
+    print(f"{args.name}: built in {seconds:.1f}s; {result.relationship_count} true relationships.")
+    print(f"  Script: {script_path}\n  Ground truth: {truth_path}")
+
+
 def cmd_status(_: argparse.Namespace) -> None:
     check_docker()
     state = container_state()
@@ -812,6 +864,12 @@ def build_parser() -> argparse.ArgumentParser:
         "edgecases",
         help=f"create the small {EDGE_CASES_DB} database of awkward schema shapes (lab only)",
     ).set_defaults(func=cmd_edgecases)
+
+    synth_parser = sub.add_parser(
+        "synth", help="build a synthetic database with a ground-truth file (lab only)"
+    )
+    _load_synth().add_arguments(synth_parser)
+    synth_parser.set_defaults(func=cmd_synth)
 
     sub.add_parser("status", help="show container, backups and databases").set_defaults(
         func=cmd_status

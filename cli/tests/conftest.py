@@ -39,3 +39,18 @@ def passwords(lab: ModuleType) -> tuple[str, str]:
     if state.stdout.strip() != "running":
         pytest.fail("Lab container is not running: run `uv run tools/lab.py up` first.")
     return sa, reader
+
+
+SYNTH_PATH = LAB_PATH.with_name("synth.py")
+
+
+@pytest.fixture(scope="session")
+def synth() -> ModuleType:
+    """Load tools/synth.py (a standalone script, not part of the package) as a module."""
+    spec = importlib.util.spec_from_file_location("schemamap_synth", SYNTH_PATH)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["schemamap_synth"] = module
+    spec.loader.exec_module(module)
+    return module
