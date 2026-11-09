@@ -91,6 +91,10 @@ Builds a messy database with known answers for speed tests and inference measure
 
 If you delete `.env` after the first start, the data folder still holds the old `sa` password and `up` will time out. Run `uv run tools/lab.py down --purge`, then `up` again.
 
+## CI mode
+
+CI (the `integration` job in `.github/workflows/ci.yml`) runs the same commands with no `.env`. When `.env` is absent and both `SCHEMAMAP_LAB_SA_PASSWORD` and `SCHEMAMAP_LAB_READER_PASSWORD` are set in the environment, `lab.py` uses them and writes nothing to disk; a `.env` file always wins. The reader password must be letters and digits only. `SCHEMAMAP_LAB_IMAGE_TAG` selects the SQL Server image tag (default `2022-latest`; CI pins a specific cumulative update, see D-038). The job generates both passwords at start, masks them with `::add-mask::` and passes them to later steps through the environment.
+
 ## Port 14330
 
 The lab uses host port 14330, not SQL Server's default 1433, because 1433 is often taken by another container or a local instance. Inside the container SQL Server still listens on 1433. To change the host port, edit `docker-compose.yml` and `HOST_PORT` in `tools/lab.py`.

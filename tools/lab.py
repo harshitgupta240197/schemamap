@@ -9,7 +9,9 @@
 
 The lab is a test fixture: it creates logins and restores databases, but only ever
 inside the throwaway `schemamap-lab` container. Passwords are generated into `.env`
-(gitignored) and are never printed. See docs/LAB.md.
+(gitignored) and are never printed. When `.env` is absent and both password variables
+are set in the environment (CI), those are used instead and nothing is written to disk.
+See docs/LAB.md.
 """
 
 from __future__ import annotations
@@ -27,7 +29,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PureWindowsPath
 from types import ModuleType
@@ -272,9 +274,34 @@ def credentials_from_env(values: dict[str, str]) -> Credentials:
     return Credentials(sa=sa, reader=reader)
 
 
-def read_env(path: Path = ENV_PATH) -> dict[str, str]:
-    """Read the lab .env if it exists (empty dict if not)."""
-    return parse_env(path.read_text(encoding="utf-8")) if path.exists() else {}
+def environ_credentials(environ: Mapping[str, str] | None = None) -> dict[str, str]:
+    """The two lab passwords from the process environment (CI mode), or {} unless both are set."""
+    source = os.environ if environ is None else environ
+    values = {key: source.get(key, "") for key in ENV_KEYS}
+    return values if all(values.values()) else {}
+
+
+def read_env(path: Path = ENV_PATH, environ: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Read the lab credentials: the .env file if it exists, else the environment (CI mode).
+
+    The environment is consulted only when the file is absent, so a developer's `.env` always
+    wins. Returns {} when neither source has both passwords.
+    """
+    if path.exists():
+        return parse_env(path.read_text(encoding="utf-8"))
+    return environ_credentials(environ)
+
+
+def env_for_up(path: Path = ENV_PATH, environ: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Credentials for `up`: the environment in CI mode, else the .env file (created if needed).
+
+    In CI mode no file is written, so the passwords never touch the disk.
+    """
+    if not path.exists():
+        from_environ = environ_credentials(environ)
+        if from_environ:
+            return from_environ
+    return ensure_env(path)
 
 
 # ---------------------------------------------------------------------------
@@ -619,7 +646,7 @@ def sql_or_raise(
 
 
 def load_credentials() -> Credentials:
-    return credentials_from_env(read_env())
+    return credentials_from_env(read_env(ENV_PATH))
 
 
 def require_running() -> Credentials:
@@ -669,14 +696,14 @@ def cmd_up(_: argparse.Namespace) -> None:
         print(f"warning: Docker has {memory / 1024**3:.1f} GB. {memory_hint()}", file=sys.stderr)
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    creds = credentials_from_env(ensure_env(ENV_PATH))
+    creds = credentials_from_env(env_for_up(ENV_PATH))
     print("Starting the SQL Server container (image pull on first run can take a few minutes)...")
     compose(["up", "-d"], creds.sa)
     print(f"Waiting for SQL Server (up to {READY_TIMEOUT_SECONDS}s)...")
     waited = wait_ready(creds)
     print(f"Ready after {waited:.0f}s.")
     print(f"  Host: localhost,{HOST_PORT}   Admin login: sa   Reader login: {READER_LOGIN}")
-    print("  Passwords are in .env (never printed). Next: `uv run tools/lab.py restore all`.")
+    print("  Passwords are in .env or the environment (never printed). Next: `restore all`.")
 
 
 def grant_reader(creds: Credentials, database: str, view_database_state: bool) -> None:
@@ -814,7 +841,7 @@ def cmd_status(_: argparse.Namespace) -> None:
 
 def cmd_down(args: argparse.Namespace) -> None:
     check_docker()
-    sa_password = read_env().get(ENV_SA)
+    sa_password = read_env(ENV_PATH).get(ENV_SA)
     compose(["down"], sa_password)
     print("Lab stopped." if args.purge else "Lab stopped. Data in lab-data/ is kept.")
     if args.purge:

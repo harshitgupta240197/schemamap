@@ -2,6 +2,7 @@
 
 import http.server
 import os
+import subprocess
 import threading
 from collections.abc import Iterator
 from pathlib import Path
@@ -257,3 +258,126 @@ def test_minimal_reader_is_granted_view_definition_and_nothing_else(lab: ModuleT
     grants = [s.splitlines()[-1] for s in statements if s.splitlines()[-1].startswith("GRANT")]
     assert grants == ["GRANT VIEW DEFINITION TO [schemamap_reader_min]"]
     assert lab.READER_MIN_LOGIN == "schemamap_reader_min"
+
+
+# --- CI mode: credentials from environment variables when .env is absent ---------------------
+
+CI_SA = "CiSaSecretValue1234567"
+CI_READER = "CiReaderSecretValue12345"
+
+
+@pytest.fixture
+def ci_env(lab: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """No .env, both lab passwords in the environment; returns the (absent) .env path."""
+    env_path = tmp_path / ".env"
+    monkeypatch.setattr(lab, "ENV_PATH", env_path)
+    monkeypatch.setattr(lab, "BACKUP_DIR", tmp_path / "backups")
+    monkeypatch.setattr(lab, "DATA_DIR", tmp_path / "mssql")
+    monkeypatch.setenv(lab.ENV_SA, CI_SA)
+    monkeypatch.setenv(lab.ENV_READER, CI_READER)
+    return env_path
+
+
+def test_environ_credentials_needs_both_passwords(lab: ModuleType) -> None:
+    both = {lab.ENV_SA: "a", lab.ENV_READER: "b", "UNRELATED": "x"}
+    assert lab.environ_credentials(both) == {lab.ENV_SA: "a", lab.ENV_READER: "b"}
+    assert lab.environ_credentials({lab.ENV_SA: "a"}) == {}
+    assert lab.environ_credentials({lab.ENV_SA: "a", lab.ENV_READER: ""}) == {}
+    assert lab.environ_credentials({}) == {}
+
+
+def test_read_env_falls_back_to_environment_only_without_a_file(
+    lab: ModuleType, tmp_path: Path
+) -> None:
+    environ = {lab.ENV_SA: "from-env", lab.ENV_READER: "from-env"}
+    assert lab.read_env(tmp_path / "absent.env", environ) == environ
+    assert lab.read_env(tmp_path / "absent.env", {}) == {}
+    present = tmp_path / ".env"
+    present.write_text(f"{lab.ENV_SA}=from-file\n{lab.ENV_READER}=from-file\n", encoding="utf-8")
+    assert lab.read_env(present, environ)[lab.ENV_SA] == "from-file"
+
+
+def test_env_for_up_in_ci_mode_writes_nothing(lab: ModuleType, tmp_path: Path) -> None:
+    path = tmp_path / ".env"
+    environ = {lab.ENV_SA: "a", lab.ENV_READER: "b"}
+    assert lab.env_for_up(path, environ) == environ
+    assert not path.exists()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_env_for_up_without_ci_credentials_still_generates_the_file(
+    lab: ModuleType, tmp_path: Path
+) -> None:
+    path = tmp_path / ".env"
+    values = lab.env_for_up(path, {lab.ENV_SA: "only-one"})
+    assert path.exists()
+    assert values[lab.ENV_SA] != "only-one"
+
+
+def test_up_with_environment_credentials_never_prints_a_password(
+    lab: ModuleType,
+    ci_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    passed: list[str | None] = []
+    monkeypatch.setattr(lab, "check_docker", lambda: None)
+    monkeypatch.setattr(lab, "docker_memory_bytes", lambda: None)
+    monkeypatch.setattr(lab, "compose", lambda args, sa_password=None: passed.append(sa_password))
+    monkeypatch.setattr(lab, "wait_ready", lambda creds: 1.0)
+
+    assert lab.main(["up"]) == 0
+
+    shown = capsys.readouterr()
+    for secret in (CI_SA, CI_READER):
+        assert secret not in shown.out
+        assert secret not in shown.err
+    assert passed == [CI_SA]  # the SA password still reaches compose, through the environment
+    assert not ci_env.exists()
+
+
+def test_failing_command_with_environment_credentials_redacts_the_output(
+    lab: ModuleType,
+    ci_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    leaky = subprocess.CompletedProcess(
+        args=[], returncode=1, stdout=f"login {CI_SA}", stderr=f"retry with {CI_SA}"
+    )
+    monkeypatch.setattr(lab, "check_docker", lambda: None)
+    monkeypatch.setattr(lab, "docker_memory_bytes", lambda: None)
+    monkeypatch.setattr(lab, "_run", lambda *args, **kwargs: leaky)
+
+    assert lab.main(["up"]) == 1
+
+    shown = capsys.readouterr()
+    assert CI_SA not in shown.out + shown.err
+    assert "***" in shown.err
+
+
+def test_down_with_environment_credentials_passes_the_password_only_as_environment(
+    lab: ModuleType,
+    ci_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    calls: list[tuple[list[str], dict[str, str] | None]] = []
+
+    def fake_run(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        env = kwargs.get("env")
+        calls.append((list(cmd), env if isinstance(env, dict) else None))
+        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(lab, "check_docker", lambda: None)
+    monkeypatch.setattr(lab, "_run", fake_run)
+
+    assert lab.main(["down"]) == 0
+
+    shown = capsys.readouterr()
+    assert CI_SA not in shown.out + shown.err
+    assert calls
+    for cmd, env in calls:
+        assert not any(CI_SA in part or CI_READER in part for part in cmd)
+        assert env is not None
+        assert env[lab.ENV_SA] == CI_SA

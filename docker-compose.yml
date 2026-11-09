@@ -1,10 +1,12 @@
 # SQL Server 2022 lab for Schema Map. Drive it with `uv run tools/lab.py`; see docs/LAB.md.
-# Passwords come from .env, which `tools/lab.py up` generates. Never commit it.
+# Passwords come from .env, which `tools/lab.py up` generates, or (CI) from the
+# SCHEMAMAP_LAB_* environment variables. Never commit .env.
+# SCHEMAMAP_LAB_IMAGE_TAG pins the SQL Server image; CI sets it to a specific CU.
 name: schemamap-lab
 
 services:
   sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:${SCHEMAMAP_LAB_IMAGE_TAG:-2022-latest}
     platform: linux/amd64
     container_name: schemamap-lab
     environment:

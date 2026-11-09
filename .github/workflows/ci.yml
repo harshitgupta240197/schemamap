@@ -65,3 +65,73 @@ jobs:
             viewer/test-results/
           if-no-files-found: ignore
           retention-days: 7
+
+  integration:
+    name: integration (ubuntu, SQL Server 2022 CU27)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Pinned to a specific cumulative update, never 2022-latest (D-038). Bump deliberately.
+      SCHEMAMAP_LAB_IMAGE_TAG: 2022-CU27-ubuntu-22.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: cli/uv.lock
+
+      # Random per-run passwords. Masked before they are written anywhere, passed to later
+      # steps as environment variables, and never written to disk (lab.py reads them from the
+      # environment when there is no .env).
+      - name: Generate lab passwords
+        run: |
+          python3 - <<'PY'
+          import os
+          import runpy
+
+          lab = runpy.run_path("tools/lab.py")
+          lines = []
+          for key in (lab["ENV_SA"], lab["ENV_READER"]):
+              value = lab["generate_password"]()
+              print(f"::add-mask::{value}")
+              lines.append(f"{key}={value}\n")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as handle:
+              handle.writelines(lines)
+          PY
+
+      # Keyed on each backup's file name and exact size (tests/test_ci_workflow.py keeps the
+      # key in step with the catalog in tools/lab.py).
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: lab-data/backups
+          key: lab-backups-AdventureWorks2022.bak-209838080-AdventureWorksDW2022.bak-101834752-WideWorldImporters-Full.bak-127111168
+
+      # SQL Server runs as uid 10001 and must be able to write its data folder.
+      - name: Prepare lab folders
+        run: |
+          mkdir -p lab-data/backups lab-data/mssql
+          sudo chown -R 10001:0 lab-data/mssql
+
+      - name: Start SQL Server
+        run: uv run tools/lab.py up
+
+      # The integration tests use all three sample databases. Restoring also creates the
+      # schemamap_reader and schemamap_reader_min logins in each database.
+      - name: Restore sample databases
+        run: uv run tools/lab.py restore all
+
+      - name: Build SchemaMapEdgeCases
+        run: uv run tools/lab.py edgecases
+
+      - name: Install CLI
+        working-directory: cli
+        run: uv sync --locked
+
+      - name: Integration tests
+        working-directory: cli
+        run: uv run pytest -m integration -rP
+
+      - name: SQL Server log tail
+        if: failure()
+        run: docker logs --tail 60 schemamap-lab
