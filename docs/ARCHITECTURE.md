@@ -214,7 +214,8 @@ SchemaMapError
   InvalidIdError        malformed or non-canonical ID (also a ValueError)
   SnapshotError         unreadable snapshot file
     SnapshotVersionError  unsupported format major version
-  ConnectError          (crumb 1.x) cannot connect or authenticate
+  ConnectError          cannot connect or authenticate (message never holds secrets)
+    DriverUnavailableError  the SQL Server driver or its native library cannot load
   QueryRefusedError     (crumb 1.x) SQL not in the allowlist: a bug, never user-facing input
   PermissionMissing     (crumb 1.x) raised inside extract for one section, caught there and
                         turned into an ExtractionWarning; never escapes extract

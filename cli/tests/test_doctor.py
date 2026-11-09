@@ -1,0 +1,160 @@
+from typing import Any
+
+import pytest
+from typer.testing import CliRunner
+
+from schemamap import cli
+from schemamap.cli import app
+from schemamap.connect import AuthMode, ConnectionConfig, Status, diagnose
+from schemamap.connect import doctor as doctor_module
+from schemamap.errors import ConnectError, DriverUnavailableError
+
+PASSWORD = "Sup3rSecret"
+
+
+class FakeConnection:
+    def __init__(self, answers: dict[str, Any]) -> None:
+        self.answers = answers
+
+    def query(self, name: str) -> list[tuple[Any, ...]]:
+        answer = self.answers[name]
+        if isinstance(answer, Exception):
+            raise answer
+        return list(answer)
+
+    def __enter__(self) -> "FakeConnection":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+
+GREEN = {
+    "doctor_server_info": [("16.0.4135.4", "Developer Edition (64-bit)", 3, "Sales")],
+    "doctor_permissions": [("VIEW DATABASE STATE",), ("VIEW DEFINITION",)],
+    "doctor_query_store": [("READ_WRITE",)],
+}
+
+
+def config() -> ConnectionConfig:
+    return ConnectionConfig(server="h", database="d", user="u", password=PASSWORD)
+
+
+def patch(monkeypatch: pytest.MonkeyPatch, answers: dict[str, Any]) -> None:
+    monkeypatch.setattr(doctor_module, "load_driver", lambda: object())
+    monkeypatch.setattr(doctor_module, "connect", lambda _c: FakeConnection(answers))
+
+
+def test_all_green(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, GREEN)
+    report = diagnose(config())
+    assert report.all_green
+    assert report.connected
+    assert [c.name for c in report.checks] == [
+        "Driver",
+        "Connection",
+        "Server",
+        "VIEW DEFINITION",
+        "VIEW DATABASE STATE",
+        "Query Store",
+    ]
+
+
+def test_missing_permissions_and_query_store_warn(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, {**GREEN, "doctor_permissions": [], "doctor_query_store": []})
+    report = diagnose(config())
+    warned = {c.name for c in report.checks if c.status is Status.WARN}
+    assert warned == {"VIEW DEFINITION", "VIEW DATABASE STATE", "Query Store"}
+    assert all(c.next_step for c in report.checks if c.status is Status.WARN)
+    assert report.connected
+
+
+def test_failed_probe_degrades_to_warning(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, {**GREEN, "doctor_query_store": RuntimeError("denied")})
+    report = diagnose(config())
+    assert report.connected
+    assert report.checks[-1].status is Status.WARN
+
+
+def test_connect_failure_is_failed_check(monkeypatch: pytest.MonkeyPatch) -> None:
+    def refuse(_c: ConnectionConfig) -> Any:
+        raise ConnectError("Login failed.")
+
+    monkeypatch.setattr(doctor_module, "load_driver", lambda: object())
+    monkeypatch.setattr(doctor_module, "connect", refuse)
+    report = diagnose(config())
+    assert not report.connected
+    assert report.checks[-1].status is Status.FAIL
+
+
+def test_driver_failure_stops_early(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail() -> Any:
+        raise DriverUnavailableError("fix: brew install openssl")
+
+    monkeypatch.setattr(doctor_module, "load_driver", fail)
+    report = diagnose(config())
+    assert [c.name for c in report.checks] == ["Driver"]
+    assert report.checks[0].next_step == "fix: brew install openssl"
+
+
+ARGS = ["doctor", "--server", "h", "--database", "d"]
+
+
+def run(args: list[str], env: dict[str, str] | None = None, stdin: str | None = None) -> Any:
+    return CliRunner().invoke(app, args, env=env or {}, input=stdin)
+
+
+def test_cli_exit_3_when_driver_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail() -> Any:
+        raise DriverUnavailableError(
+            "The SQL Server driver could not be loaded. brew install openssl"
+        )
+
+    monkeypatch.setattr(doctor_module, "load_driver", fail)
+    result = run(ARGS, {"SCHEMAMAP_USER": "u", "SCHEMAMAP_PASSWORD": PASSWORD})
+    assert result.exit_code == 3
+    assert "brew install openssl" in result.output
+    assert PASSWORD not in result.output
+
+
+def test_cli_exit_3_on_bad_config() -> None:
+    result = run([*ARGS, "--port", "0"], {"SCHEMAMAP_USER": "u", "SCHEMAMAP_PASSWORD": PASSWORD})
+    assert result.exit_code == 3
+    assert "Port 0" in result.output
+
+
+def test_cli_green_exit_0(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, GREEN)
+    result = run(ARGS, {"SCHEMAMAP_USER": "u", "SCHEMAMAP_PASSWORD": PASSWORD})
+    assert result.exit_code == 0
+    assert "Everything is ready" in result.output
+    assert PASSWORD not in result.output
+
+
+def test_cli_prompts_hidden_when_env_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, GREEN)
+    seen: list[ConnectionConfig] = []
+    real = doctor_module.diagnose
+
+    def spy(cfg: ConnectionConfig) -> Any:
+        seen.append(cfg)
+        return real(cfg)
+
+    monkeypatch.setattr(cli, "diagnose", spy)
+    result = run(ARGS, stdin=f"alice\n{PASSWORD}\n")
+    assert result.exit_code == 0
+    assert seen[0].user == "alice"
+    assert seen[0].password == PASSWORD
+    assert PASSWORD not in result.output
+
+
+def test_cli_has_no_password_flag() -> None:
+    result = run([*ARGS, "--password", "x"])
+    assert result.exit_code == 2
+
+
+def test_cli_windows_auth_refused_off_windows(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("schemamap.connect.config.sys.platform", "darwin")
+    result = run([*ARGS, "--auth", AuthMode.WINDOWS.value])
+    assert result.exit_code == 3
+    assert "only available on Windows" in result.output

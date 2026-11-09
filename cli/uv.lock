@@ -1644,6 +1644,7 @@ source = { editable = "." }
 dependencies = [
     { name = "mssql-python" },
     { name = "pydantic" },
+    { name = "rich" },
     { name = "typer" },
 ]
 
@@ -1661,6 +1662,7 @@ dev = [
 requires-dist = [
     { name = "mssql-python", specifier = ">=1.17" },
     { name = "pydantic", specifier = ">=2.9" },
+    { name = "rich", specifier = ">=13" },
     { name = "typer", specifier = ">=0.15" },
 ]
 

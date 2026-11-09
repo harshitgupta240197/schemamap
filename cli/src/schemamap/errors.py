@@ -17,3 +17,11 @@ class SnapshotError(SchemaMapError):
 
 class SnapshotVersionError(SnapshotError):
     """A snapshot uses a format major version this build cannot read."""
+
+
+class ConnectError(SchemaMapError):
+    """Cannot connect or authenticate. The message never contains credentials."""
+
+
+class DriverUnavailableError(ConnectError):
+    """The SQL Server driver or its native library cannot be loaded on this machine."""
