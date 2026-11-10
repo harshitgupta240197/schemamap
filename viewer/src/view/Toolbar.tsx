@@ -35,7 +35,7 @@ export function Toolbar({ indexes, state, onChange, onSearch, shown, total }: To
     if (!next.delete(id)) {
       next.add(id);
     }
-    onChange(makeViewState(state.focus, state.hops, next));
+    onChange(makeViewState(state.focus, state.hops, next, state.selected));
   };
 
   return (
@@ -67,7 +67,7 @@ export function Toolbar({ indexes, state, onChange, onSearch, shown, total }: To
               type="button"
               className="sm-toolbar__button"
               onClick={() => {
-                onChange(makeViewState(state.focus, state.hops, []));
+                onChange(makeViewState(state.focus, state.hops, [], state.selected));
               }}
             >
               All schemas
@@ -85,7 +85,7 @@ export function Toolbar({ indexes, state, onChange, onSearch, shown, total }: To
               className="sm-toolbar__button"
               aria-pressed={state.hops === hops}
               onClick={() => {
-                onChange(makeViewState(state.focus, hops, state.schemas));
+                onChange(makeViewState(state.focus, hops, state.schemas, state.selected));
               }}
             >
               {hops}
@@ -101,7 +101,7 @@ export function Toolbar({ indexes, state, onChange, onSearch, shown, total }: To
                 type="button"
                 className="sm-toolbar__link"
                 onClick={() => {
-                  onChange(makeViewState([], state.hops, state.schemas));
+                  onChange(makeViewState([], state.hops, state.schemas, state.selected));
                 }}
               >
                 Full map

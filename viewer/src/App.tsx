@@ -1,5 +1,7 @@
 import "./app.css";
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { DetailPanel } from "./detail/DetailPanel";
+import { describeObject } from "./detail/model";
 import type { SchemaMapSnapshotV1 } from "./generated/snapshot";
 import { GraphCanvas } from "./graph/GraphCanvas";
 import { SnapshotLoadError } from "./snapshot/errors";
@@ -61,8 +63,63 @@ function Loaded({ snapshot }: { snapshot: SchemaMapSnapshotV1 }) {
     };
   }, [indexes]);
 
+  const selected = view.selected;
+  const model = useMemo(
+    () => (selected === null ? undefined : describeObject(indexes, selected)),
+    [indexes, selected],
+  );
+  const panel = useRef<HTMLElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  const previousSelected = useRef<string | null>(selected);
+
+  // Opening or changing the selection moves focus into the panel, except on first load, where a
+  // restored selection must not steal focus. The element focused when the panel first opened is
+  // remembered so closing can hand focus back to it.
+  useEffect(() => {
+    const before = previousSelected.current;
+    previousSelected.current = selected;
+    if (selected === null || selected === before) {
+      return;
+    }
+    if (before === null) {
+      const active = document.activeElement;
+      opener.current = active instanceof HTMLElement && active !== document.body ? active : null;
+    }
+    panel.current?.focus();
+  }, [selected]);
+
+  const open = useCallback((id: string): void => {
+    setView((current) => makeViewState(current.focus, current.hops, current.schemas, id));
+  }, []);
+  const close = useCallback((): void => {
+    const back = opener.current;
+    opener.current = null;
+    setView((current) => makeViewState(current.focus, current.hops, current.schemas, null));
+    if (back?.isConnected === true) {
+      back.focus();
+    }
+  }, []);
+  useEffect(() => {
+    if (selected === null) {
+      return;
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === "Escape" && !event.defaultPrevented) {
+        event.preventDefault();
+        close();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [selected, close]);
+
   const visible = useMemo(() => visibleTables(indexes, view), [indexes, view]);
-  const highlighted = useMemo(() => new Set(view.focus), [view.focus]);
+  const highlighted = useMemo(
+    () => new Set(selected === null ? view.focus : [...view.focus, selected]),
+    [view.focus, selected],
+  );
   const total = snapshot.tables?.length ?? 0;
 
   const onSelect = (item: SearchItem): void => {
@@ -70,10 +127,11 @@ function Loaded({ snapshot }: { snapshot: SchemaMapSnapshotV1 }) {
     const targets = focusTargets(indexes, item);
     if (targets.length === 0) {
       setNotice(`${item.context}.${item.name} does not read any table on the map.`);
+      setView(makeViewState(view.focus, view.hops, view.schemas, item.targetId));
       return;
     }
     setNotice(null);
-    setView(makeViewState(targets, view.hops, view.schemas));
+    setView(makeViewState(targets, view.hops, view.schemas, item.targetId));
   };
 
   return (
@@ -100,7 +158,12 @@ function Loaded({ snapshot }: { snapshot: SchemaMapSnapshotV1 }) {
           {notice}
         </p>
       )}
-      <GraphCanvas indexes={indexes} visible={visible} highlighted={highlighted} />
+      <div className="sm-app__body">
+        <GraphCanvas indexes={indexes} visible={visible} highlighted={highlighted} onOpen={open} />
+        {model === undefined ? null : (
+          <DetailPanel ref={panel} model={model} onSelect={open} onClose={close} />
+        )}
+      </div>
       {searching ? (
         <Palette
           items={items}

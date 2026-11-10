@@ -10,7 +10,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./graph.css";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, type KeyboardEvent } from "react";
 import type { SnapshotIndexes } from "../snapshot/indexes";
 import { buildGraph, type FkFlowEdge, type TableFlowNode } from "./build";
 import { runElkLayout } from "./elkClient";
@@ -31,6 +31,8 @@ interface GraphCanvasProps {
   readonly visible?: ReadonlySet<string> | null;
   /** Table ids drawn as selected: the focused tables. */
   readonly highlighted?: ReadonlySet<string>;
+  /** Called with a table id when a node is clicked, or Enter is pressed on a focused node. */
+  readonly onOpen?: (objectId: string) => void;
   /** Injectable for tests; defaults to the ELK Web Worker. */
   readonly runLayout?: LayoutRunner;
 }
@@ -56,6 +58,7 @@ export function GraphCanvas({
   indexes,
   visible = null,
   highlighted = NO_TABLES,
+  onOpen,
   runLayout = runElkLayout,
 }: GraphCanvasProps) {
   const [expanded, toggle] = useExpanded();
@@ -82,8 +85,26 @@ export function GraphCanvas({
     return graph.edges.filter((edge) => drawn.has(edge.source) && drawn.has(edge.target));
   }, [graph, nodes]);
 
+  // React Flow focuses the node wrapper, so Enter is caught here and mapped back to its table.
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    const target = event.target;
+    if (
+      event.key !== "Enter" ||
+      onOpen === undefined ||
+      !(target instanceof HTMLElement) ||
+      !target.classList.contains("react-flow__node")
+    ) {
+      return;
+    }
+    const node = graph.nodes.find((candidate) => candidate.id === target.dataset.id);
+    if (node !== undefined) {
+      event.preventDefault();
+      onOpen(node.data.objectId);
+    }
+  };
+
   return (
-    <div className="sm-canvas" data-layout-status={status}>
+    <div className="sm-canvas" data-layout-status={status} onKeyDown={onKeyDown}>
       {status === "failed" ? (
         <p className="sm-notice" role="status">
           Automatic layout failed, so tables are shown in a grid.
@@ -105,6 +126,9 @@ export function GraphCanvas({
             nodeTypes={NODE_TYPES}
             defaultEdgeOptions={EDGE_OPTIONS}
             nodesConnectable={false}
+            onNodeClick={(_event, node) => {
+              onOpen?.(node.data.objectId);
+            }}
             edgesFocusable={false}
             fitView
             minZoom={0.05}

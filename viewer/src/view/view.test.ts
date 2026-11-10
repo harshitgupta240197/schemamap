@@ -173,3 +173,31 @@ describe("view hash", () => {
     expect(parseHash("#focus=column%3Adbo.A.Id", indexes)).toEqual(FULL_MAP);
   });
 });
+
+describe("selection in the hash", () => {
+  const indexes = indexesOf(makeSnapshot([["dbo", "A", ["Id"]]], [], [["dbo.V", ["dbo.A"]]]));
+
+  it("round-trips a selected table or view and keeps it beside the focus", () => {
+    const state = makeViewState(["object:dbo.A"], 2, [], "object:dbo.V");
+    const hash = formatHash(state);
+    expect(hash).toBe("#focus=object%3Adbo.A&hops=2&select=object%3Adbo.V");
+    expect(parseHash(hash, indexes)).toEqual(state);
+  });
+
+  it("drops a select that is not a table, view or routine, or not in the snapshot", () => {
+    for (const hash of [
+      "#select=schema%3Adbo",
+      "#select=column%3Adbo.A.Id",
+      "#select=nope",
+      "#select=%E0%A4%A",
+    ]) {
+      expect(parseHash(hash, indexes).selected).toBeNull();
+    }
+  });
+
+  it("treats a different selection as a different view", () => {
+    const a = makeViewState([], 1, [], "object:dbo.A");
+    expect(sameView(a, makeViewState([], 1, [], "object:dbo.V"))).toBe(false);
+    expect(sameView(a, makeViewState([], 1, [], null))).toBe(false);
+  });
+});

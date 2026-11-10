@@ -60,7 +60,8 @@ function TableNodeView({ data }: NodeProps<TableFlowNode>) {
                   ? `Show key columns only for ${qualified}`
                   : `Show all columns of ${qualified}`
               }
-              onClick={() => {
+              onClick={(event) => {
+                event.stopPropagation();
                 toggle(data.objectId);
               }}
             >
