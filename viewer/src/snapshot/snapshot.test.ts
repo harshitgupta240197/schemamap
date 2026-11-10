@@ -6,11 +6,10 @@ import { buildIndexes } from "./indexes";
 import { INLINE_DATA_ID, loadSnapshotFile, readInlineSnapshot } from "./load";
 import { MAX_REPORTED_VIOLATIONS, parseSnapshot } from "./parse";
 
-function fixture(name: string): string {
-  return readFileSync(`src/snapshot/__fixtures__/${name}.snapshot.json`, "utf8");
-}
-const AW = fixture("adventureworks2022");
-const BIN2 = fixture("bin2-edgecases");
+/** The AdventureWorks golden is the CLI's own file, read in place so the two cannot drift. */
+const AW = readFileSync("../cli/tests/fixtures/adventureworks2022.snapshot.json", "utf8");
+/** A real `schemamap extract` of SchemaMapEdgeCasesBIN2 (see __fixtures__/README.md). */
+const BIN2 = readFileSync("src/snapshot/__fixtures__/bin2-edgecases.snapshot.json", "utf8");
 
 function withVersion(version: unknown): string {
   const doc = JSON.parse(BIN2) as Record<string, unknown>;
@@ -210,13 +209,25 @@ describe("indexes on AdventureWorks", () => {
 });
 
 describe("indexes on the BIN2 edge-case snapshot", () => {
-  const index = buildIndexes(parseSnapshot(BIN2));
+  const snapshot = parseSnapshot(BIN2);
+  const index = buildIndexes(snapshot);
 
   it("indexes case-variant names separately and never overwrites", () => {
     expect(index.byName("dbo", "Orders")?.id).toBe("object:dbo.Orders");
     expect(index.byName("dbo", "orders")?.id).toBe("object:dbo.orders");
+    expect(index.byName("SYS", "TABLES")?.id).toBe("object:SYS.TABLES");
     expect(index.byId("column:dbo.Orders.Name")?.kind).toBe("column");
     expect(index.byId("column:dbo.Orders.name")?.kind).toBe("column");
+  });
+
+  it("gives every table and column of the real extract a distinct id that resolves", () => {
+    const ids = (snapshot.tables ?? []).flatMap((t) => [t.id, ...t.columns.map((c) => c.id)]);
+    expect(ids.length).toBeGreaterThanOrEqual(8);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) {
+      expect(index.byId(id)).toBeDefined();
+    }
+    expect(index.duplicateIds).toEqual([]);
   });
 
   it("returns every case variant from the case-insensitive lookup, in snapshot order", () => {
@@ -230,15 +241,21 @@ describe("indexes on the BIN2 edge-case snapshot", () => {
     expect(index.outgoingRelationships("object:dbo.orders")).toHaveLength(1);
     expect(index.outgoingRelationships("object:dbo.Orders")).toHaveLength(0);
     expect(index.incomingRelationships("object:dbo.Orders")).toHaveLength(1);
+    expect(index.incomingRelationships("object:dbo.orders")).toHaveLength(0);
     expect(index.incomingDependencies("object:dbo.Orders")).toHaveLength(1);
     expect(index.incomingDependencies("object:dbo.orders")).toHaveLength(1);
-    expect(index.outgoingDependencies("object:dbo.GetOrders")).toHaveLength(2);
+    expect(index.outgoingDependencies("object:dbo.UpperProc")).toHaveLength(1);
+    expect(index.outgoingDependencies("object:dbo.LowerView")).toHaveLength(1);
   });
 
   it("keeps the first of duplicate ids and reports the rest", () => {
-    const doc = JSON.parse(BIN2) as { tables: unknown[] };
-    doc.tables.push(doc.tables[0]);
+    const doc = JSON.parse(BIN2) as { tables: { id: string }[] };
+    const first = doc.tables[1];
+    if (first === undefined) {
+      throw new Error("fixture has too few tables");
+    }
+    doc.tables.push(first);
     const dup = buildIndexes(parseSnapshot(JSON.stringify(doc)));
-    expect(dup.duplicateIds).toContain("object:dbo.Orders");
+    expect(dup.duplicateIds).toContain(first.id);
   });
 });

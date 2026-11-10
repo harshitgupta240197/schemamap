@@ -26,7 +26,7 @@ docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate repo
 
 - CLI checks: `cd cli && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest`
 - CLI integration tests (lab must be up): `cd cli && uv run pytest -m integration`
-- Viewer checks: `cd viewer && npm run lint && npm run typecheck && npm test && npm run build`
+- Viewer checks: `cd viewer && npm run lint && npm run typecheck && npm test && npm run build && npm run check:bundle`
 - Regenerate viewer types and the precompiled validator after changing `schema/snapshot.v1.json`: `cd viewer && npm run gen:types` (CI runs `npm run gen:check` and fails on drift)
 - Viewer end-to-end: `cd viewer && npx playwright test`
 - Regenerate the snapshot JSON Schema after changing `snapshot/` models: `cd cli && uv run python scripts/gen_snapshot_schema.py` (a test fails if `schema/snapshot.v1.json` is stale)
