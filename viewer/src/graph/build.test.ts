@@ -8,6 +8,8 @@ import { toggleExpanded } from "./expanded";
 
 /** The CLI's AdventureWorks golden, read in place. */
 const AW_TEXT = readFileSync("../cli/tests/fixtures/adventureworks2022.snapshot.json", "utf8");
+/** The CLI's WideWorldImporters fixture, read in place. */
+const WWI_TEXT = readFileSync("../cli/tests/fixtures/wideworldimporters.snapshot.json", "utf8");
 const BIN2_TEXT = readFileSync("src/snapshot/__fixtures__/bin2-edgecases.snapshot.json", "utf8");
 const NONE: ReadonlySet<string> = new Set();
 
@@ -32,6 +34,7 @@ function handlesOf(graph: Graph, nodeId: string): Set<string> {
 
 describe.each([
   ["AdventureWorks", AW_TEXT],
+  ["WideWorldImporters", WWI_TEXT],
   ["BIN2 edge cases", BIN2_TEXT],
 ])("buildGraph on %s", (_label, text) => {
   const snapshot = load(text);
@@ -75,6 +78,14 @@ describe("buildGraph details", () => {
 
   it("renders all 71 AdventureWorks tables", () => {
     expect(buildGraph(indexes, NONE).nodes).toHaveLength(71);
+  });
+
+  it("renders all 48 WideWorldImporters tables and an edge per distinct relationship", () => {
+    const wwi = load(WWI_TEXT);
+    const graph = buildGraph(buildIndexes(wwi), NONE);
+    expect(graph.nodes).toHaveLength(48);
+    expect(graph.edges.length).toBe(expectedEdgeIds(wwi).length);
+    expect(graph.edges.length).toBeGreaterThan(0);
   });
 
   it("gives case-variant tables separate nodes (BIN2)", () => {

@@ -152,7 +152,15 @@ test("round trip on every definition in the AdventureWorks golden", () => {
   }
 });
 
-test("round trip on the WideWorldImporters code fixture (no full WWI snapshot golden exists)", () => {
+test("round trip on every definition in the WideWorldImporters snapshot", () => {
+  const all = definitionsFrom("wideworldimporters.snapshot.json");
+  expect(all.length).toBeGreaterThan(20);
+  for (const definition of all) {
+    expect(joined(tokenize(definition))).toBe(definition);
+  }
+});
+
+test("round trip on the WideWorldImporters code fixture", () => {
   const all = definitionsFrom("wideworldimporters_code.json");
   expect(all.length).toBeGreaterThan(0);
   for (const definition of all) {

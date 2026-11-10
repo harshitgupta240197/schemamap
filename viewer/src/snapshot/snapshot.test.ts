@@ -9,6 +9,8 @@ import { MAX_REPORTED_VIOLATIONS, parseSnapshot } from "./parse";
 /** The AdventureWorks golden is the CLI's own file, read in place so the two cannot drift. */
 const AW = readFileSync("../cli/tests/fixtures/adventureworks2022.snapshot.json", "utf8");
 /** A real `schemamap extract` of SchemaMapEdgeCasesBIN2 (see __fixtures__/README.md). */
+/** A real extract of WideWorldImporters as `schemamap_reader`, read in place (normalised like the AW golden). */
+const WWI = readFileSync("../cli/tests/fixtures/wideworldimporters.snapshot.json", "utf8");
 const BIN2 = readFileSync("src/snapshot/__fixtures__/bin2-edgecases.snapshot.json", "utf8");
 
 function withVersion(version: unknown): string {
@@ -145,6 +147,18 @@ describe("invalid input", () => {
     const error = failure(() => parseSnapshot(JSON.stringify(doc2)));
     expect(error.details).toHaveLength(MAX_REPORTED_VIOLATIONS + 1);
     expect(error.details.at(-1)).toMatch(/^and \d+ more$/);
+  });
+});
+
+describe("WideWorldImporters fixture", () => {
+  it("validates with the viewer validator and indexes every table", () => {
+    const snapshot = parseSnapshot(WWI);
+    expect(snapshot.source.database).toBe("WideWorldImporters");
+    expect(snapshot.tables).toHaveLength(48);
+    const index = buildIndexes(snapshot);
+    for (const table of snapshot.tables ?? []) {
+      expect(index.byId(table.id)?.kind).toBe("table");
+    }
   });
 });
 

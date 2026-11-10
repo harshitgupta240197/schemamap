@@ -3,7 +3,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { expect, test } from "@playwright/test";
 
-const GOLDEN = path.resolve("..", "cli", "tests", "fixtures", "adventureworks2022.snapshot.json");
+const FIXTURES = path.resolve("..", "cli", "tests", "fixtures");
+const GOLDEN = path.join(FIXTURES, "adventureworks2022.snapshot.json");
+const WWI = path.join(FIXTURES, "wideworldimporters.snapshot.json");
 
 interface GoldenSnapshot {
   tables: { id: string }[];
@@ -23,20 +25,24 @@ function escapeForScript(json: string): string {
 }
 
 /** Write a copy of the built viewer with the golden snapshot inlined, and return its file URL. */
-function mapWithGolden(outFile: string): string {
+function mapWithGolden(outFile: string, snapshotPath: string = GOLDEN): string {
   const html = readFileSync(path.resolve("dist", "index.html"), "utf8");
-  const data = `<script type="application/json" id="schemamap-data">${escapeForScript(readFileSync(GOLDEN, "utf8"))}</script>`;
+  const data = `<script type="application/json" id="schemamap-data">${escapeForScript(readFileSync(snapshotPath, "utf8"))}</script>`;
+  // A replacer function: a replacement string would expand `$'` and `$&` found in SQL text.
   const marker = "<body>";
   if (!html.includes(marker)) {
     throw new Error("built file has no <body>");
   }
-  writeFileSync(outFile, html.replace(marker, `${marker}${data}`));
+  writeFileSync(
+    outFile,
+    html.replace(marker, () => `${marker}${data}`),
+  );
   return pathToFileURL(outFile).href;
 }
 
 /** Distinct edge ids between two tables, from the golden itself (not hard-coded). */
-function expectedEdgeCount(): number {
-  const golden = JSON.parse(readFileSync(GOLDEN, "utf8")) as GoldenSnapshot;
+function expectedEdgeCount(snapshotPath: string = GOLDEN): number {
+  const golden = JSON.parse(readFileSync(snapshotPath, "utf8")) as GoldenSnapshot;
   const tables = new Set(golden.tables.map((t) => t.id));
   return new Set(
     golden.relationships
@@ -120,4 +126,22 @@ test("expanding a table relays out and shows all its columns", async ({ page }, 
     has: page.getByTitle("Person.Person", { exact: true }),
   });
   await expect(node.getByText("EmailPromotion", { exact: true })).toBeAttached();
+});
+
+test("WideWorldImporters map renders every table over file://", async ({ page }, testInfo) => {
+  const problems: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error" || msg.type() === "warning") {
+      problems.push(`${msg.type()}: ${msg.text()}`);
+    }
+  });
+  page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto(mapWithGolden(testInfo.outputPath("wideworldimporters.html"), WWI));
+  await expect(page.locator(".sm-canvas")).toHaveAttribute("data-layout-status", "done", {
+    timeout: 30_000,
+  });
+  await expect(page.locator(".react-flow__node")).toHaveCount(48);
+  await expect(page.locator(".react-flow__edge")).toHaveCount(expectedEdgeCount(WWI));
+  expect(problems).toEqual([]);
 });

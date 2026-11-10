@@ -18,7 +18,10 @@ function escapeForScript(json: string): string {
 function mapUrl(outFile: string, hash = ""): string {
   const html = readFileSync(path.resolve("dist", "index.html"), "utf8");
   const data = `<script type="application/json" id="schemamap-data">${escapeForScript(readFileSync(GOLDEN, "utf8"))}</script>`;
-  writeFileSync(outFile, html.replace("<body>", `<body>${data}`));
+  writeFileSync(
+    outFile,
+    html.replace("<body>", () => `<body>${data}`),
+  );
   return pathToFileURL(outFile).href + hash;
 }
 
