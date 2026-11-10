@@ -27,3 +27,4 @@
 2026-11-10 | 2.1a | bf2a7e9 | Viewer tests use the real CLI BIN2 extract and the CLI AdventureWorks golden by path; ajv and json-schema-to-typescript pinned; check:bundle guard in CI; captured_at display falls back to the raw string
 2026-11-10 | 2.2 | be4d9b3 | Graph canvas: React Flow tables + shared FK edges, elkjs in Blob-URL worker over file:// (cached per view, grid fallback); raw-HTML lint ban via no-restricted-syntax (D-045); Ajv ucs2length inlined, Ajv out of bundle (D-044 amend)
 2026-11-10 | 2.3 | 175e90c | Search palette (in-house fuzzy), schema filter, focus mode with hops and breadcrumb, view state in URL hash (D-046)
+2026-11-10 | 2.4 | 49a8d70 | Detail panel (columns, indexes, FKs, impact, definitions) with in-house T-SQL tokenizer, select= in URL hash, copy buttons with manual fallback; WWI has only a code fixture (1 view, 1 routine), so round-trip covers AdventureWorks fully plus those
