@@ -26,3 +26,4 @@
 2026-11-10 | 2.1 | 387ebc6 | Viewer data layer: generated TS types + Ajv standalone validator (drift-checked in CI), inline/file/gzip loader, 1.x version rule, id/name/case-insensitive/adjacency indexes (D-043, D-044)
 2026-11-10 | 2.1a | bf2a7e9 | Viewer tests use the real CLI BIN2 extract and the CLI AdventureWorks golden by path; ajv and json-schema-to-typescript pinned; check:bundle guard in CI; captured_at display falls back to the raw string
 2026-11-10 | 2.2 | be4d9b3 | Graph canvas: React Flow tables + shared FK edges, elkjs in Blob-URL worker over file:// (cached per view, grid fallback); raw-HTML lint ban via no-restricted-syntax (D-045); Ajv ucs2length inlined, Ajv out of bundle (D-044 amend)
+2026-11-10 | 2.3 | 175e90c | Search palette (in-house fuzzy), schema filter, focus mode with hops and breadcrumb, view state in URL hash (D-046)
