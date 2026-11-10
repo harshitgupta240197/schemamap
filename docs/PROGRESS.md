@@ -29,3 +29,4 @@
 2026-11-10 | 2.3 | 175e90c | Search palette (in-house fuzzy), schema filter, focus mode with hops and breadcrumb, view state in URL hash (D-046)
 2026-11-10 | 2.4 | 49a8d70 | Detail panel (columns, indexes, FKs, impact, definitions) with in-house T-SQL tokenizer, select= in URL hash, copy buttons with manual fallback; WWI has only a code fixture (1 view, 1 routine), so round-trip covers AdventureWorks fully plus those
 2026-11-10 | 2.4a | 968bbcf | Real WideWorldImporters fixture (48 tables, 98 FKs), docs/VIEWER.md hash format; fixed e2e inline helpers expanding $' in SQL text via String.replace
+2026-11-10 | 2.5 | dc7f71f | Overview mode for >200 tables (schema + FK-component clusters, tree-partition split, cluster= hash, search drills to cluster), 200-table layout limit, MIN_WIDTH layering; 2,000 tables interactive 484 ms local / 926 ms CI, search 6 / 19 ms; AW 1.80, WWI 1.73 (D-047)

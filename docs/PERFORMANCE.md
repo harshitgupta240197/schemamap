@@ -32,16 +32,18 @@ What the viewer has to hit, how it is measured, and the numbers. Decisions behin
 | AdventureWorks: aspect ratio / fit-view zoom | **1.80** / 0.23 |
 | WideWorldImporters: aspect ratio / fit-view zoom | **1.73** / 0.27 |
 
-### CI: GitHub Actions `ubuntu-latest`
+### CI: GitHub Actions `ubuntu-latest`, viewer job (run 42826636988, commit dc7f71f)
 
 Recorded from the `PERF` lines of the viewer job's Playwright output.
 
 | Measure | Value |
 | --- | --- |
-| 2,000 tables: interactive | pending first CI run |
-| 2,000 tables: slowest search keystroke | pending first CI run |
-| AdventureWorks: aspect ratio / fit-view zoom | pending first CI run |
-| WideWorldImporters: aspect ratio / fit-view zoom | pending first CI run |
+| 2,000 tables: overview layout done | 879 ms |
+| 2,000 tables: click response | 48 ms |
+| 2,000 tables: **interactive** | **926 ms** |
+| 2,000 tables: **slowest search keystroke** | **19 ms** |
+| AdventureWorks: aspect ratio / fit-view zoom | **1.80** / 0.23 |
+| WideWorldImporters: aspect ratio / fit-view zoom | **1.73** / 0.27 |
 
 ## Layout measurements behind the limit
 
