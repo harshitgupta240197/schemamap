@@ -304,3 +304,13 @@ Gate 1 found that a login without `VIEW DEFINITION` gets short catalog views and
 
 **Changed wording.** `permission_missing` messages now end `GRANT ... TO [<user>]; <user> is the database user the login maps to, which may differ from the login name.` instead of `TO <login>;`. Tests and the AdventureWorks golden file were updated to match; nothing was loosened.
 
+
+## D-043 json-schema-to-typescript for the viewer's snapshot types (2026-11-10)
+
+Dependency (devDependency): `json-schema-to-typescript`. The viewer's snapshot types are generated from `schema/snapshot.v1.json` into `viewer/src/generated/snapshot.ts` (`npm run gen:types`), never hand-written, so the CLI model, the schema and the viewer cannot drift apart. CI runs `npm run gen:check`, which regenerates and fails on any diff.
+
+## D-044 Ajv standalone for snapshot validation (2026-11-10)
+
+Dependency (devDependency): `ajv`. The validator is compiled at build time from the same schema (`viewer/src/generated/validate-snapshot.js`, committed, drift-checked with the types) and the viewer ships only the generated code. **CSP reason:** Ajv's normal mode builds validators with `new Function`, which needs `script-src 'unsafe-eval'`. The map is a single offline HTML file that should run under a strict CSP (no eval, no network), so runtime codegen is out; the generated module contains no `eval`/`new Function`. Its only runtime import is Ajv's `ucs2length` helper (a few lines), bundled by Vite.
+
+Choices: draft 2020-12 (`ajv/dist/2020`), strict mode, `allErrors` for useful messages, and `validateFormats: false` (the one format, `date-time`, is display-only; asserting it would need `ajv-formats` at runtime). The schema sets no `additionalProperties: false`, so a 1.x snapshot with extra fields still loads. The format version is checked before the schema so a future major reports "unsupported version" instead of schema noise. Gzip is detected by magic bytes, not file name, and decompression is capped at 512 MB.

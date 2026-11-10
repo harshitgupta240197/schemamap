@@ -4,7 +4,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "playwright-report", "test-results", "node_modules"] },
+  { ignores: ["src/generated", "dist", "playwright-report", "test-results", "node_modules"] },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {
@@ -19,5 +19,5 @@ export default tseslint.config(
       "@typescript-eslint/no-non-null-assertion": "error",
     },
   },
-  { files: ["*.js"], ...tseslint.configs.disableTypeChecked },
+  { files: ["*.js", "scripts/*.mjs"], ...tseslint.configs.disableTypeChecked },
 );

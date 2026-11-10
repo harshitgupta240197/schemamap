@@ -50,6 +50,7 @@ jobs:
           cache: npm
           cache-dependency-path: viewer/package-lock.json
       - run: npm ci
+      - run: npm run gen:check
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test

@@ -41,3 +41,6 @@ blob-report/
 # Claude Code personal overrides
 .claude/settings.local.json
 .coverage
+
+# Public synthetic/sample snapshots used by viewer tests
+!viewer/src/snapshot/__fixtures__/*.snapshot.json

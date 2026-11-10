@@ -1,0 +1,162 @@
+{
+  "format": "schemamap.snapshot",
+  "format_version": "1.0",
+  "generator": {
+    "name": "schemamap",
+    "version": "0.0.1"
+  },
+  "captured_at": "2026-11-10T00:00:00Z",
+  "source": {
+    "database": "SchemaMapEdgeCasesBIN2",
+    "collation": "Latin1_General_100_BIN2"
+  },
+  "schemas": [
+    {
+      "id": "schema:dbo",
+      "name": "dbo"
+    }
+  ],
+  "tables": [
+    {
+      "id": "object:dbo.Orders",
+      "schema_id": "schema:dbo",
+      "name": "Orders",
+      "columns": [
+        {
+          "id": "column:dbo.Orders.Id",
+          "name": "Id",
+          "ordinal": 1,
+          "data_type": "int",
+          "nullable": false
+        },
+        {
+          "id": "column:dbo.Orders.Name",
+          "name": "Name",
+          "ordinal": 2,
+          "data_type": "nvarchar",
+          "nullable": true
+        },
+        {
+          "id": "column:dbo.Orders.name",
+          "name": "name",
+          "ordinal": 3,
+          "data_type": "nvarchar",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "id": "object:dbo.orders",
+      "schema_id": "schema:dbo",
+      "name": "orders",
+      "columns": [
+        {
+          "id": "column:dbo.orders.Id",
+          "name": "Id",
+          "ordinal": 1,
+          "data_type": "int",
+          "nullable": false
+        },
+        {
+          "id": "column:dbo.orders.Name",
+          "name": "Name",
+          "ordinal": 2,
+          "data_type": "nvarchar",
+          "nullable": true
+        },
+        {
+          "id": "column:dbo.orders.name",
+          "name": "name",
+          "ordinal": 3,
+          "data_type": "nvarchar",
+          "nullable": true
+        },
+        {
+          "id": "column:dbo.orders.OrderRef",
+          "name": "OrderRef",
+          "ordinal": 4,
+          "data_type": "int",
+          "nullable": false
+        }
+      ]
+    }
+  ],
+  "views": [
+    {
+      "id": "object:dbo.OrdersView",
+      "schema_id": "schema:dbo",
+      "name": "OrdersView",
+      "definition_status": "available",
+      "definition": "CREATE VIEW dbo.OrdersView AS SELECT Id FROM dbo.Orders",
+      "columns": [
+        {
+          "id": "column:dbo.OrdersView.Id",
+          "name": "Id",
+          "ordinal": 1,
+          "data_type": "int",
+          "nullable": false
+        }
+      ]
+    }
+  ],
+  "routines": [
+    {
+      "id": "object:dbo.GetOrders",
+      "schema_id": "schema:dbo",
+      "name": "GetOrders",
+      "kind": "procedure",
+      "definition_status": "available",
+      "definition": "CREATE PROCEDURE dbo.GetOrders AS SELECT * FROM dbo.orders"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "foreign_key:dbo.FK_orders_Orders",
+      "name": "FK_orders_Orders",
+      "edge": "edge:dbo.orders(OrderRef)>dbo.Orders(Id)",
+      "from_object": "object:dbo.orders",
+      "from_columns": [
+        "column:dbo.orders.OrderRef"
+      ],
+      "to_object": "object:dbo.Orders",
+      "to_columns": [
+        "column:dbo.Orders.Id"
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "from_object": "object:dbo.OrdersView",
+      "target": {
+        "scope": "local",
+        "name": {
+          "schema_name": "dbo",
+          "name": "Orders"
+        },
+        "resolved": "object:dbo.Orders"
+      }
+    },
+    {
+      "from_object": "object:dbo.GetOrders",
+      "target": {
+        "scope": "local",
+        "name": {
+          "schema_name": "dbo",
+          "name": "orders"
+        },
+        "resolved": "object:dbo.orders"
+      }
+    },
+    {
+      "from_object": "object:dbo.GetOrders",
+      "target": {
+        "scope": "local",
+        "name": {
+          "schema_name": "dbo",
+          "name": "Missing"
+        },
+        "resolved": null
+      }
+    }
+  ]
+}
