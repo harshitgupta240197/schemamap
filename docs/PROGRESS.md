@@ -24,3 +24,4 @@
 2026-11-09 | 1.12 | 4844b47 | VIEW DEFINITION decision: none+nothing visible exits 3 with no file, partial map warns (partial_visibility), empty-but-granted is a plain note; doctor FAILs the grant; hints name the database user via USER_NAME() (D-042)
 2026-11-10 | 1.13 | c9f687f | Collation coverage: SchemaMapEdgeCasesCS and BIN2 (case-variant tables/columns/FK/view/proc, user SYS.TABLES) extract correctly; doctor exits 3 on any FAIL, WARN-only exits 0
 2026-11-10 | 2.1 | 387ebc6 | Viewer data layer: generated TS types + Ajv standalone validator (drift-checked in CI), inline/file/gzip loader, 1.x version rule, id/name/case-insensitive/adjacency indexes (D-043, D-044)
+2026-11-10 | 2.1a | bf2a7e9 | Viewer tests use the real CLI BIN2 extract and the CLI AdventureWorks golden by path; ajv and json-schema-to-typescript pinned; check:bundle guard in CI; captured_at display falls back to the raw string
