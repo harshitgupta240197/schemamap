@@ -1,29 +1,14 @@
-import {
-  Background,
-  Controls,
-  MarkerType,
-  MiniMap,
-  ReactFlow,
-  type DefaultEdgeOptions,
-  useReactFlow,
-  type NodeTypes,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
-import "./graph.css";
-import { useEffect, useMemo, type KeyboardEvent } from "react";
+import type { NodeTypes } from "@xyflow/react";
+import { useMemo } from "react";
 import type { SnapshotIndexes } from "../snapshot/indexes";
 import { buildGraph, type FkFlowEdge, type TableFlowNode } from "./build";
 import { runElkLayout } from "./elkClient";
 import { ToggleExpandedContext, useExpanded } from "./expanded";
+import { FlowCanvas } from "./FlowCanvas";
 import { layoutKey, type LayoutRunner } from "./layout";
 import { TableNode } from "./TableNode";
-import { useLayout } from "./useLayout";
 
 const NODE_TYPES: NodeTypes = { table: TableNode };
-const EDGE_OPTIONS: DefaultEdgeOptions = {
-  markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
-  focusable: false,
-};
 
 interface GraphCanvasProps {
   readonly indexes: SnapshotIndexes;
@@ -33,114 +18,54 @@ interface GraphCanvasProps {
   readonly highlighted?: ReadonlySet<string>;
   /** Called with a table id when a node is clicked, or Enter is pressed on a focused node. */
   readonly onOpen?: (objectId: string) => void;
+  /** Table id to centre on once laid out, instead of fitting every table. */
+  readonly centerOn?: string | null;
   /** Injectable for tests; defaults to the ELK Web Worker. */
   readonly runLayout?: LayoutRunner;
 }
 
 const NO_TABLES: ReadonlySet<string> = new Set();
 
-/** Fits the view to the nodes each time a layout lands, so a new view is never off screen. */
-function FitOnLayout({ layoutId }: { layoutId: string }) {
-  const { fitView } = useReactFlow();
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      void fitView({ duration: 0 });
-    });
-    return () => {
-      cancelAnimationFrame(frame);
-    };
-  }, [fitView, layoutId]);
-  return null;
-}
-
-/** The map: the visible tables and their declared FKs, laid out by ELK off the main thread. */
+/** The table map: the visible tables and their declared FKs, laid out by ELK off the main thread. */
 export function GraphCanvas({
   indexes,
   visible = null,
   highlighted = NO_TABLES,
   onOpen,
+  centerOn = null,
   runLayout = runElkLayout,
 }: GraphCanvasProps) {
   const [expanded, toggle] = useExpanded();
   const graph = useMemo(() => buildGraph(indexes, expanded, visible), [indexes, expanded, visible]);
-  const { positions, status } = useLayout(graph, runLayout);
   const layoutId = useMemo(() => layoutKey(graph), [graph]);
-
-  // While a new view lays out, the previous positions linger; only nodes they cover are drawn.
-  const nodes = useMemo<TableFlowNode[]>(() => {
-    if (positions === null) {
-      return [];
-    }
-    const placed: TableFlowNode[] = [];
-    for (const node of graph.nodes) {
-      const position = positions.get(node.id);
-      if (position !== undefined) {
-        placed.push({ ...node, position, selected: highlighted.has(node.data.objectId) });
-      }
-    }
-    return placed;
-  }, [graph, positions, highlighted]);
-  const edges = useMemo<FkFlowEdge[]>(() => {
-    const drawn = new Set(nodes.map((node) => node.id));
-    return graph.edges.filter((edge) => drawn.has(edge.source) && drawn.has(edge.target));
-  }, [graph, nodes]);
-
-  // React Flow focuses the node wrapper, so Enter is caught here and mapped back to its table.
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    const target = event.target;
-    if (
-      event.key !== "Enter" ||
-      onOpen === undefined ||
-      !(target instanceof HTMLElement) ||
-      !target.classList.contains("react-flow__node")
-    ) {
-      return;
-    }
-    const node = graph.nodes.find((candidate) => candidate.id === target.dataset.id);
-    if (node !== undefined) {
-      event.preventDefault();
-      onOpen(node.data.objectId);
-    }
-  };
+  const selectedIds = useMemo(
+    () =>
+      new Set(
+        graph.nodes.filter((node) => highlighted.has(node.data.objectId)).map((node) => node.id),
+      ),
+    [graph, highlighted],
+  );
+  const centerNode =
+    centerOn === null
+      ? null
+      : (graph.nodes.find((node) => node.data.objectId === centerOn)?.id ?? null);
 
   return (
-    <div className="sm-canvas" data-layout-status={status} onKeyDown={onKeyDown}>
-      {status === "failed" ? (
-        <p className="sm-notice" role="status">
-          Automatic layout failed, so tables are shown in a grid.
-        </p>
-      ) : null}
-      {graph.nodes.length === 0 ? (
-        <p className="sm-canvas__pending" role="status">
-          No tables match this view.
-        </p>
-      ) : positions === null ? (
-        <p className="sm-canvas__pending" role="status">
-          Laying out {String(graph.nodes.length)} tables…
-        </p>
-      ) : (
-        <ToggleExpandedContext.Provider value={toggle}>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={NODE_TYPES}
-            defaultEdgeOptions={EDGE_OPTIONS}
-            nodesConnectable={false}
-            onNodeClick={(_event, node) => {
-              onOpen?.(node.data.objectId);
-            }}
-            edgesFocusable={false}
-            fitView
-            minZoom={0.05}
-            maxZoom={2}
-          >
-            <FitOnLayout layoutId={status === "pending" ? "pending" : layoutId} />
-            <Background />
-            <Controls showInteractive={false} />
-            <MiniMap pannable zoomable ariaLabel="Map overview" />
-          </ReactFlow>
-        </ToggleExpandedContext.Provider>
-      )}
-    </div>
+    <ToggleExpandedContext.Provider value={toggle}>
+      <FlowCanvas<TableFlowNode, FkFlowEdge>
+        nodes={graph.nodes}
+        edges={graph.edges}
+        layoutId={layoutId}
+        runLayout={runLayout}
+        nodeTypes={NODE_TYPES}
+        selectedIds={selectedIds}
+        onActivate={(node) => {
+          onOpen?.(node.data.objectId);
+        }}
+        centerOn={centerNode}
+        pendingText={`Laying out ${String(graph.nodes.length)} tables…`}
+        emptyText="No tables match this view."
+      />
+    </ToggleExpandedContext.Provider>
   );
 }

@@ -11,10 +11,18 @@ export interface ViewState {
   readonly schemas: readonly string[];
   /** Id of the table, view or routine open in the detail panel, or `null` for none. */
   readonly selected: string | null;
+  /** Id of the overview cluster drilled into, or `null` for none. */
+  readonly cluster: string | null;
 }
 
 export const DEFAULT_HOPS: Hops = 1;
-export const FULL_MAP: ViewState = { focus: [], hops: DEFAULT_HOPS, schemas: [], selected: null };
+export const FULL_MAP: ViewState = {
+  focus: [],
+  hops: DEFAULT_HOPS,
+  schemas: [],
+  selected: null,
+  cluster: null,
+};
 
 function sorted(ids: Iterable<string>): string[] {
   return [...new Set(ids)].sort();
@@ -26,8 +34,9 @@ export function makeViewState(
   hops: Hops,
   schemas: Iterable<string>,
   selected: string | null = null,
+  cluster: string | null = null,
 ): ViewState {
-  return { focus: sorted(focus), hops, schemas: sorted(schemas), selected };
+  return { focus: sorted(focus), hops, schemas: sorted(schemas), selected, cluster };
 }
 
 function isSelectable(kind: string | undefined): boolean {
@@ -46,16 +55,24 @@ function decode(raw: string): string | null {
   }
 }
 
+const NO_CLUSTERS: ReadonlySet<string> = new Set();
+
 /**
- * Read a view from a location hash (`#focus=<id>&hops=2&schema=<id>&select=<id>`). Anything that is not a
- * known id or a hop count of 1 to 3 is dropped without complaint: a stale, hand-edited or hostile
- * hash can only ever give a smaller view, never an error. Values are only compared with ids.
+ * Read a view from a location hash (`#focus=<id>&hops=2&schema=<id>&cluster=<id>&select=<id>`).
+ * Anything that is not a known id or a hop count of 1 to 3 is dropped without complaint: a stale,
+ * hand-edited or hostile hash can only ever give a smaller view, never an error. Values are only
+ * compared with ids. `clusterIds` are the overview's cluster ids for this snapshot.
  */
-export function parseHash(hash: string, indexes: SnapshotIndexes): ViewState {
+export function parseHash(
+  hash: string,
+  indexes: SnapshotIndexes,
+  clusterIds: ReadonlySet<string> = NO_CLUSTERS,
+): ViewState {
   const focus: string[] = [];
   const schemas: string[] = [];
   let hops: Hops = DEFAULT_HOPS;
   let selected: string | null = null;
+  let cluster: string | null = null;
   const body = hash.startsWith("#") ? hash.slice(1) : hash;
   for (const part of body.split("&")) {
     const eq = part.indexOf("=");
@@ -73,11 +90,13 @@ export function parseHash(hash: string, indexes: SnapshotIndexes): ViewState {
       schemas.push(value);
     } else if (key === "select" && isSelectable(indexes.byId(value)?.kind)) {
       selected = value;
+    } else if (key === "cluster" && clusterIds.has(value)) {
+      cluster = value;
     } else if (key === "hops" && /^[0-9]$/.test(value) && isHops(Number(value))) {
       hops = Number(value) as Hops;
     }
   }
-  return makeViewState(focus, hops, schemas, selected);
+  return makeViewState(focus, hops, schemas, selected, cluster);
 }
 
 /** The location hash for a view; empty for the default full map. Ids go through encodeURIComponent. */
@@ -91,6 +110,9 @@ export function formatHash(state: ViewState): string {
   }
   for (const id of state.schemas) {
     parts.push(`schema=${encodeURIComponent(id)}`);
+  }
+  if (state.cluster !== null) {
+    parts.push(`cluster=${encodeURIComponent(state.cluster)}`);
   }
   if (state.selected !== null) {
     parts.push(`select=${encodeURIComponent(state.selected)}`);

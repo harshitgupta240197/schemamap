@@ -1,5 +1,6 @@
 import type { SnapshotIndexes } from "../snapshot/indexes";
 import type { SearchItem } from "../search/searchIndex";
+import type { Clustering } from "./clusters";
 import type { ViewState } from "./viewState";
 
 /**
@@ -69,8 +70,18 @@ export function focusTargets(indexes: SnapshotIndexes, item: SearchItem): string
   return item.targetKind === "table" ? [item.targetId] : tablesReferencedBy(indexes, item.targetId);
 }
 
-/** Table ids shown for a view state, or `null` for every table. */
-export function visibleTables(indexes: SnapshotIndexes, state: ViewState): Set<string> | null {
+/**
+ * Table ids shown for a view state, or `null` for every table. Focus wins over a cluster; a
+ * cluster shows its own tables whatever the schema filter says (it lies in one schema anyway).
+ */
+export function visibleTables(
+  indexes: SnapshotIndexes,
+  state: ViewState,
+  clustering: Clustering | null = null,
+): Set<string> | null {
+  if (state.focus.length === 0 && state.cluster !== null) {
+    return new Set(clustering?.byId.get(state.cluster)?.tableIds ?? []);
+  }
   if (state.focus.length === 0 && state.schemas.length === 0) {
     return null;
   }

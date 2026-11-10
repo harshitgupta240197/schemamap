@@ -201,3 +201,38 @@ describe("selection in the hash", () => {
     expect(sameView(a, makeViewState([], 1, [], null))).toBe(false);
   });
 });
+
+describe("cluster in the hash", () => {
+  const known = new Set(["cluster:object:dbo.A", "cluster:object:dbo.X"]);
+
+  it("round-trips a known cluster, written after schema and before select", () => {
+    const state = makeViewState([], 1, ["schema:dbo"], t("B"), "cluster:object:dbo.A");
+    const hash = formatHash(state);
+    expect(hash).toBe(
+      "#schema=schema%3Adbo&cluster=cluster%3Aobject%3Adbo.A&select=object%3Adbo.B",
+    );
+    expect(parseHash(hash, indexes, known)).toEqual(state);
+  });
+
+  it("drops unknown clusters, ids of other kinds and bad encoding; the last valid one wins", () => {
+    for (const hash of [
+      "#cluster=cluster%3Aobject%3Adbo.Nope",
+      "#cluster=object%3Adbo.A",
+      "#cluster=schema%3Adbo",
+      "#cluster=%E0%A4%A",
+      "#cluster=__proto__",
+      "#cluster=",
+    ]) {
+      expect(parseHash(hash, indexes, known)).toEqual(FULL_MAP);
+    }
+    const twice = "#cluster=cluster%3Aobject%3Adbo.A&cluster=nope&cluster=cluster%3Aobject%3Adbo.X";
+    expect(parseHash(twice, indexes, known).cluster).toBe("cluster:object:dbo.X");
+  });
+
+  it("is ignored when the caller knows no clusters, and older hashes read as before", () => {
+    expect(parseHash("#cluster=cluster%3Aobject%3Adbo.A", indexes)).toEqual(FULL_MAP);
+    expect(parseHash("#focus=object%3Adbo.B&hops=2", indexes, known)).toEqual(
+      makeViewState([t("B")], 2, []),
+    );
+  });
+});

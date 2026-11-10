@@ -1,9 +1,24 @@
+import { LAYOUT_LIMIT } from "../graph/layout";
 import type { SnapshotIndexes } from "../snapshot/indexes";
+import type { Clustering } from "./clusters";
+import {
+  backToCluster,
+  backToRoot,
+  focusOn,
+  rootTableCount,
+  viewLevel,
+  withSchemas,
+  type Level,
+} from "./level";
 import { makeViewState, type Hops, type ViewState } from "./viewState";
 import "./toolbar.css";
 
 interface ToolbarProps {
   readonly indexes: SnapshotIndexes;
+  readonly clustering: Clustering;
+  readonly level: Level;
+  /** Most hops the current focus allows within the layout limit. */
+  readonly maxHops: Hops;
   readonly state: ViewState;
   readonly onChange: (next: ViewState) => void;
   readonly onSearch: () => void;
@@ -22,20 +37,61 @@ function focusLabel(indexes: SnapshotIndexes, focus: readonly string[]): string 
   return `${String(focus.length)} tables`;
 }
 
-/** Search button, schema filter, hop control and the breadcrumb back to the full map. */
-export function Toolbar({ indexes, state, onChange, onSearch, shown, total }: ToolbarProps) {
+function countLine(
+  level: Level,
+  clustering: Clustering,
+  schemas: ReadonlySet<string>,
+  shown: number,
+  total: number,
+): string {
+  if (level !== "overview") {
+    return `${String(shown)} of ${String(total)} tables`;
+  }
+  const clusters = clustering.clusters.filter(
+    (cluster) => schemas.size === 0 || schemas.has(cluster.schemaId),
+  );
+  const tables = clusters.reduce((sum, cluster) => sum + cluster.tableIds.length, 0);
+  return `${String(tables)} tables in ${String(clusters.length)} clusters`;
+}
+
+/**
+ * Search button, schema filter, hop control, Focus button, and the breadcrumb: the overview or
+ * full map, then the cluster drilled into, then the focus. Each earlier crumb leads back.
+ */
+export function Toolbar({
+  indexes,
+  clustering,
+  level,
+  maxHops,
+  state,
+  onChange,
+  onSearch,
+  shown,
+  total,
+}: ToolbarProps) {
   const schemas = (indexes.snapshot.schemas ?? []).filter((schema) =>
     (indexes.snapshot.tables ?? []).some((table) => table.schema_id === schema.id),
   );
   const selected = new Set(state.schemas);
   const inFocus = state.focus.length > 0;
+  const root = backToRoot(state);
+  const rootLabel =
+    viewLevel(root, rootTableCount(indexes, state.schemas)) === "overview"
+      ? "Overview"
+      : "Full map";
+  const cluster = state.cluster === null ? undefined : clustering.byId.get(state.cluster);
+  const chosen = state.selected === null ? undefined : indexes.byId(state.selected);
+  const focusable =
+    chosen?.kind === "table" && !(state.focus.length === 1 && state.focus[0] === chosen.id)
+      ? chosen
+      : undefined;
 
   const toggleSchema = (id: string): void => {
     const next = new Set(selected);
     if (!next.delete(id)) {
       next.add(id);
     }
-    onChange(makeViewState(state.focus, state.hops, next, state.selected));
+    onChange(withSchemas(state, next));
   };
 
   return (
@@ -67,7 +123,7 @@ export function Toolbar({ indexes, state, onChange, onSearch, shown, total }: To
               type="button"
               className="sm-toolbar__button"
               onClick={() => {
-                onChange(makeViewState(state.focus, state.hops, [], state.selected));
+                onChange(withSchemas(state, []));
               }}
             >
               All schemas
@@ -84,8 +140,16 @@ export function Toolbar({ indexes, state, onChange, onSearch, shown, total }: To
               type="button"
               className="sm-toolbar__button"
               aria-pressed={state.hops === hops}
+              disabled={hops > maxHops}
+              title={
+                hops > maxHops
+                  ? `${String(hops)} hops would show more than ${String(LAYOUT_LIMIT)} tables`
+                  : undefined
+              }
               onClick={() => {
-                onChange(makeViewState(state.focus, hops, state.schemas, state.selected));
+                onChange(
+                  makeViewState(state.focus, hops, state.schemas, state.selected, state.cluster),
+                );
               }}
             >
               {hops}
@@ -93,23 +157,52 @@ export function Toolbar({ indexes, state, onChange, onSearch, shown, total }: To
           ))}
         </div>
       ) : null}
+      {focusable === undefined ? null : (
+        <button
+          type="button"
+          className="sm-toolbar__button"
+          aria-label={`Focus on ${focusable.schemaName}.${focusable.item.name}`}
+          onClick={() => {
+            onChange(focusOn(state, focusable.id));
+          }}
+        >
+          Focus
+        </button>
+      )}
       <nav className="sm-toolbar__crumbs" aria-label="Breadcrumb">
         <ol>
           <li>
-            {inFocus ? (
+            {inFocus || cluster !== undefined ? (
               <button
                 type="button"
                 className="sm-toolbar__link"
                 onClick={() => {
-                  onChange(makeViewState([], state.hops, state.schemas, state.selected));
+                  onChange(root);
                 }}
               >
-                Full map
+                {rootLabel}
               </button>
             ) : (
-              <span aria-current="page">Full map</span>
+              <span aria-current="page">{rootLabel}</span>
             )}
           </li>
+          {cluster === undefined ? null : (
+            <li>
+              {inFocus ? (
+                <button
+                  type="button"
+                  className="sm-toolbar__link"
+                  onClick={() => {
+                    onChange(backToCluster(state));
+                  }}
+                >
+                  {cluster.name}
+                </button>
+              ) : (
+                <span aria-current="page">{cluster.name}</span>
+              )}
+            </li>
+          )}
           {inFocus ? (
             <li>
               <span aria-current="page">{focusLabel(indexes, state.focus)}</span>
@@ -118,7 +211,7 @@ export function Toolbar({ indexes, state, onChange, onSearch, shown, total }: To
         </ol>
       </nav>
       <span className="sm-toolbar__count" role="status">
-        {String(shown)} of {String(total)} tables
+        {countLine(level, clustering, selected, shown, total)}
       </span>
     </div>
   );

@@ -1,4 +1,13 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
+import { mark, measureFrom, SEARCH_INPUT_MARK, SEARCH_MEASURE } from "../perf";
 import { searchItems, type SearchItem } from "./searchIndex";
 import "./palette.css";
 
@@ -19,6 +28,10 @@ export function Palette({ items, onSelect, onClose }: PaletteProps) {
   const listId = `${base}-list`;
   const optionId = (index: number): string => `${base}-opt-${String(index)}`;
   const results = useMemo(() => searchItems(items, query), [items, query]);
+  // Layout effects run once the new results are in the DOM, before paint: the end of a search.
+  useLayoutEffect(() => {
+    measureFrom(SEARCH_MEASURE, SEARCH_INPUT_MARK);
+  }, [results]);
 
   useEffect(() => {
     const before = document.activeElement;
@@ -81,6 +94,7 @@ export function Palette({ items, onSelect, onClose }: PaletteProps) {
           spellCheck={false}
           value={query}
           onChange={(event) => {
+            mark(SEARCH_INPUT_MARK);
             setQuery(event.target.value);
             setActive(0);
           }}

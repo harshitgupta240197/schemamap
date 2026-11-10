@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import type { Graph } from "./build";
+import { useEffect, useState } from "react";
 import {
   gridPositions,
   layoutCache,
-  layoutKey,
   positionsFrom,
   toElkGraph,
+  type LayoutGraph,
   type LayoutRunner,
   type Positions,
 } from "./layout";
@@ -24,9 +23,11 @@ interface Result {
   readonly status: "done" | "failed";
 }
 
-/** Lay out `graph` with `runner`, once per view: results are cached by `layoutKey`. */
-export function useLayout(graph: Graph, runner: LayoutRunner): LayoutState {
-  const key = useMemo(() => layoutKey(graph), [graph]);
+/**
+ * Lay out `graph` with `runner`, once per view: results are cached by `key`, which must identify
+ * the graph's nodes, sizes and edges (`layoutKey` for tables, `overviewKey` for clusters).
+ */
+export function useLayout(graph: LayoutGraph, key: string, runner: LayoutRunner): LayoutState {
   const [result, setResult] = useState<Result | null>(null);
 
   useEffect(() => {

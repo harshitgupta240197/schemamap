@@ -7,6 +7,27 @@ export type Positions = ReadonlyMap<string, { readonly x: number; readonly y: nu
 /** Runs an ELK layout and resolves with the laid-out graph. */
 export type LayoutRunner = (graph: ElkNode) => Promise<ElkNode>;
 
+/**
+ * The most nodes the viewer lays out in one ELK run. The full map is the default view only up to
+ * this many tables, no overview cluster is larger, and focus hops that would pass it are not
+ * offered. Measurements behind the number are in docs/PERFORMANCE.md (D-047).
+ */
+export const LAYOUT_LIMIT = 200;
+
+/** What a layout needs from a graph: fixed-size nodes and directed edges between them. */
+export interface LayoutGraph {
+  readonly nodes: readonly {
+    readonly id: string;
+    readonly width?: number;
+    readonly height?: number;
+  }[];
+  readonly edges: readonly {
+    readonly id: string;
+    readonly source: string;
+    readonly target: string;
+  }[];
+}
+
 const LAYOUT_OPTIONS: Readonly<Record<string, string>> = {
   "elk.algorithm": "layered",
   "elk.direction": "RIGHT",
@@ -18,11 +39,26 @@ const LAYOUT_OPTIONS: Readonly<Record<string, string>> = {
   "elk.randomSeed": "1",
 };
 
+/**
+ * Minimum-width layering keeps wide fan-outs from stacking into one tall column, so graphs lay
+ * out widescreen. It costs more than linear time, so it is used only up to `LAYOUT_LIMIT` nodes.
+ */
+const WIDESCREEN_OPTIONS: Readonly<Record<string, string>> = {
+  "elk.layered.layering.strategy": "MIN_WIDTH",
+};
+
+/** ELK options for a graph of `nodeCount` nodes. */
+export function layoutOptions(nodeCount: number): Record<string, string> {
+  return nodeCount <= LAYOUT_LIMIT
+    ? { ...LAYOUT_OPTIONS, ...WIDESCREEN_OPTIONS }
+    : { ...LAYOUT_OPTIONS };
+}
+
 /** The ELK input for a graph: fixed node sizes, nodes and edges in their (stable) graph order. */
-export function toElkGraph(graph: Graph): ElkNode {
+export function toElkGraph(graph: LayoutGraph): ElkNode {
   return {
     id: "root",
-    layoutOptions: { ...LAYOUT_OPTIONS },
+    layoutOptions: layoutOptions(graph.nodes.length),
     children: graph.nodes.map((node) => ({
       id: node.id,
       width: node.width ?? 0,
@@ -36,13 +72,16 @@ export function toElkGraph(graph: Graph): ElkNode {
   };
 }
 
-/** Identity of a view for the layout cache: which tables, their sizes, and which edges. */
+/**
+ * Identity of a table view for the layout cache: which tables, their sizes, and which edges.
+ * Prefixed `t:` so it can never equal an overview key (`c:`).
+ */
 export function layoutKey(graph: Graph): string {
   const nodes = graph.nodes.map(
     (node) => `${node.data.objectId}\u0000${String(node.width)}x${String(node.height)}`,
   );
   const edges = graph.edges.map((edge) => edge.data?.edgeId ?? edge.id);
-  return `${nodes.join("\u0001")}\u0002${edges.join("\u0001")}`;
+  return `t:${nodes.join("\u0001")}\u0002${edges.join("\u0001")}`;
 }
 
 /** Read positions out of a laid-out ELK graph. */
@@ -57,7 +96,7 @@ export function positionsFrom(laidOut: ElkNode): Positions {
 const GRID_GAP = 40;
 
 /** Fallback when the layout worker fails: a plain grid in graph order, so the map still shows. */
-export function gridPositions(graph: Graph): Positions {
+export function gridPositions(graph: LayoutGraph): Positions {
   const perRow = Math.max(1, Math.ceil(Math.sqrt(graph.nodes.length)));
   const positions = new Map<string, { x: number; y: number }>();
   let y = 0;

@@ -1,35 +1,5 @@
-import { readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
-
-const GOLDEN = path.resolve("..", "cli", "tests", "fixtures", "adventureworks2022.snapshot.json");
-
-/** Escape JSON for an inline script, as the export must: `<`, `>`, `&`, U+2028, U+2029. */
-function escapeForScript(json: string): string {
-  return json
-    .replaceAll("<", "\\u003c")
-    .replaceAll(">", "\\u003e")
-    .replaceAll("&", "\\u0026")
-    .replaceAll(String.fromCharCode(0x2028), "\\u2028")
-    .replaceAll(String.fromCharCode(0x2029), "\\u2029");
-}
-
-function mapUrl(outFile: string, hash = ""): string {
-  const html = readFileSync(path.resolve("dist", "index.html"), "utf8");
-  const data = `<script type="application/json" id="schemamap-data">${escapeForScript(readFileSync(GOLDEN, "utf8"))}</script>`;
-  writeFileSync(
-    outFile,
-    html.replace("<body>", () => `<body>${data}`),
-  );
-  return pathToFileURL(outFile).href + hash;
-}
-
-async function settled(page: Page): Promise<void> {
-  await expect(page.locator(".sm-canvas")).toHaveAttribute("data-layout-status", "done", {
-    timeout: 30_000,
-  });
-}
+import { mapUrl, settled } from "./helpers";
 
 const panel = (page: Page) => page.getByRole("complementary");
 const nodeNamed = (page: Page, name: string) =>

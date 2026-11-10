@@ -4,14 +4,30 @@ import { DetailPanel } from "./detail/DetailPanel";
 import { describeObject } from "./detail/model";
 import type { SchemaMapSnapshotV1 } from "./generated/snapshot";
 import { GraphCanvas } from "./graph/GraphCanvas";
+import { OverviewCanvas } from "./graph/OverviewCanvas";
 import { SnapshotLoadError } from "./snapshot/errors";
 import { buildIndexes } from "./snapshot/indexes";
 import { loadSnapshotFile, readInlineSnapshot } from "./snapshot/load";
 import { Palette, useSearchShortcut } from "./search/Palette";
 import { buildSearchItems, type SearchItem } from "./search/searchIndex";
+import { clusterTables } from "./view/clusters";
 import { focusTargets, visibleTables } from "./view/focus";
+import {
+  allowedHops,
+  clampHops,
+  drillInto,
+  rootTableCount,
+  selectObject,
+  viewLevel,
+} from "./view/level";
 import { Toolbar } from "./view/Toolbar";
 import { formatHash, parseHash, sameView, makeViewState, type ViewState } from "./view/viewState";
+
+/** A table to centre on inside a cluster, set when a selection drilled or moved to it. */
+interface CenterTarget {
+  readonly cluster: string;
+  readonly tableId: string;
+}
 
 type LoadState =
   | { kind: "empty" }
@@ -34,7 +50,29 @@ function initialState(): LoadState {
 function Loaded({ snapshot }: { snapshot: SchemaMapSnapshotV1 }) {
   const indexes = useMemo(() => buildIndexes(snapshot), [snapshot]);
   const items = useMemo(() => buildSearchItems(indexes), [indexes]);
-  const [view, setView] = useState<ViewState>(() => parseHash(window.location.hash, indexes));
+  const clustering = useMemo(() => clusterTables(indexes), [indexes]);
+  const readHash = useCallback(
+    (hash: string): ViewState =>
+      clampHops(indexes, parseHash(hash, indexes, new Set(clustering.byId.keys()))),
+    [indexes, clustering],
+  );
+  const [view, setViewRaw] = useState<ViewState>(() => readHash(window.location.hash));
+  // Every change goes through the hop limit, so no focus view ever exceeds one layout.
+  const setView = useCallback(
+    (next: ViewState): void => {
+      setViewRaw(clampHops(indexes, next));
+    },
+    [indexes],
+  );
+  const level = useMemo(
+    () => viewLevel(view, rootTableCount(indexes, view.schemas)),
+    [indexes, view],
+  );
+  const [center, setCenter] = useState<CenterTarget | null>(() =>
+    view.cluster !== null && view.selected !== null
+      ? { cluster: view.cluster, tableId: view.selected }
+      : null,
+  );
   const [searching, setSearching] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const openSearch = useCallback(() => {
@@ -52,16 +90,16 @@ function Loaded({ snapshot }: { snapshot: SchemaMapSnapshotV1 }) {
   }, [view]);
   useEffect(() => {
     const onHashChange = (): void => {
-      setView((current) => {
-        const next = parseHash(window.location.hash, indexes);
-        return sameView(current, next) ? current : next;
+      setViewRaw((before) => {
+        const next = readHash(window.location.hash);
+        return sameView(before, next) ? before : next;
       });
     };
     window.addEventListener("hashchange", onHashChange);
     return () => {
       window.removeEventListener("hashchange", onHashChange);
     };
-  }, [indexes]);
+  }, [readHash]);
 
   const selected = view.selected;
   const model = useMemo(
@@ -88,17 +126,38 @@ function Loaded({ snapshot }: { snapshot: SchemaMapSnapshotV1 }) {
     panel.current?.focus();
   }, [selected]);
 
-  const open = useCallback((id: string): void => {
-    setView((current) => makeViewState(current.focus, current.hops, current.schemas, id));
-  }, []);
+  // Selecting a table that is not on screen (from the overview, or another cluster) drills into
+  // its cluster. `centre` also brings the table into view; a click on a node does not need it.
+  const select = useCallback(
+    (id: string, centre: boolean): void => {
+      const next = selectObject(view, id, clustering, level);
+      setView(next);
+      const moved = next.cluster !== view.cluster;
+      if (
+        (centre || moved) &&
+        next.focus.length === 0 &&
+        next.cluster !== null &&
+        clustering.clusterOf.get(id) === next.cluster
+      ) {
+        setCenter({ cluster: next.cluster, tableId: id });
+      }
+    },
+    [view, clustering, level, setView],
+  );
+  const open = useCallback(
+    (id: string): void => {
+      select(id, true);
+    },
+    [select],
+  );
   const close = useCallback((): void => {
     const back = opener.current;
     opener.current = null;
-    setView((current) => makeViewState(current.focus, current.hops, current.schemas, null));
+    setView(makeViewState(view.focus, view.hops, view.schemas, null, view.cluster));
     if (back?.isConnected === true) {
       back.focus();
     }
-  }, []);
+  }, [view, setView]);
   useEffect(() => {
     if (selected === null) {
       return;
@@ -115,23 +174,41 @@ function Loaded({ snapshot }: { snapshot: SchemaMapSnapshotV1 }) {
     };
   }, [selected, close]);
 
-  const visible = useMemo(() => visibleTables(indexes, view), [indexes, view]);
+  const visible = useMemo(
+    () => (level === "overview" ? null : visibleTables(indexes, view, clustering)),
+    [indexes, view, clustering, level],
+  );
+  const maxHops = useMemo(
+    () => (view.focus.length === 0 ? 3 : allowedHops(indexes, view.focus, view.schemas)),
+    [indexes, view.focus, view.schemas],
+  );
+  const centerOn =
+    level === "cluster" && center !== null && center.cluster === view.cluster
+      ? center.tableId
+      : null;
   const highlighted = useMemo(
     () => new Set(selected === null ? view.focus : [...view.focus, selected]),
     [view.focus, selected],
   );
   const total = snapshot.tables?.length ?? 0;
 
+  // On the overview or in a cluster, a table result drills to the table; elsewhere, and for
+  // views, the result is focused as on the full map.
   const onSelect = (item: SearchItem): void => {
     setSearching(false);
+    if ((level === "overview" || level === "cluster") && item.targetKind === "table") {
+      setNotice(null);
+      select(item.targetId, true);
+      return;
+    }
     const targets = focusTargets(indexes, item);
     if (targets.length === 0) {
       setNotice(`${item.context}.${item.name} does not read any table on the map.`);
-      setView(makeViewState(view.focus, view.hops, view.schemas, item.targetId));
+      setView(makeViewState(view.focus, view.hops, view.schemas, item.targetId, view.cluster));
       return;
     }
     setNotice(null);
-    setView(makeViewState(targets, view.hops, view.schemas, item.targetId));
+    setView(makeViewState(targets, view.hops, view.schemas, item.targetId, null));
   };
 
   return (
@@ -144,6 +221,9 @@ function Loaded({ snapshot }: { snapshot: SchemaMapSnapshotV1 }) {
       </header>
       <Toolbar
         indexes={indexes}
+        clustering={clustering}
+        level={level}
+        maxHops={maxHops}
         state={view}
         onChange={(next) => {
           setNotice(null);
@@ -159,7 +239,25 @@ function Loaded({ snapshot }: { snapshot: SchemaMapSnapshotV1 }) {
         </p>
       )}
       <div className="sm-app__body">
-        <GraphCanvas indexes={indexes} visible={visible} highlighted={highlighted} onOpen={open} />
+        {level === "overview" ? (
+          <OverviewCanvas
+            clustering={clustering}
+            schemas={view.schemas}
+            onDrill={(clusterId) => {
+              setView(drillInto(view, clusterId));
+            }}
+          />
+        ) : (
+          <GraphCanvas
+            indexes={indexes}
+            visible={visible}
+            highlighted={highlighted}
+            onOpen={(id) => {
+              select(id, false);
+            }}
+            centerOn={centerOn}
+          />
+        )}
         {model === undefined ? null : (
           <DetailPanel ref={panel} model={model} onSelect={open} onClose={close} />
         )}

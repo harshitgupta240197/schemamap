@@ -167,3 +167,60 @@
   transform: none;
   border-radius: 0;
 }
+
+/* Cluster geometry must match CLUSTER_NODE_* in overview.ts. */
+.react-flow__node-cluster {
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.sm-cluster {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 10px 12px;
+  overflow: hidden;
+  border: 1px solid var(--sm-border);
+  border-radius: 10px;
+  background: var(--sm-surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+  color: var(--sm-text);
+  font-size: 12px;
+}
+
+.sm-cluster .sm-badge {
+  align-self: flex-start;
+  max-width: 100%;
+}
+
+.react-flow__node-cluster:focus-visible .sm-cluster,
+.react-flow__node-cluster:hover .sm-cluster {
+  border-color: var(--sm-accent);
+}
+
+.sm-cluster__name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sm-cluster__count,
+.sm-cluster__links {
+  color: var(--sm-muted);
+  font-size: 12px;
+}
+
+.sm-cluster__links {
+  display: flex;
+  gap: 12px;
+}
+
+.sm-cluster .react-flow__handle {
+  opacity: 0;
+}

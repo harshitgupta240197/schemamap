@@ -6,7 +6,15 @@ import { buildIndexes } from "../snapshot/indexes";
 import { parseSnapshot } from "../snapshot/parse";
 import { buildGraph } from "./build";
 import { toggleExpanded } from "./expanded";
-import { gridPositions, layoutCache, layoutKey, positionsFrom, toElkGraph } from "./layout";
+import {
+  gridPositions,
+  LAYOUT_LIMIT,
+  layoutCache,
+  layoutKey,
+  layoutOptions,
+  positionsFrom,
+  toElkGraph,
+} from "./layout";
 import { useLayout } from "./useLayout";
 
 const indexes = buildIndexes(
@@ -43,9 +51,21 @@ describe("toElkGraph", () => {
   it("is deterministic", () => {
     expect(toElkGraph(buildGraph(indexes, NONE))).toEqual(toElkGraph(graph));
   });
+
+  it("uses minimum-width layering up to the layout limit only", () => {
+    const strategy = "elk.layered.layering.strategy";
+    expect(toElkGraph(graph).layoutOptions?.[strategy]).toBe("MIN_WIDTH");
+    expect(layoutOptions(LAYOUT_LIMIT)[strategy]).toBe("MIN_WIDTH");
+    expect(layoutOptions(LAYOUT_LIMIT + 1)[strategy]).toBeUndefined();
+    expect(layoutOptions(LAYOUT_LIMIT + 1)["elk.algorithm"]).toBe("layered");
+  });
 });
 
 describe("layoutKey", () => {
+  it("is prefixed so table views never share a cache entry with the overview", () => {
+    expect(layoutKey(graph).startsWith("t:")).toBe(true);
+  });
+
   it("is stable for the same view and changes when a node is expanded", () => {
     expect(layoutKey(buildGraph(indexes, NONE))).toBe(layoutKey(graph));
     expect(layoutKey(buildGraph(indexes, toggleExpanded(NONE, "object:Person.Person")))).not.toBe(
@@ -74,7 +94,7 @@ describe("positions", () => {
 describe("useLayout", () => {
   it("lays out once per view and serves the cache afterwards", async () => {
     const runner = vi.fn(fakeLayout);
-    const first = renderHook(() => useLayout(graph, runner));
+    const first = renderHook(() => useLayout(graph, layoutKey(graph), runner));
     expect(first.result.current.status).toBe("pending");
     await waitFor(() => {
       expect(first.result.current.status).toBe("done");
@@ -82,14 +102,15 @@ describe("useLayout", () => {
     expect(first.result.current.positions?.get("t1")).toEqual({ x: 300, y: 10 });
     first.unmount();
 
-    const again = renderHook(() => useLayout(buildGraph(indexes, NONE), runner));
+    const same = buildGraph(indexes, NONE);
+    const again = renderHook(() => useLayout(same, layoutKey(same), runner));
     expect(again.result.current.status).toBe("done");
     expect(runner).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the previous positions while a new view is laid out", async () => {
     const runner = vi.fn(fakeLayout);
-    const { result, rerender } = renderHook(({ g }) => useLayout(g, runner), {
+    const { result, rerender } = renderHook(({ g }) => useLayout(g, layoutKey(g), runner), {
       initialProps: { g: graph },
     });
     await waitFor(() => {
@@ -106,7 +127,7 @@ describe("useLayout", () => {
 
   it("falls back to a grid when the layout fails, and does not cache the failure", async () => {
     const runner = vi.fn(() => Promise.reject(new Error("worker failed")));
-    const { result } = renderHook(() => useLayout(graph, runner));
+    const { result } = renderHook(() => useLayout(graph, layoutKey(graph), runner));
     await waitFor(() => {
       expect(result.current.status).toBe("failed");
     });
