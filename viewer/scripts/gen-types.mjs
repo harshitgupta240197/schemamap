@@ -6,7 +6,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import Ajv2020 from "ajv/dist/2020.js";
+import ajvUcs2length from "ajv/dist/runtime/ucs2length.js";
 import standaloneCode from "ajv/dist/standalone/index.js";
 import { compile } from "json-schema-to-typescript";
 
@@ -38,13 +40,29 @@ const standalone = standaloneCode(ajv, validate);
 if (!standalone.includes(requireUcs2)) {
   throw new Error("Unexpected Ajv standalone output: ucs2length require not found");
 }
-// Ajv emits a CommonJS require for its one runtime helper even in ESM mode; make it an import.
-const code = `import ucs2length from "ajv/dist/runtime/ucs2length.js";\n${standalone.replace(requireUcs2, "const func1 = ucs2length;")}`;
+// Ajv emits a CommonJS require for its one runtime helper even in ESM mode. Inline Ajv's own
+// function instead (copied from the installed, pinned Ajv), so the viewer bundle contains no Ajv
+// code at all: the helper module carries a `require(...)` string that check:bundle rejects.
+const ajvVersion = createRequire(import.meta.url)("ajv/package.json").version;
+// The CJS module object arrives as the default import; the function is its `default` export.
+const helper = ajvUcs2length.default.toString();
+if (!helper.startsWith("function ucs2length(str)")) {
+  throw new Error("Unexpected Ajv ucs2length source");
+}
+const inlinedHelper = [
+  `// ucs2length: copied verbatim from ajv@${ajvVersion} dist/runtime/ucs2length.js.`,
+  "// Ajv is MIT licensed, Copyright (c) 2015-2021 Evgeny Poberezkin.",
+  `export ${helper}`,
+].join("\n");
+const code = `${inlinedHelper}\n${standalone.replace(requireUcs2, "const func1 = ucs2length;")}`;
 writeFileSync(join(out, "validate-snapshot.js"), `// ${banner}\n// @ts-nocheck\n${code}`);
 writeFileSync(
   join(out, "validate-snapshot.d.ts"),
   `/* ${banner} */
 import type { ErrorObject } from "ajv";
+
+/** String length in Unicode code points (surrogate pairs count once), as Ajv measures it. */
+export function ucs2length(str: string): number;
 
 declare const validate: {
   (data: unknown): boolean;
