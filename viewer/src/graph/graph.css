@@ -161,3 +161,9 @@
   border: none;
   background: transparent;
 }
+
+.sm-notice--bar {
+  position: static;
+  transform: none;
+  border-radius: 0;
+}

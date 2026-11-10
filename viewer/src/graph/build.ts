@@ -75,8 +75,15 @@ function orderedColumns(table: Table): Column1[] {
  * Nodes are tables in id order; collapsed nodes show only key columns (primary key, outgoing FK
  * columns and columns referenced by incoming FKs), so every edge endpoint is always visible.
  * Edges are declared FKs grouped by their edge id: FKs with identical columns share one edge.
+ * `visible` limits the view to those table ids (`null` is every table). Node ids come from the
+ * table's position among all tables, so they stay the same from one view to the next, and FK
+ * badges stay true even when the other end of a key is hidden.
  */
-export function buildGraph(indexes: SnapshotIndexes, expanded: ReadonlySet<string>): Graph {
+export function buildGraph(
+  indexes: SnapshotIndexes,
+  expanded: ReadonlySet<string>,
+  visible: ReadonlySet<string> | null = null,
+): Graph {
   // Duplicate ids are reported by the indexes; like them, the graph keeps the first occurrence.
   const seen = new Set<string>();
   const tables = [...(indexes.snapshot.tables ?? [])].sort(byId).filter((table) => {
@@ -87,6 +94,7 @@ export function buildGraph(indexes: SnapshotIndexes, expanded: ReadonlySet<strin
   const relationships = [...(indexes.snapshot.relationships ?? [])].sort(byId);
 
   const nodeIdByObject = new Map<string, string>();
+  const isShown = (objectId: string): boolean => visible === null || visible.has(objectId);
   const columnIndex = new Map<string, number>();
   const tableColumns = new Map<string, Column1[]>();
   for (const [i, table] of tables.entries()) {
@@ -110,6 +118,9 @@ export function buildGraph(indexes: SnapshotIndexes, expanded: ReadonlySet<strin
     }
     relationship.from_columns.forEach((id) => fkColumns.add(id));
     relationship.to_columns.forEach((id) => referencedColumns.add(id));
+    if (!isShown(relationship.from_object) || !isShown(relationship.to_object)) {
+      continue;
+    }
     const group = groups.get(relationship.edge);
     if (group === undefined) {
       groups.set(relationship.edge, [relationship]);
@@ -122,7 +133,7 @@ export function buildGraph(indexes: SnapshotIndexes, expanded: ReadonlySet<strin
   for (const table of tables) {
     const nodeId = nodeIdByObject.get(table.id);
     const columns = tableColumns.get(table.id);
-    if (nodeId === undefined || columns === undefined) {
+    if (nodeId === undefined || columns === undefined || !isShown(table.id)) {
       continue;
     }
     const primaryKey = new Set(
