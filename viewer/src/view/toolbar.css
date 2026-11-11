@@ -6,13 +6,13 @@
   padding: 6px 16px;
   border-bottom: 1px solid var(--sm-border);
   background: var(--sm-surface);
-  font-size: 13px;
+  font-size: var(--sm-text-md);
 }
 
 .sm-toolbar__button {
   padding: 3px 10px;
-  border: 1px solid var(--sm-border);
-  border-radius: 6px;
+  border: 1px solid var(--sm-edge);
+  border-radius: var(--sm-radius-md);
   background: var(--sm-surface);
   color: var(--sm-text);
   font: inherit;
@@ -28,16 +28,16 @@
 .sm-toolbar__button:focus-visible,
 .sm-toolbar__link:focus-visible,
 .sm-toolbar__schemas summary:focus-visible {
-  outline: 2px solid var(--sm-accent);
+  outline: 2px solid var(--sm-focus);
   outline-offset: 1px;
 }
 
 .sm-toolbar kbd {
   padding: 0 4px;
-  border: 1px solid var(--sm-border);
+  border: 1px solid var(--sm-edge);
   border-radius: 3px;
   color: var(--sm-muted);
-  font-size: 11px;
+  font-size: var(--sm-text-xs);
 }
 
 .sm-toolbar__schemas {
@@ -61,10 +61,10 @@
   margin: 4px 0 0;
   padding: 8px;
   overflow-y: auto;
-  border: 1px solid var(--sm-border);
-  border-radius: 8px;
+  border: 1px solid var(--sm-edge);
+  border-radius: var(--sm-radius-lg);
   background: var(--sm-surface);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 15%);
+  box-shadow: 0 6px 20px var(--sm-shadow-raised);
 }
 
 .sm-toolbar__check {

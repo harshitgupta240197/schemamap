@@ -6,7 +6,7 @@
   padding: 0 14px 24px;
   border-left: 1px solid var(--sm-border);
   background: var(--sm-surface);
-  font-size: 13px;
+  font-size: var(--sm-text-md);
 }
 
 .sm-detail:focus {
@@ -14,7 +14,7 @@
 }
 
 .sm-detail:focus-visible {
-  outline: 2px solid var(--sm-accent);
+  outline: 2px solid var(--sm-focus);
   outline-offset: -2px;
 }
 
@@ -37,33 +37,33 @@
 
 .sm-detail__kind {
   color: var(--sm-muted);
-  font-size: 11px;
+  font-size: var(--sm-text-xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .sm-detail__name {
   margin: 2px 0 0;
-  font-size: 16px;
+  font-size: var(--sm-text-xl);
   overflow-wrap: anywhere;
 }
 
 .sm-detail__close,
 .sm-copy__button {
   padding: 2px 8px;
-  border: 1px solid var(--sm-border);
-  border-radius: 4px;
+  border: 1px solid var(--sm-edge);
+  border-radius: var(--sm-radius-sm);
   background: var(--sm-surface);
   color: var(--sm-text);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--sm-text-sm);
   cursor: pointer;
 }
 
 .sm-detail__close:focus-visible,
 .sm-copy__button:focus-visible,
 .sm-link:focus-visible {
-  outline: 2px solid var(--sm-accent);
+  outline: 2px solid var(--sm-focus);
   outline-offset: 1px;
 }
 
@@ -76,12 +76,12 @@
 
 .sm-copy__status {
   color: var(--sm-muted);
-  font-size: 11px;
+  font-size: var(--sm-text-xs);
 }
 
 .sm-detail__section h3 {
   margin: 16px 0 6px;
-  font-size: 12px;
+  font-size: var(--sm-text-sm);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--sm-muted);
@@ -89,7 +89,7 @@
 
 .sm-detail__section h4 {
   margin: 8px 0 4px;
-  font-size: 12px;
+  font-size: var(--sm-text-sm);
 }
 
 .sm-detail__count {
@@ -113,7 +113,7 @@
 .sm-detail__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--sm-text-sm);
 }
 
 .sm-detail__table th,
@@ -149,7 +149,7 @@
 .sm-detail__sub,
 .sm-detail__what {
   color: var(--sm-muted);
-  font-size: 12px;
+  font-size: var(--sm-text-sm);
 }
 
 .sm-detail__facts {
@@ -189,18 +189,8 @@
 
 .sm-flag {
   padding: 0 6px;
-  border-radius: 4px;
+  border-radius: var(--sm-radius-sm);
   background: var(--sm-badge-bg);
   color: var(--sm-badge-fg);
-  font-size: 11px;
-}
-
-.sm-app__body {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-}
-
-.sm-app__body .sm-canvas {
-  min-width: 0;
+  font-size: var(--sm-text-xs);
 }

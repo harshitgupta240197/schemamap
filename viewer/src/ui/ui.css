@@ -1,0 +1,126 @@
+.sm-state {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sm-space-2);
+  width: min(520px, 100%);
+  padding: var(--sm-space-5);
+  border: 1px solid var(--sm-border);
+  border-radius: var(--sm-radius-xl);
+  background: var(--sm-surface);
+  box-shadow: 0 1px 2px var(--sm-shadow);
+}
+
+.sm-state--error {
+  border-color: var(--sm-error-fg);
+}
+
+.sm-state__icon {
+  color: var(--sm-muted);
+}
+
+.sm-state--error .sm-state__icon,
+.sm-state--error .sm-state__title {
+  color: var(--sm-error-fg);
+}
+
+.sm-state__title {
+  margin: 0;
+  font-size: var(--sm-text-2xl);
+  line-height: 1.25;
+}
+
+.sm-state__body {
+  color: var(--sm-muted);
+  font-size: var(--sm-text-lg);
+  line-height: 1.5;
+}
+
+.sm-state__body p {
+  margin: 0 0 var(--sm-space-2);
+}
+
+.sm-state__body code {
+  font-family: var(--sm-font-mono);
+  font-size: var(--sm-text-md);
+}
+
+.sm-state__details {
+  margin: 0;
+  padding: var(--sm-space-2) var(--sm-space-3);
+  border-radius: var(--sm-radius-md);
+  background: var(--sm-error-bg);
+  color: var(--sm-error-fg);
+  font-family: var(--sm-font-mono);
+  font-size: var(--sm-text-sm);
+  list-style: none;
+  overflow-wrap: anywhere;
+}
+
+.sm-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sm-space-2);
+  margin-top: var(--sm-space-2);
+}
+
+.sm-button {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sm-space-2) var(--sm-space-4);
+  border: 1px solid var(--sm-accent);
+  border-radius: var(--sm-radius-lg);
+  background: var(--sm-accent);
+  color: var(--sm-on-accent);
+  font: inherit;
+  font-size: var(--sm-text-lg);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sm-button:focus-within {
+  outline: 2px solid var(--sm-focus);
+  outline-offset: 2px;
+}
+
+.sm-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.sm-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: var(--sm-space-5) var(--sm-space-4);
+}
+
+.sm-page__brand {
+  margin: 0 0 var(--sm-space-4);
+  color: var(--sm-muted);
+  font-size: var(--sm-text-lg);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.sm-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--sm-edge);
+  border-top-color: var(--sm-accent);
+  border-radius: 50%;
+  animation: sm-spin 0.9s linear infinite;
+}
+
+@keyframes sm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

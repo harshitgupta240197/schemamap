@@ -31,6 +31,7 @@ lab-data/
 playwright-report/
 test-results/
 blob-report/
+viewer/screenshots/
 /playwright/.cache/
 
 # OS / editor

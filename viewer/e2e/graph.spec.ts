@@ -77,9 +77,12 @@ test("AdventureWorks map lays out in a worker and renders offline over file://",
 });
 
 test("expanding a table relays out and shows all its columns", async ({ page }, testInfo) => {
-  await page.goto(mapUrl(testInfo.outputPath("expand.html")));
+  // A focused view, not the full map: the full map fits below the semantic-zoom threshold, where
+  // nodes show only their name and the All button is hidden (D-048).
+  await page.goto(mapUrl(testInfo.outputPath("expand.html"), "#focus=object%3APerson.Person"));
   const canvas = page.locator(".sm-canvas");
   await expect(canvas).toHaveAttribute("data-layout-status", "done", { timeout: 30_000 });
+  await expect(page.locator(".react-flow")).toHaveAttribute("data-compact", "false");
   const button = page.getByRole("button", {
     name: "Show all columns of Person.Person",
     exact: true,

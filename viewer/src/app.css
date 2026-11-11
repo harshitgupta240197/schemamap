@@ -1,22 +1,5 @@
 :root {
-  --sm-bg: #f6f7f9;
-  --sm-surface: #ffffff;
-  --sm-header: #f1f3f6;
-  --sm-border: #d5d9e0;
-  --sm-text: #1c2128;
-  --sm-muted: #5f6b7a;
-  --sm-accent: #2f6fde;
-  --sm-accent-ring: rgb(47 111 222 / 25%);
-  --sm-badge-bg: #e4ebf7;
-  --sm-badge-fg: #23466f;
-  --sm-warn-bg: #fff4d6;
-  --sm-warn-fg: #6b4e00;
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+  font-family: var(--sm-font);
   color: var(--sm-text);
   background: var(--sm-bg);
 }
@@ -28,6 +11,16 @@ body,
   margin: 0;
 }
 
+body {
+  background: var(--sm-bg);
+}
+
+/* One visible focus ring for every control, in both themes. */
+:focus-visible {
+  outline: 2px solid var(--sm-focus);
+  outline-offset: 2px;
+}
+
 .sm-app {
   display: flex;
   flex-direction: column;
@@ -37,38 +30,67 @@ body,
 .sm-app__bar {
   display: flex;
   align-items: baseline;
-  gap: 12px;
-  padding: 8px 16px;
+  gap: var(--sm-space-3);
+  padding: var(--sm-space-2) var(--sm-space-4);
   border-bottom: 1px solid var(--sm-border);
   background: var(--sm-surface);
 }
 
 .sm-app__bar h1 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--sm-text-xl);
 }
 
 .sm-app__db {
   overflow: hidden;
   color: var(--sm-muted);
-  font-size: 13px;
+  font-size: var(--sm-text-md);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.sm-empty {
-  max-width: 560px;
-  margin: 0 auto;
-  padding: 64px 16px;
+.sm-app__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
-.sm-empty__pick {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 8px;
+.sm-app__canvas {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.sm-app__canvas:focus-visible {
+  outline-offset: -3px;
+}
+
+.sm-app__canvas > .sm-canvas {
+  min-width: 0;
+}
+
+.sm-app__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sm-space-1) var(--sm-space-4);
+  padding: var(--sm-space-1) var(--sm-space-4);
+  border-top: 1px solid var(--sm-border);
+  background: var(--sm-surface);
+  color: var(--sm-muted);
+  font-size: var(--sm-text-sm);
+}
+
+.sm-app__footer strong {
+  color: var(--sm-text);
   font-weight: 600;
 }
 
-.sm-empty__error {
-  color: #a1260d;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

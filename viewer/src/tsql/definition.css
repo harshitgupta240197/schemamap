@@ -5,37 +5,37 @@
   padding: 8px 10px;
   overflow: auto;
   border: 1px solid var(--sm-border);
-  border-radius: 6px;
+  border-radius: var(--sm-radius-md);
   background: var(--sm-header);
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-family: var(--sm-font-mono);
+  font-size: var(--sm-text-sm);
   line-height: 1.5;
   white-space: pre;
   tab-size: 4;
 }
 
 .sm-sql__keyword {
-  color: #0b4fb3;
+  color: var(--sm-sql-keyword);
   font-weight: 600;
 }
 
 .sm-sql__string {
-  color: #9b2d1d;
+  color: var(--sm-sql-string);
 }
 
 .sm-sql__quoted {
-  color: #6b2a8f;
+  color: var(--sm-sql-quoted);
 }
 
 .sm-sql__comment {
-  color: #52606d;
+  color: var(--sm-sql-comment);
   font-style: italic;
 }
 
 .sm-sql__number {
-  color: #0a6b43;
+  color: var(--sm-sql-number);
 }
 
 .sm-sql__variable {
-  color: #8a4b00;
+  color: var(--sm-sql-variable);
 }

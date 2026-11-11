@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { LAYOUT_LIMIT } from "../graph/layout";
 import type { SnapshotIndexes } from "../snapshot/indexes";
 import type { Clustering } from "./clusters";
@@ -85,6 +86,21 @@ export function Toolbar({
     chosen?.kind === "table" && !(state.focus.length === 1 && state.focus[0] === chosen.id)
       ? chosen
       : undefined;
+
+  // Clicking a crumb replaces it with plain text, which would drop focus to the page. The
+  // current crumb takes focus instead, once the new view has rendered.
+  const current = useRef<HTMLSpanElement>(null);
+  const crumbClicked = useRef(false);
+  useEffect(() => {
+    if (crumbClicked.current) {
+      crumbClicked.current = false;
+      current.current?.focus();
+    }
+  }, [state]);
+  const goTo = (next: ViewState): void => {
+    crumbClicked.current = true;
+    onChange(next);
+  };
 
   const toggleSchema = (id: string): void => {
     const next = new Set(selected);
@@ -177,13 +193,15 @@ export function Toolbar({
                 type="button"
                 className="sm-toolbar__link"
                 onClick={() => {
-                  onChange(root);
+                  goTo(root);
                 }}
               >
                 {rootLabel}
               </button>
             ) : (
-              <span aria-current="page">{rootLabel}</span>
+              <span ref={current} tabIndex={-1} aria-current="page">
+                {rootLabel}
+              </span>
             )}
           </li>
           {cluster === undefined ? null : (
@@ -193,13 +211,15 @@ export function Toolbar({
                   type="button"
                   className="sm-toolbar__link"
                   onClick={() => {
-                    onChange(backToCluster(state));
+                    goTo(backToCluster(state));
                   }}
                 >
                   {cluster.name}
                 </button>
               ) : (
-                <span aria-current="page">{cluster.name}</span>
+                <span ref={current} tabIndex={-1} aria-current="page">
+                  {cluster.name}
+                </span>
               )}
             </li>
           )}

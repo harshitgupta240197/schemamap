@@ -1,3 +1,4 @@
+import "./tokens.css";
 import "./app.css";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { DetailPanel } from "./detail/DetailPanel";
@@ -6,6 +7,8 @@ import type { SchemaMapSnapshotV1 } from "./generated/snapshot";
 import { GraphCanvas } from "./graph/GraphCanvas";
 import { OverviewCanvas } from "./graph/OverviewCanvas";
 import { SnapshotLoadError } from "./snapshot/errors";
+import { formatCapturedAt } from "./snapshot/display";
+import { StateCard } from "./ui/StateCard";
 import { buildIndexes } from "./snapshot/indexes";
 import { loadSnapshotFile, readInlineSnapshot } from "./snapshot/load";
 import { Palette, useSearchShortcut } from "./search/Palette";
@@ -31,11 +34,13 @@ interface CenterTarget {
 
 type LoadState =
   | { kind: "empty" }
-  | { kind: "error"; message: string }
+  | { kind: "error"; message: string; details: readonly string[] }
   | { kind: "loaded"; snapshot: SchemaMapSnapshotV1 };
 
-function describe(error: unknown): string {
-  return error instanceof SnapshotLoadError ? error.message : "The snapshot could not be read.";
+function describe(error: unknown): { message: string; details: readonly string[] } {
+  return error instanceof SnapshotLoadError
+    ? { message: error.message, details: error.details }
+    : { message: "The snapshot could not be read.", details: [] };
 }
 
 function initialState(): LoadState {
@@ -43,7 +48,7 @@ function initialState(): LoadState {
     const snapshot = readInlineSnapshot();
     return snapshot === null ? { kind: "empty" } : { kind: "loaded", snapshot };
   } catch (error) {
-    return { kind: "error", message: describe(error) };
+    return { kind: "error", ...describe(error) };
   }
 }
 
@@ -107,6 +112,7 @@ function Loaded({ snapshot }: { snapshot: SchemaMapSnapshotV1 }) {
     [indexes, selected],
   );
   const panel = useRef<HTMLElement>(null);
+  const canvasRegion = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   const previousSelected = useRef<string | null>(selected);
 
@@ -125,6 +131,24 @@ function Loaded({ snapshot }: { snapshot: SchemaMapSnapshotV1 }) {
     }
     panel.current?.focus();
   }, [selected]);
+
+  // A drill-down or breadcrumb click can remove the element that had focus. When that leaves
+  // focus on the page body, it moves to the map, so keyboard users never start over from the top.
+  const firstView = useRef(true);
+  useEffect(() => {
+    if (firstView.current) {
+      firstView.current = false;
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      if (document.activeElement === document.body || document.activeElement === null) {
+        canvasRegion.current?.focus();
+      }
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [view]);
 
   // Selecting a table that is not on screen (from the overview, or another cluster) drills into
   // its cluster. `centre` also brings the table into view; a click on a node does not need it.
@@ -239,29 +263,45 @@ function Loaded({ snapshot }: { snapshot: SchemaMapSnapshotV1 }) {
         </p>
       )}
       <div className="sm-app__body">
-        {level === "overview" ? (
-          <OverviewCanvas
-            clustering={clustering}
-            schemas={view.schemas}
-            onDrill={(clusterId) => {
-              setView(drillInto(view, clusterId));
-            }}
-          />
-        ) : (
-          <GraphCanvas
-            indexes={indexes}
-            visible={visible}
-            highlighted={highlighted}
-            onOpen={(id) => {
-              select(id, false);
-            }}
-            centerOn={centerOn}
-          />
-        )}
+        <div
+          ref={canvasRegion}
+          className="sm-app__canvas"
+          role="region"
+          aria-label="Schema map"
+          tabIndex={-1}
+        >
+          {level === "overview" ? (
+            <OverviewCanvas
+              clustering={clustering}
+              schemas={view.schemas}
+              onDrill={(clusterId) => {
+                setView(drillInto(view, clusterId));
+              }}
+            />
+          ) : (
+            <GraphCanvas
+              indexes={indexes}
+              visible={visible}
+              highlighted={highlighted}
+              onOpen={(id) => {
+                select(id, false);
+              }}
+              centerOn={centerOn}
+            />
+          )}
+        </div>
         {model === undefined ? null : (
           <DetailPanel ref={panel} model={model} onSelect={open} onClose={close} />
         )}
       </div>
+      <footer className="sm-app__footer" aria-label="About this map">
+        <strong>About this map</strong>
+        <span>
+          Schema Map {snapshot.generator.version} · viewer {__VIEWER_VERSION__}
+        </span>
+        <span>Extracted {formatCapturedAt(snapshot.captured_at)}</span>
+        <span>Read-only: built from metadata, no row data</span>
+      </footer>
       {searching ? (
         <Palette
           items={items}
@@ -293,26 +333,45 @@ export function App() {
         setState({ kind: "loaded", snapshot });
       },
       (error: unknown) => {
-        setState({ kind: "error", message: describe(error) });
+        setState({ kind: "error", ...describe(error) });
       },
     );
   };
 
+  const picker = (
+    <label className="sm-button">
+      {state.kind === "error" ? "Open another snapshot" : "Open snapshot"}
+      <input type="file" accept=".json,.gz,application/json,application/gzip" onChange={onFile} />
+    </label>
+  );
+
   return (
-    <main className="sm-empty">
-      <h1>Schema Map</h1>
-      <p>
-        Open a snapshot made by <code>schemamap extract</code> (.json or .json.gz).
-      </p>
-      <label className="sm-empty__pick">
-        Open snapshot
-        <input type="file" accept=".json,.gz,application/json,application/gzip" onChange={onFile} />
-      </label>
+    <main className="sm-page">
+      <h1 className="sm-page__brand">Schema Map</h1>
       {state.kind === "error" ? (
-        <p className="sm-empty__error" role="alert">
-          {state.message}
-        </p>
-      ) : null}
+        <StateCard
+          tone="error"
+          title="This snapshot could not be opened"
+          role="alert"
+          actions={picker}
+        >
+          <p>{state.message}</p>
+          {state.details.length === 0 ? null : (
+            <ul className="sm-state__details">
+              {state.details.map((line, index) => (
+                <li key={String(index)}>{line}</li>
+              ))}
+            </ul>
+          )}
+        </StateCard>
+      ) : (
+        <StateCard title="Open a snapshot to see the map" actions={picker}>
+          <p>
+            Choose a file made by <code>schemamap extract</code> (.json or .json.gz). It is read on
+            this computer and never uploaded.
+          </p>
+        </StateCard>
+      )}
     </main>
   );
 }

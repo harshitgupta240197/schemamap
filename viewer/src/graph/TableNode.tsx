@@ -1,7 +1,14 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { memo, useContext } from "react";
-import { sourceHandleId, targetHandleId, type ColumnRow, type TableFlowNode } from "./build";
+import { memo, useContext, type CSSProperties } from "react";
+import {
+  NODE_WIDTH,
+  sourceHandleId,
+  targetHandleId,
+  type ColumnRow,
+  type TableFlowNode,
+} from "./build";
 import { ToggleExpandedContext } from "./expanded";
+import { nameFitPx } from "./zoom";
 
 function columnCountLabel(count: number): string {
   return count === 1 ? "1 column" : `${String(count)} columns`;
@@ -42,7 +49,13 @@ function TableNodeView({ data }: NodeProps<TableFlowNode>) {
   return (
     <div className="sm-table">
       <div className="sm-table__header">
-        <div className="sm-table__name" title={qualified}>
+        <div
+          className="sm-table__name"
+          title={qualified}
+          style={
+            { "--sm-name-fit": `${String(nameFitPx(data.name, NODE_WIDTH))}px` } as CSSProperties
+          }
+        >
           {data.name}
         </div>
         <div className="sm-table__meta">

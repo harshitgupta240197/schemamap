@@ -1,0 +1,86 @@
+/* Design tokens. Colours are hex so src/theme.test.ts can check every pairing's contrast. */
+:root {
+  color-scheme: light dark;
+
+  --sm-bg: #f4f5f7;
+  --sm-surface: #ffffff;
+  --sm-header: #eef0f4;
+  --sm-border: #d5d9e0;
+  --sm-edge: #6f7a89;
+  --sm-text: #1c2128;
+  --sm-muted: #566170;
+  --sm-accent: #1f5fcc;
+  --sm-on-accent: #ffffff;
+  --sm-focus: #1f5fcc;
+  --sm-accent-ring: rgb(31 95 204 / 25%);
+  --sm-badge-bg: #e1e9f8;
+  --sm-badge-fg: #1c3f6e;
+  --sm-warn-bg: #fff4d6;
+  --sm-warn-fg: #5c4300;
+  --sm-error-bg: #fdecea;
+  --sm-error-fg: #9b1c08;
+  --sm-sql-keyword: #0b4fb3;
+  --sm-sql-string: #9b2d1d;
+  --sm-sql-quoted: #6b2a8f;
+  --sm-sql-comment: #52606d;
+  --sm-sql-number: #0a6b43;
+  --sm-sql-variable: #8a4b00;
+  --sm-shadow: rgb(0 0 0 / 8%);
+  --sm-shadow-raised: rgb(0 0 0 / 18%);
+  --sm-scrim: rgb(0 0 0 / 30%);
+  --sm-mask: rgb(0 0 0 / 6%);
+
+  --sm-space-1: 4px;
+  --sm-space-2: 8px;
+  --sm-space-3: 12px;
+  --sm-space-4: 16px;
+  --sm-space-5: 24px;
+  --sm-space-6: 32px;
+
+  --sm-text-xs: 11px;
+  --sm-text-sm: 12px;
+  --sm-text-md: 13px;
+  --sm-text-lg: 14px;
+  --sm-text-xl: 16px;
+  --sm-text-2xl: 20px;
+
+  --sm-radius-sm: 4px;
+  --sm-radius-md: 6px;
+  --sm-radius-lg: 8px;
+  --sm-radius-xl: 12px;
+
+  --sm-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sm-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sm-bg: #0f1217;
+    --sm-surface: #181c23;
+    --sm-header: #202632;
+    --sm-border: #2d3441;
+    --sm-edge: #8591a3;
+    --sm-text: #e8ebf0;
+    --sm-muted: #a3adbb;
+    --sm-accent: #8ab4ff;
+    --sm-on-accent: #0b1020;
+    --sm-focus: #8ab4ff;
+    --sm-accent-ring: rgb(138 180 255 / 30%);
+    --sm-badge-bg: #243350;
+    --sm-badge-fg: #cfe0ff;
+    --sm-warn-bg: #3b2f0c;
+    --sm-warn-fg: #f3d98b;
+    --sm-error-bg: #3d1a15;
+    --sm-error-fg: #ffb4a6;
+    --sm-sql-keyword: #8ab4ff;
+    --sm-sql-string: #f2a193;
+    --sm-sql-quoted: #d1a8f0;
+    --sm-sql-comment: #a3adbb;
+    --sm-sql-number: #7fd6a6;
+    --sm-sql-variable: #e8b866;
+    --sm-shadow: rgb(0 0 0 / 40%);
+    --sm-shadow-raised: rgb(0 0 0 / 60%);
+    --sm-scrim: rgb(0 0 0 / 55%);
+    --sm-mask: rgb(0 0 0 / 35%);
+  }
+}

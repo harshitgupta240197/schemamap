@@ -1,6 +1,7 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { memo } from "react";
-import type { ClusterFlowNode } from "./overview";
+import { memo, type CSSProperties } from "react";
+import { CLUSTER_NODE_WIDTH, type ClusterFlowNode } from "./overview";
+import { nameFitPx } from "./zoom";
 
 function count(n: number, one: string, many: string): string {
   return `${String(n)} ${n === 1 ? one : many}`;
@@ -14,7 +15,15 @@ function ClusterNodeView({ data }: NodeProps<ClusterFlowNode>) {
       <span className="sm-badge" title={data.schemaName}>
         {data.schemaName}
       </span>
-      <div className="sm-cluster__name" title={data.name}>
+      <div
+        className="sm-cluster__name"
+        title={data.name}
+        style={
+          {
+            "--sm-name-fit": `${String(nameFitPx(data.name, CLUSTER_NODE_WIDTH))}px`,
+          } as CSSProperties
+        }
+      >
         {data.name}
       </div>
       <div className="sm-cluster__count">{count(data.tableCount, "table", "tables")}</div>

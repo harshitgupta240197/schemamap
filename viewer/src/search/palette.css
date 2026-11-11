@@ -6,16 +6,16 @@
   justify-content: center;
   align-items: flex-start;
   padding-top: 12vh;
-  background: rgb(0 0 0 / 30%);
+  background: var(--sm-scrim);
 }
 
 .sm-palette {
   box-sizing: border-box;
   width: min(560px, calc(100vw - 32px));
-  border: 1px solid var(--sm-border);
-  border-radius: 10px;
+  border: 1px solid var(--sm-edge);
+  border-radius: var(--sm-radius-xl);
   background: var(--sm-surface);
-  box-shadow: 0 12px 40px rgb(0 0 0 / 25%);
+  box-shadow: 0 12px 40px var(--sm-shadow-raised);
 }
 
 .sm-palette__input {
@@ -24,7 +24,7 @@
   padding: 12px 14px;
   border: none;
   border-bottom: 1px solid var(--sm-border);
-  border-radius: 10px 10px 0 0;
+  border-radius: var(--sm-radius-xl) 10px 0 0;
   background: transparent;
   color: var(--sm-text);
   font: inherit;
@@ -32,7 +32,7 @@
 }
 
 .sm-palette__input:focus-visible {
-  outline: 2px solid var(--sm-accent);
+  outline: 2px solid var(--sm-focus);
   outline-offset: -2px;
 }
 
@@ -49,9 +49,9 @@
   align-items: baseline;
   gap: 8px;
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: var(--sm-radius-md);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--sm-text-md);
 }
 
 .sm-palette__option[aria-selected="true"] {
@@ -63,7 +63,7 @@
   flex: none;
   width: 52px;
   color: var(--sm-muted);
-  font-size: 11px;
+  font-size: var(--sm-text-xs);
 }
 
 .sm-palette__name {
@@ -89,5 +89,5 @@
   padding: 6px 14px;
   border-top: 1px solid var(--sm-border);
   color: var(--sm-muted);
-  font-size: 12px;
+  font-size: var(--sm-text-sm);
 }
