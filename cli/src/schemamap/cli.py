@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import webbrowser
 from pathlib import Path
 from typing import Annotated
 
@@ -37,8 +38,16 @@ from schemamap.extract import (
     SchemaFilter,
     extract_snapshot,
 )
-from schemamap.snapshot.io import default_output_path, redact_server, write_snapshot
+from schemamap.snapshot.io import (
+    default_map_path,
+    default_output_path,
+    read_snapshot,
+    redact_server,
+    write_bytes_atomic,
+    write_snapshot,
+)
 from schemamap.snapshot.models import Snapshot
+from schemamap.viewer import embed_snapshot, load_viewer
 
 EXIT_FAILURE = 1
 
@@ -300,3 +309,56 @@ def extract(
             console.print(headline, style="bold yellow", markup=False, soft_wrap=True)
         for line in _summary(snapshot, written, user):
             console.print(line, markup=False, soft_wrap=True)
+
+
+@app.command(epilog=EXIT_CODES_EPILOG)
+def view(
+    snapshot_file: Annotated[
+        Path,
+        typer.Argument(metavar="SNAPSHOT", help="A snapshot file: .json or .json.gz."),
+    ],
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            "-o",
+            help="File to write. Default: <database>-map.html in the current directory.",
+        ),
+    ] = None,
+    no_open: Annotated[
+        bool, typer.Option("--no-open", help="Write the map but do not open it in a browser.")
+    ] = False,
+    debug: DebugOption = False,
+) -> None:
+    """Turn a snapshot into one offline HTML map and open it in your browser.
+
+    The map is one file with the snapshot inside it. It needs no server and
+    makes no network requests. It holds the whole snapshot, SQL definitions
+    included, so share it as you would share the snapshot.
+
+    \b
+    Examples:
+      schemamap view AdventureWorks2022.snapshot.json
+      schemamap view Sales.snapshot.json.gz --output sales.html --no-open
+    """
+    console = Console(stderr=True, highlight=False)
+    with friendly_errors(console, what="View", debug=debug):
+        snapshot = read_snapshot(snapshot_file)
+        page = embed_snapshot(load_viewer().html, snapshot)
+        target = output or default_map_path(snapshot.source.database)
+        try:
+            write_bytes_atomic(target, page.encode("utf-8"))
+        except OSError as exc:
+            console.print(
+                f"Cannot write {target}: {exc}", style="red", markup=False, soft_wrap=True
+            )
+            raise typer.Exit(EXIT_FAILURE) from None
+    console.print(f"Wrote {target}", markup=False, soft_wrap=True)
+    if no_open:
+        return
+    if not webbrowser.open(target.resolve().as_uri()):
+        console.print(
+            "Could not start a browser. Open the file above yourself.",
+            markup=False,
+            soft_wrap=True,
+        )

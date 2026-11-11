@@ -50,12 +50,35 @@ jobs:
           cache: npm
           cache-dependency-path: viewer/package-lock.json
       - run: npm ci
+      - run: npm run gen:check
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
+      - run: npm run check:bundle
+      # `schemamap view` needs the packaged viewer; view.spec.ts runs the real CLI to make maps.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: cli/uv.lock
+      - name: Package the viewer for the CLI
+        working-directory: .
+        run: uv run tools/build_viewer.py
+      - name: Build the wheel and check it carries the viewer
+        working-directory: .
+        run: |
+          uv build --wheel --directory cli
+          uv run tools/check_wheel.py cli/dist/*.whl
+      - run: npx playwright install --with-deps chromium firefox
       - run: npx playwright test
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: ui-screenshots
+          path: viewer/screenshots/
+          if-no-files-found: ignore
+          retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:

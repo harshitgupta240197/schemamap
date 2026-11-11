@@ -1,0 +1,96 @@
+:root {
+  font-family: var(--sm-font);
+  color: var(--sm-text);
+  background: var(--sm-bg);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--sm-bg);
+}
+
+/* One visible focus ring for every control, in both themes. */
+:focus-visible {
+  outline: 2px solid var(--sm-focus);
+  outline-offset: 2px;
+}
+
+.sm-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sm-app__bar {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sm-space-3);
+  padding: var(--sm-space-2) var(--sm-space-4);
+  border-bottom: 1px solid var(--sm-border);
+  background: var(--sm-surface);
+}
+
+.sm-app__bar h1 {
+  margin: 0;
+  font-size: var(--sm-text-xl);
+}
+
+.sm-app__db {
+  overflow: hidden;
+  color: var(--sm-muted);
+  font-size: var(--sm-text-md);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sm-app__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.sm-app__canvas {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.sm-app__canvas:focus-visible {
+  outline-offset: -3px;
+}
+
+.sm-app__canvas > .sm-canvas {
+  min-width: 0;
+}
+
+.sm-app__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sm-space-1) var(--sm-space-4);
+  padding: var(--sm-space-1) var(--sm-space-4);
+  border-top: 1px solid var(--sm-border);
+  background: var(--sm-surface);
+  color: var(--sm-muted);
+  font-size: var(--sm-text-sm);
+}
+
+.sm-app__footer strong {
+  color: var(--sm-text);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

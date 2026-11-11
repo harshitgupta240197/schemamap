@@ -1,0 +1,93 @@
+.sm-palette__backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+  background: var(--sm-scrim);
+}
+
+.sm-palette {
+  box-sizing: border-box;
+  width: min(560px, calc(100vw - 32px));
+  border: 1px solid var(--sm-edge);
+  border-radius: var(--sm-radius-xl);
+  background: var(--sm-surface);
+  box-shadow: 0 12px 40px var(--sm-shadow-raised);
+}
+
+.sm-palette__input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-bottom: 1px solid var(--sm-border);
+  border-radius: var(--sm-radius-xl) 10px 0 0;
+  background: transparent;
+  color: var(--sm-text);
+  font: inherit;
+  font-size: 15px;
+}
+
+.sm-palette__input:focus-visible {
+  outline: 2px solid var(--sm-focus);
+  outline-offset: -2px;
+}
+
+.sm-palette__list {
+  max-height: 50vh;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.sm-palette__option {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--sm-radius-md);
+  cursor: pointer;
+  font-size: var(--sm-text-md);
+}
+
+.sm-palette__option[aria-selected="true"] {
+  background: var(--sm-badge-bg);
+  color: var(--sm-badge-fg);
+}
+
+.sm-palette__kind {
+  flex: none;
+  width: 52px;
+  color: var(--sm-muted);
+  font-size: var(--sm-text-xs);
+}
+
+.sm-palette__name {
+  flex: none;
+  max-width: 55%;
+  overflow: hidden;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sm-palette__context {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sm-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sm-palette__status {
+  margin: 0;
+  padding: 6px 14px;
+  border-top: 1px solid var(--sm-border);
+  color: var(--sm-muted);
+  font-size: var(--sm-text-sm);
+}

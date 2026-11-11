@@ -109,3 +109,27 @@ DROP EVENT SESSION schemamap_audit ON SERVER;
 ```
 
 You will see each query file's text exactly as it is on disk (`sql_batch_completed`). A query with parameters arrives as `sp_prepexec` followed by `sp_unprepare`: that is how the driver binds values, and the statement inside is the file's text with `?` replaced by `@P1`, `@P2` and so on. The driver's connection pool also sends `sp_reset_connection` and `IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION; SET TRANSACTION ISOLATION LEVEL READ COMMITTED` when a connection is returned. Nothing else should appear.
+
+## The map cannot make network requests
+
+The HTML map that `schemamap view` writes holds your whole snapshot, so it must not be able to send it anywhere. The browser itself enforces that: the build adds one `Content-Security-Policy` meta tag to the file, and the browser refuses anything the policy does not allow, whatever the page's code or a hostile object name tries.
+
+```
+default-src 'none'; script-src 'sha256-<hash of each inline script>'; style-src 'unsafe-inline';
+img-src data: blob:; font-src data:; worker-src blob:; connect-src 'none'; object-src 'none';
+base-uri 'none'; form-action 'none'
+```
+
+- **No requests.** `default-src 'none'` and `connect-src 'none'` block `fetch`, `XMLHttpRequest`, WebSocket and beacons; images and fonts may only be `data:` or `blob:`; `form-action 'none'` blocks form posts; `base-uri 'none'` stops a `<base>` tag redirecting relative URLs; `object-src 'none'` blocks plugins. The only worker is the layout worker, started from a `blob:` URL made inside the page.
+- **No script except ours.** `script-src` lists only the SHA-256 hash of each inline script in the file. There is no `'unsafe-inline'` and no `'unsafe-eval'` for scripts, so a `<script>` or an `onerror=` handler that got into the page through a bug would not run. (`style-src 'unsafe-inline'` is needed for the layout's inline styles and cannot run script.)
+- **Your data does not change the policy.** The snapshot sits in a `<script type="application/json">` element. The browser does not execute it, so it needs no hash, and `schemamap view` can fill it in without touching the policy.
+
+### Verify it yourself
+
+Open the map in a browser, then open the developer tools and look in the Elements panel: the `<meta http-equiv="Content-Security-Policy">` is the first thing in `<head>`, before any script. In the Console, `fetch("https://example.com")` fails with a Content-Security-Policy error and nothing appears in the Network panel. Or read the file: `grep -c Content-Security-Policy <map>.html` prints `1`.
+
+### How CI keeps it true
+
+- `npm run build` adds the policy after the single-file build, hashing the scripts as the browser parses them, and `npm run check:bundle` fails the build if there is not exactly one policy tag before every script, if it allows `'unsafe-eval'`, if `script-src` holds anything but `sha256` sources, if a hash does not match an inline script, or if any other directive differs.
+- `tools/build_viewer.py` and `tools/check_wheel.py` refuse a viewer without exactly one policy tag, so the wheel cannot ship without it.
+- The Playwright suite runs in Chromium and Firefox. The main flows (open, search, hops, panel, impact links, reload, dark mode, keyboard) fail on any `securitypolicyviolation` event. Other specs prove that a `fetch` and an `<img>` to an `https` URL are blocked and no request reaches the network layer, and that an injected inline `<script>` and `onerror` handler do not run. Each of these has a control that removes the policy and shows the same page then does the forbidden thing, so the tests cannot pass by accident.

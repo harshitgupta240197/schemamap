@@ -17,7 +17,7 @@ cli/        Python package `schemamap` (extract, infer, export, CLI)
   src/schemamap/queries/   every SQL statement lives here as a .sql file
 viewer/     React + TypeScript single-file viewer (Vite)
 schema/     snapshot.v1.json, generated from cli/src/schemamap/snapshot/ (never edit by hand)
-tools/      lab.py (SQL Server Docker lab), synthetic schema generator
+tools/      lab.py (SQL Server Docker lab), synthetic schema generator, build_viewer.py (packages the viewer for `schemamap view`), check_wheel.py (checks the wheel carries it)
 docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate reports
 .github/    CI workflows
 ```
@@ -26,8 +26,11 @@ docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate repo
 
 - CLI checks: `cd cli && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest`
 - CLI integration tests (lab must be up): `cd cli && uv run pytest -m integration`
-- Viewer checks: `cd viewer && npm run lint && npm run typecheck && npm test && npm run build`
-- Viewer end-to-end: `cd viewer && npx playwright test`
+- Viewer checks: `cd viewer && npm run lint && npm run typecheck && npm test && npm run build && npm run check:bundle`
+- Regenerate viewer types and the precompiled validator after changing `schema/snapshot.v1.json`: `cd viewer && npm run gen:types` (CI runs `npm run gen:check` and fails on drift)
+- Package the viewer for `schemamap view` (needs `npm ci` in `viewer/`; output is gitignored): `uv run tools/build_viewer.py`
+- Viewer end-to-end (needs the packaged viewer; the global setup makes the AdventureWorks and WWI maps with the real CLI; Firefox needs `npx playwright install firefox`): `cd viewer && npx playwright test`
+- Wheel contains the viewer and a matching manifest: `cd cli && uv build --wheel && cd .. && uv run tools/check_wheel.py cli/dist/*.whl`
 - Regenerate the snapshot JSON Schema after changing `snapshot/` models: `cd cli && uv run python scripts/gen_snapshot_schema.py` (a test fails if `schema/snapshot.v1.json` is stale)
 - Lab: `uv run tools/lab.py up | restore all | status | down [--purge]` (also `restore <db>`, `grant <db> [--view-database-state]`, `edgecases`, `synth --tables N`; see `docs/LAB.md`)
 
@@ -82,8 +85,9 @@ Run the full checks for every area you touched before every commit. If a command
 
 1. All checks green for the areas touched.
 2. Commit and push, then `gh run watch` the pushed commit. The crumb is not done until CI is green.
-3. Append one line to `docs/PROGRESS.md`: `YYYY-MM-DD | <crumb ID> | <commit hash> | <one-line note>`.
-4. Five-line summary.
+3. Append one line to `docs/PROGRESS.md`: `YYYY-MM-DD | <crumb ID> | <commit hash> | <one-line note>`, then commit and push it.
+4. Run `gh run watch --exit-status` on that last (PROGRESS) commit and wait for it. The crumb is not done until that run is green too.
+5. Five-line summary, including the result of that last run.
 
 ## Decisions and dependencies
 

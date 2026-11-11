@@ -1,0 +1,520 @@
+/* Node geometry must match NODE_* in build.ts: the layout uses those numbers, not the DOM. */
+.sm-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.sm-canvas__state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--sm-space-4);
+  box-sizing: border-box;
+}
+
+.sm-canvas__pending {
+  display: flex;
+  align-items: center;
+  gap: var(--sm-space-2);
+  margin: 0;
+  color: var(--sm-muted);
+  font-size: var(--sm-text-lg);
+}
+
+/* React Flow colours, mapped onto the theme tokens so both themes keep their contrast. */
+.react-flow {
+  --xy-background-color: var(--sm-bg);
+  --xy-background-pattern-dots-color: var(--sm-border);
+  --xy-edge-stroke: var(--sm-edge);
+  --xy-edge-stroke-selected: var(--sm-accent);
+  --xy-handle-background-color: var(--sm-edge);
+  --xy-handle-border-color: var(--sm-surface);
+  --xy-controls-button-background-color: var(--sm-surface);
+  --xy-controls-button-background-color-hover: var(--sm-header);
+  --xy-controls-button-color: var(--sm-text);
+  --xy-controls-button-color-hover: var(--sm-text);
+  --xy-controls-button-border-color: var(--sm-edge);
+  --xy-controls-box-shadow: 0 0 2px 1px var(--sm-shadow);
+  --xy-minimap-background-color: var(--sm-surface);
+  --xy-minimap-mask-background-color: var(--sm-mask);
+  --xy-minimap-node-background-color: var(--sm-edge);
+  --xy-attribution-background-color: var(--sm-surface);
+}
+
+.react-flow__attribution a {
+  color: var(--sm-muted);
+}
+
+.react-flow__edge-path {
+  stroke: var(--sm-edge);
+}
+
+.react-flow__arrowhead polyline {
+  stroke: var(--sm-edge);
+  fill: var(--sm-edge);
+}
+
+.react-flow .react-flow__node:focus-visible,
+.react-flow .react-flow__node.selectable:focus-visible {
+  outline: 3px solid var(--sm-focus);
+  outline-offset: 2px;
+  border-radius: var(--sm-radius-lg);
+}
+
+.react-flow__controls-button:focus-visible {
+  outline: 2px solid var(--sm-focus);
+  outline-offset: -2px;
+}
+
+.sm-notice {
+  border: 1px solid var(--sm-warn-fg);
+  position: absolute;
+  z-index: 5;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: var(--sm-radius-md);
+  background: var(--sm-warn-bg);
+  color: var(--sm-warn-fg);
+  font-size: var(--sm-text-md);
+}
+
+.react-flow__node-table {
+  box-sizing: border-box;
+}
+
+.sm-table {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--sm-edge);
+  border-radius: var(--sm-radius-lg);
+  background: var(--sm-surface);
+  box-shadow: 0 1px 2px var(--sm-shadow);
+  font-size: var(--sm-text-sm);
+  color: var(--sm-text);
+}
+
+/* The schema stripe: the same colour as the schema's badge. */
+.sm-table::before,
+.sm-cluster::before,
+.sm-schema::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
+  background: var(--sm-schema, var(--sm-edge));
+}
+
+.react-flow__node-table.selected .sm-table {
+  border-color: var(--sm-accent);
+  box-shadow: 0 0 0 2px var(--sm-accent-ring);
+}
+
+.sm-table__header {
+  box-sizing: border-box;
+  height: 60px;
+  padding: 9px 12px 0 18px;
+  border-bottom: 1px solid var(--sm-border);
+  background: var(--sm-header);
+}
+
+.sm-table__name {
+  overflow: hidden;
+  font-size: var(--sm-text-lg);
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sm-table__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  margin-top: 4px;
+}
+
+.sm-badge {
+  max-width: 130px;
+  overflow: hidden;
+  padding: 0 6px;
+  border-left: 3px solid var(--sm-schema, var(--sm-edge));
+  border-radius: var(--sm-radius-sm);
+  background: var(--sm-badge-bg);
+  color: var(--sm-badge-fg);
+  font-size: var(--sm-text-xs);
+  line-height: 16px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sm-table__count {
+  flex: 1;
+  color: var(--sm-muted);
+  font-size: var(--sm-text-xs);
+  white-space: nowrap;
+}
+
+.sm-table__toggle {
+  padding: 0 6px;
+  border: 1px solid var(--sm-edge);
+  border-radius: var(--sm-radius-sm);
+  background: var(--sm-surface);
+  color: var(--sm-text);
+  font: inherit;
+  font-size: var(--sm-text-xs);
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.sm-table__toggle:focus-visible {
+  outline: 2px solid var(--sm-focus);
+  outline-offset: 1px;
+}
+
+.sm-table__columns {
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+}
+
+.sm-col {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 12px 0 18px;
+}
+
+.sm-col__keys {
+  display: flex;
+  gap: 2px;
+  width: 34px;
+  flex: none;
+  color: var(--sm-accent);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.sm-col__keys abbr {
+  text-decoration: none;
+}
+
+.sm-col__name {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sm-col__type {
+  max-width: 110px;
+  overflow: hidden;
+  color: var(--sm-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sm-col .react-flow__handle {
+  width: 6px;
+  height: 6px;
+  min-width: 0;
+  min-height: 0;
+  border: none;
+  background: transparent;
+}
+
+.sm-notice--bar {
+  position: static;
+  transform: none;
+  border-radius: 0;
+}
+
+/* Cluster geometry must match CLUSTER_NODE_* in overview.ts. */
+.react-flow__node-cluster {
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.sm-cluster {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 10px 12px 10px 18px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--sm-edge);
+  border-radius: var(--sm-radius-xl);
+  background: var(--sm-surface);
+  box-shadow: 0 1px 2px var(--sm-shadow);
+  color: var(--sm-text);
+  font-size: var(--sm-text-sm);
+}
+
+/*
+ * A full-size box only shows at zoom 0.6 and above; at --sm-text-box its text is never under
+ * 10 px on screen.
+ */
+.sm-cluster .sm-badge {
+  align-self: flex-start;
+  max-width: 100%;
+  font-size: var(--sm-text-box);
+  line-height: 1.3;
+}
+
+.react-flow__node-cluster:focus-visible .sm-cluster,
+.react-flow__node-cluster:hover .sm-cluster {
+  border-color: var(--sm-accent);
+}
+
+.sm-cluster__name {
+  overflow: hidden;
+  font-size: calc(var(--sm-text-box) * 1.2);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sm-cluster__meta {
+  display: flex;
+  gap: 12px;
+  color: var(--sm-muted);
+  font-size: var(--sm-text-box);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.sm-cluster__links {
+  display: flex;
+  gap: 12px;
+}
+
+.sm-cluster .react-flow__handle {
+  opacity: 0;
+}
+
+/*
+ * Schema container geometry must match SCHEMA_* in overview.ts: header, then the tile grid with
+ * SCHEMA_PADDING around it (plus the 6 px stripe on the left). SchemaNode passes the sizes in.
+ */
+.react-flow__node-schema {
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.sm-schema {
+  box-sizing: border-box;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--sm-edge);
+  border-radius: var(--sm-radius-xl);
+  background: var(--sm-surface);
+  box-shadow: 0 1px 2px var(--sm-shadow);
+  color: var(--sm-text);
+  font-size: var(--sm-text-sm);
+}
+
+.react-flow__node-schema:focus-visible .sm-schema,
+.react-flow__node-schema:hover .sm-schema {
+  border-color: var(--sm-accent);
+}
+
+.sm-schema__header {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  height: var(--sm-schemabox-header);
+  padding: 0 16px 0 22px;
+  border-bottom: 1px solid var(--sm-border);
+  background: var(--sm-header);
+}
+
+/*
+ * A full-size container only shows at zoom 0.6 and above, so its text is at least 20 px: never
+ * under 12 px on screen.
+ */
+.sm-schema__name {
+  overflow: hidden;
+  font-size: calc(var(--sm-text-2xl) * 1.4);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sm-schema__count {
+  color: var(--sm-muted);
+  font-size: var(--sm-text-2xl);
+  white-space: nowrap;
+}
+
+.sm-schema__tiles {
+  display: grid;
+  grid-template-columns: repeat(var(--sm-schemabox-columns), var(--sm-schemabox-tile-width));
+  grid-auto-rows: var(--sm-schemabox-tile-height);
+  gap: var(--sm-schemabox-tile-gap);
+  padding: 16px 16px 16px 22px;
+}
+
+.sm-schema__tile {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sm-space-2);
+  min-width: 0;
+  padding: 0 10px;
+  overflow: hidden;
+  border: 1px solid var(--sm-border);
+  border-left: 4px solid var(--sm-schema, var(--sm-border));
+  border-radius: var(--sm-radius-lg);
+  background: var(--sm-bg);
+  font-size: var(--sm-text-2xl);
+}
+
+.sm-schema__tile[data-kind="group"] {
+  border-style: dashed;
+  border-left-style: solid;
+}
+
+.sm-schema__tile[data-kind="more"] {
+  color: var(--sm-muted);
+}
+
+.sm-schema__tile-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sm-schema__tile-count {
+  flex: none;
+  color: var(--sm-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sm-schema .react-flow__handle {
+  opacity: 0;
+}
+
+/*
+ * A compact container keeps its name and count at a readable size on screen (as compact table
+ * and cluster names do). Tiles keep their names, cut with an ellipsis, while a readable line
+ * fits (SchemaNode drops them below that) and always show their table counts.
+ */
+.react-flow[data-compact="true"] .sm-schema__name {
+  max-width: 100%;
+  font-size: max(
+    calc(10px / var(--sm-zoom, 1)),
+    min(calc(16px / var(--sm-zoom, 1)), var(--sm-name-fit, 16px))
+  );
+  line-height: 1.1;
+}
+
+.react-flow[data-compact="true"] .sm-schema__count {
+  font-size: calc(10px / var(--sm-zoom, 1));
+  line-height: 1.1;
+}
+
+.react-flow[data-compact="true"] .sm-schema__tile {
+  padding: 0 4px;
+  gap: 4px;
+}
+
+.react-flow[data-compact="true"] .sm-schema__tile-name,
+.react-flow[data-compact="true"] .sm-schema__tile-count {
+  font-size: calc(10px / var(--sm-zoom, 1));
+  line-height: 1.1;
+}
+
+.react-flow[data-compact="true"] .sm-schema__tile:has(.sm-schema__tile-name) {
+  justify-content: space-between;
+}
+
+.react-flow[data-compact="true"] .sm-schema__tile:not(:has(.sm-schema__tile-name)) {
+  justify-content: center;
+}
+
+/*
+ * Semantic zoom. FlowCanvas sets data-compact on .react-flow when the zoom is below
+ * COMPACT_BELOW_ZOOM (zoom.ts). The name then fills the node at a size that stays readable at
+ * the current zoom: --sm-zoom is the zoom, so the target size on screen is about 12 px.
+ */
+.react-flow[data-compact="true"] .sm-table__columns {
+  visibility: hidden;
+}
+
+.react-flow[data-compact="true"] .sm-table__header {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  padding: 3px var(--sm-space-2);
+  border-bottom: none;
+}
+
+.react-flow[data-compact="true"] .sm-table__meta,
+.react-flow[data-compact="true"] .sm-cluster__meta {
+  display: none;
+}
+
+/*
+ * Up to two lines, as large as the node allows between 10 px (the least that is readable on
+ * screen) and 12 px. NodeLabel breaks the name at word boundaries for the characters that fit
+ * at 10 px; --sm-name-fit is the size that makes its longest line fill the node's width
+ * (zoom.ts). Nothing is clipped: a line that would not fit was already cut in the middle.
+ */
+.react-flow[data-compact="true"] .sm-table__name,
+.react-flow[data-compact="true"] .sm-cluster__name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: max(
+    calc(10px / var(--sm-zoom, 1)),
+    min(calc(12px / var(--sm-zoom, 1)), var(--sm-name-fit, 12px))
+  );
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.sm-label__line {
+  display: block;
+}
+
+.react-flow[data-compact="true"] .sm-cluster {
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.react-flow[data-compact="true"] .sm-cluster__schema {
+  max-width: 100%;
+  padding: 0;
+  border-left: none;
+  background: none;
+  color: var(--sm-muted);
+  font-size: calc(10px / var(--sm-zoom, 1));
+  line-height: 1.1;
+}

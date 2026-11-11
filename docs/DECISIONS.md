@@ -304,3 +304,145 @@ Gate 1 found that a login without `VIEW DEFINITION` gets short catalog views and
 
 **Changed wording.** `permission_missing` messages now end `GRANT ... TO [<user>]; <user> is the database user the login maps to, which may differ from the login name.` instead of `TO <login>;`. Tests and the AdventureWorks golden file were updated to match; nothing was loosened.
 
+
+## D-043 json-schema-to-typescript for the viewer's snapshot types (2026-11-10)
+
+Dependency (devDependency): `json-schema-to-typescript`. The viewer's snapshot types are generated from `schema/snapshot.v1.json` into `viewer/src/generated/snapshot.ts` (`npm run gen:types`), never hand-written, so the CLI model, the schema and the viewer cannot drift apart. CI runs `npm run gen:check`, which regenerates and fails on any diff.
+
+## D-044 Ajv standalone for snapshot validation (2026-11-10)
+
+Dependency (devDependency): `ajv`. The validator is compiled at build time from the same schema (`viewer/src/generated/validate-snapshot.js`, committed, drift-checked with the types) and the viewer ships only the generated code. **CSP reason:** Ajv's normal mode builds validators with `new Function`, which needs `script-src 'unsafe-eval'`. The map is a single offline HTML file that should run under a strict CSP (no eval, no network), so runtime codegen is out; the generated module contains no `eval`/`new Function`. Its only runtime import is Ajv's `ucs2length` helper (a few lines), bundled by Vite.
+
+Choices: draft 2020-12 (`ajv/dist/2020`), strict mode, `allErrors` for useful messages, and `validateFormats: false` (the one format, `date-time`, is display-only; asserting it would need `ajv-formats` at runtime). Because of that, `captured_at` may be any string, so the display helper shows an unparseable value as written, never "Invalid Date". The schema sets no `additionalProperties: false`, so a 1.x snapshot with extra fields still loads. The format version is checked before the schema so a future major reports "unsupported version" instead of schema noise. Gzip is detected by magic bytes, not file name, and decompression is capped at 512 MB. `ajv` and `json-schema-to-typescript` are pinned to exact versions so regenerated output cannot drift; `npm run check:bundle` (run in CI after the build) fails if `dist/index.html` contains `new Function`, `eval(` or `require(`.
+
+**Amendment (2026-11-10, crumb 2.2): the runtime helper is inlined.** Until 2.2 the viewer never called the loader, so the validator was tree-shaken out of `dist/index.html` and `check:bundle` never saw it. Once 2.2 made the validator reachable, the guard caught a `require(` in Ajv's `ucs2length` module (a `.code` string Ajv keeps for its own code generation, never executed). `gen-types.mjs` now copies Ajv's `ucs2length` function verbatim, from the installed pinned Ajv, into `validate-snapshot.js`, with a comment crediting Ajv (MIT) and the version. The generated validator imports nothing from `ajv` (only `validate-snapshot.d.ts` keeps a type-only import, erased at build), and Ajv is absent from the viewer bundle. Tests check there is no Ajv import or require, and that the copy equals Ajv's on ASCII, accented, CJK, surrogate-pair, combining-mark, empty and lone-surrogate strings. Ajv's UTF-16 length mode was rejected because it would make the viewer count lengths differently from the CLI (code points). `check:bundle` now also prints about 80 characters of context around each match; what it detects is unchanged.
+
+## D-045 Viewer graph canvas: raw-HTML lint ban and the ELK worker (2026-11-10)
+
+**Lint.** The crumb asked for `react/no-danger`, but `eslint-plugin-react` (latest 7.37.5, April 2025) declares `eslint: ^3 … ^9.7` and the viewer is on ESLint 10. Installing it would mean ignoring its peer range. Core `no-restricted-syntax` (no new dependency) enforces the same ban and a little more: `dangerouslySetInnerHTML`, assigning `innerHTML`/`outerHTML` (dotted or bracketed), and `insertAdjacentHTML`. The options live in `viewer/scripts/no-raw-html.mjs`. `src/lint-rule.test.ts` proves each ban fires and that the real config enables it as an error. Revisit when `eslint-plugin-react` supports ESLint 10.
+
+**Layout worker.** Dependencies `@xyflow/react` 12.12.0 and `elkjs` 0.12.0 (approved stack, pinned exactly). ELK runs in a Web Worker created from a Blob URL of `elkjs/lib/elk-worker.min.js?raw`, driven by `elkjs/lib/elk-api.js` through `workerFactory`, so the single file lays out over `file://` with no separate worker file and no network. Vite's `?worker&inline` was rejected because it base64-encodes the worker, which would hide its code from `check:bundle`. `elk.bundled.js` and `main.js` are not imported: they contain a `require(` shim for Node. Node sizes are fixed (`NODE_*` in `graph/build.ts`, mirrored by the CSS) so the layout is deterministic and needs no DOM measuring. Layouts are cached per view, by visible tables, their sizes and edges. If the worker fails, the map shows a grid and a notice. React Flow ids and handle ids are synthetic (`t0`, `e0`, `c3-s`), so untrusted names never reach DOM attributes or selectors.
+
+## D-046 Viewer search, schema filter and focus mode (2026-11-10)
+
+**Search.** In-house matcher, no dependency (`viewer/src/search/match.ts`). Tiers: exact, prefix, start of a word (after a non-alphanumeric, digit or camelCase step), then characters in order. Within a tier: how far the name runs past the query (prefix), how late the word starts, or how spread the characters are. Then tables before views before columns, then id. The kind step is a small addition to "ties broken by id": without it a column named `Orders` sorts ahead of the table `Orders` because `column:` < `object:`. Each item is tried by name and by `schema.name`. Search always covers the whole snapshot, not the current view.
+
+**Focus.** Focus is a set of table ids (a view focuses the tables it reads, through nested views, cycle-safe) plus 1 to 3 hops over FK edges in both directions. The schema filter limits which tables the walk may pass through; the focused tables themselves are always kept. Node ids are positions among all tables, so they stay put from view to view and the previous layout never lands on the wrong table while a new one runs.
+
+**Hash.** `#focus=<id>&hops=<n>&schema=<id>`, ids through `encodeURIComponent`. Parsing only accepts a table id for `focus`, a schema id for `schema` and 1, 2 or 3 for `hops`; everything else is dropped. The hash is only ever compared with ids, never rendered. `replaceState` keeps the hash in step with the view and `hashchange` reads manual edits.
+
+## D-047 Large schemas: one layout limit, overview clusters, widescreen layering (2026-11-10)
+
+**Limit.** `LAYOUT_LIMIT = 200` tables (`viewer/src/graph/layout.ts`) is the most the viewer lays out in one ELK run. The full map is the default view only when the tables in view (after the schema filter) number 200 or fewer; above that the overview opens. No cluster is larger than 200, and focus hop counts whose view would pass 200 are disabled (1 hop is always allowed; a hash asking for more is lowered). Why 200: minimum-width layering costs 0.39 s at 150 tables, 0.72 s at 200, 2.0 s at 300 and 5.6 s at 400 (elkjs 0.12, Node, synthetic FK graphs; docs/PERFORMANCE.md). Past 200 the cost climbs steeply, and a 200-table map is already at the edge of readable at fit-view zoom. AdventureWorks (71) and WideWorldImporters (48) stay on the full map.
+
+**Layering.** `elk.layered.layering.strategy=MIN_WIDTH` for graphs of up to `LAYOUT_LIMIT` nodes. The default layering puts every child of a hub table in one layer, so fan-outs stack into a tall strip (aspect 0.29 for a 250-table FK tree). Minimum-width layering gives 1.66 to 1.87 on AdventureWorks, WWI and synthetic trees. Above the limit (a hub-table focus, or an overview with more than 200 clusters) the default layering stays, so time remains bounded. `elk.aspectRatio` was tried and changed nothing for layered layouts, so it is not set. Direction DOWN gave 4 to 9 (too wide).
+
+**Clusters** (`viewer/src/view/clusters.ts`, pure). Schema first, then FK-connected components inside the schema; FKs across schemas become cluster edges. A schema's tables with no FK to another table of the same schema share one cluster ("<schema> · no relationships"), so the overview is not hundreds of single boxes. A component over the limit is split by a spanning-tree partition rooted at its best-connected table: working up from the leaves, a table absorbs its children's subtrees, largest first, while they fit; subtrees that do not fit are packed together. Greedy breadth-first chunks were tried first and left about 60 single-table clusters behind a 350-table component's first chunk; the tree partition gives 200 + 150. Cluster id is `cluster:` plus the smallest member table id: unique, stable when unrelated tables change, independent of input order. Name: the schema name when the schema has one cluster, else "<schema> · <best-connected table>". Edge counts count each FK edge id once, as the map does.
+
+**Levels and hash.** Focus wins, then a drilled cluster (`cluster=<id>`, new hash key), then full map or overview by the limit. Selecting a table that is not on screen (search result or detail-panel link, from the overview or another cluster) drills into its cluster, selects it and centres it; on the full map and in focus, search keeps focusing as before. A toolbar Focus button focuses the selected table from any level. Changing the schema filter leaves the cluster. The one change in how an existing hash reads: on a snapshot over 200 tables, an empty or schema-only hash whose tables exceed 200 opens the overview rather than the full map. No such link exists yet (phase 2 is unmerged), and the full map at that size is what this crumb removes.
+
+**Rendering.** React Flow `onlyRenderVisibleElements` on both canvases. Table and overview layouts share `useLayout` and the per-view cache; keys are prefixed `t:` and `c:`. Performance marks (`schemamap:layout-done`, `schemamap:search`) feed the e2e speed tests and stay in the page.
+
+**Amendment (2026-11-11, crumb 2.9): the overview on a real 2,000-table database.** The claim above that one "no relationships" cluster per schema keeps the overview from being hundreds of single boxes held on the TypeScript synthetic snapshot (115 clusters) but not on the lab's `SchemaMapSynth` (830 foreign keys for 2,000 tables): its overview has 290 clusters, 222 of them with 2 or 3 tables, and at fit view the names are cut to a few letters. It is fast (layout 0.47 s) but not readable. `docs/gates/PHASE2.md` (finding P2-1) proposed the fix; D-053 makes it. The cluster rules here are unchanged; the overview now shows them per schema.
+
+## D-048 Design tokens, semantic zoom and accessibility testing (2026-11-11)
+
+**Tokens.** `viewer/src/tokens.css` holds every colour, space, type size and radius as `--sm-*` variables; light is the default and `prefers-color-scheme: dark` overrides the colours. System font stack only. Colours are hex so `src/theme.test.ts` can compute WCAG contrast for each pairing in both themes (text on surfaces 4.5:1; focus ring, control edges and FK lines 3:1). Plain dividers use `--sm-border`, which is decorative and exempt; anything that marks the edge of a control or node uses `--sm-edge`. There is no manual theme switch: the system setting decides.
+
+**Semantic zoom.** Nodes switch to a compact form when the zoom is below `COMPACT_BELOW_ZOOM = 0.6` (`viewer/src/graph/zoom.ts`). Why 0.6: below it the 11 px badge and column text of a full node renders under about 6.6 px, which is not readable, while the 13 px name is still about 8 px. The compact form is the name alone on one line. Its size follows the zoom, so it stays between 10 px (the least the e2e test accepts) and 12 px on screen: `font-size = max(10px / zoom, min(12px / zoom, fit))`, where `fit` is the size that makes this name fill the node (`nameFitPx`). A name too long for 10 px is cut with an ellipsis and keeps its full text in the tooltip and the detail panel. At fit view on AdventureWorks (zoom 0.23) that cuts about two thirds of the 71 names; two-line names were tried and clip in the shortest nodes, because node height is fixed by the layout. Zoom is written to `--sm-zoom` and `data-compact` on the React Flow element, not to React state, so zooming never re-renders nodes. In the compact form the columns and the All/Less button are hidden, so tests that click them zoom in first (the expand test now opens a focused view).
+
+**Motion.** No fit or zoom is animated (all `duration: 0`); double-click zoom is turned off under `prefers-reduced-motion`; a global reduced-motion rule removes any CSS animation, and the only one, the loading spinner, stops with it.
+
+**Keyboard.** Arrow keys on a focused node move focus to the nearest node in that direction (`graph/navigate.ts`, pure). Nodes are no longer draggable, so React Flow cannot move a node with the arrows. After a drill-down, Esc or breadcrumb click, focus goes to the new current crumb or, if it would otherwise fall to the page body, to the map region.
+
+**Dependency.** `@axe-core/playwright` 4.14.0 (dev only, pinned): runs axe-core against the built file in both colour schemes and fails on serious or critical violations. Nothing else was added.
+
+## D-049 Readable names, schema colours and panel layout (2026-11-11)
+
+**Compact labels.** D-048 found that two-line names clip in the shortest nodes. The fix is to size the node for them and to pick the line count from the real height. A compact name breaks at CamelCase, underscore, dot, dash, space and letter-to-digit boundaries (`graph/labels.ts`), balanced over at most two lines; a line that is still too long gets a middle ellipsis that keeps its start and end; a single long word gets one line with a middle ellipsis. The width of a line comes from the zoom (`compactLimitEm`: the node width at the 10 px minimum, in em) and is checked against the real text width, measured with a canvas in the page's own font (`graph/measure.ts`, padded 4%). A per-character average was tried first and clipped on CI's Linux fonts, where letters like m and the ellipsis are wider; unit tests, which have no canvas, fall back to 0.7 em per character. The line count comes from the node height (`compactLineBudget`). Nodes re-render only when the zoom bucket (a 0.01 step while compact) changes, never on each wheel tick. Table nodes are at least `NODE_MIN_HEIGHT = 140` px tall so two 10 px lines fit at the zoom AdventureWorks opens at (about 0.2); a taller minimum was tried and shrinks the fit zoom more than it gains. The full name stays in the title and, as hidden text, in the accessible name.
+
+**Schema colours.** Eight colour-blind-safe hues in `tokens.css` (`--sm-schema-0` to `-7`, separate light and dark values, each at least 3:1 on the canvas, card and header, checked in `theme.test.ts`). Schemas take slots in code-point order of their names across the whole snapshot (`snapshot/schemaColors.ts`), so a colour does not change with filters or focus. Tables and clusters get a 6 px stripe and their schema badge a matching left edge; the schema name is always text (badge, title, accessible name), so colour is never the only cue.
+
+**Node geometry.** Full nodes are 300 px wide with a 14 px title and 12 px columns (header 60 px, rows 24 px); `NODE_*` in `graph/build.ts` and the CSS agree. Overview clusters show the schema as a small line above the most-connected table's name and the table count.
+
+**Detail panel.** 440 px wide (never wider than the window). Focus goes to the panel heading, not the panel, and the ring shows for keyboard focus only (`:focus-visible`). Names break only at word boundaries through `<wbr>`; header and type cells never wrap. Column headers read "Null" and "Key".
+
+**Load errors.** The screen leads with a plain sentence per error kind (`plainMessage`); the technical message and violation paths sit under a "Details" disclosure.
+
+**Tests changed on purpose.** `keyboard.spec` and `detail.spec` now expect the heading, not the panel, to have focus. `detail.spec` finds a node by its title (qualified name) because a compact label is split over lines. The `graph.spec` expand test uses a 1920×1200 window: with larger nodes the Person.Person focus view no longer fits above the 0.6 compact threshold in the default window.
+
+## D-050 Small views keep full nodes (2026-11-11)
+
+**Threshold.** A view with at most 25 tables (`SMALL_VIEW_TABLES` in `graph/zoom.ts`) never fits below the compact zoom (0.6). If the whole graph does not fit at 0.6, the view centres on the focused or selected table (else on the middle of the graph) and the rest is reached by panning. Why 25: at 300 px wide nodes a 1280×720 screen shows about four columns of nodes at 0.6, so up to a couple of dozen tables is browsable by panning, while larger views are better read as a whole map. Larger views keep fit-all with compact labels below 0.6.
+
+**Node height.** In a small view a full node is as tall as its content (header, rows, padding). The 140 px minimum (`NODE_MIN_HEIGHT`) applies only to larger views, where the two-line compact label needs it. The node's height is carried in its data so layout and render agree.
+
+**Test changed on purpose.** `focus.spec` counted `.react-flow__node`, but nodes outside the panned viewport are not rendered (`onlyRenderVisibleElements`). It now counts minimap nodes, which draw every laid-out table. The `graph.spec` expand test is back on the default viewport.
+
+## D-051 The view command and the packaged viewer (2026-11-11)
+
+**Built viewer is not committed.** `viewer/dist/index.html` is about 2 MB of generated code, so it stays out of git. `uv run tools/build_viewer.py` runs `npm run build`, checks the page holds the data placeholder exactly once, and copies it to `cli/src/schemamap/viewer_dist/index.html` with `manifest.json` (viewer version, byte size, sha256). `viewer_dist/` is gitignored. Release builds run the script before building the wheel; a source checkout runs it once. `schemamap view` checks the page's sha256 against the manifest and refuses a mismatch, so a half-built or hand-edited viewer cannot be used by accident. When the viewer is missing, `view` exits 1 and names `tools/build_viewer.py`: the install is incomplete, which is neither a usage error (2) nor a bad snapshot (4).
+
+**One placeholder, one replace.** The viewer build emits `<script type="application/json" id="schemamap-data"></script>`; the viewer treats empty as "no inline snapshot" and shows its file picker. `embed_snapshot` requires that exact text exactly once (otherwise `EmbedError`) and swaps it with `str.replace`: no regular expression and no format string, so `$&`, `$'`, `\1`, `\g<0>` and `{0}` in a SQL definition are copied as plain text (a test proves it byte for byte).
+
+**Escaping.** The snapshot is serialised with `json.dumps` (compact, `ensure_ascii=False`), then `<`, `>`, `&`, U+2028 and U+2029 become `\u003c`, `\u003e`, `\u0026`, `\u2028`, `\u2029`. In JSON those characters can only occur inside strings, where the escapes are legal, so the browser parses the identical value. No name can close the script element, open a comment (`<!--`) or end a line of script. Two layers prove it: unit tests on the page text, and a Playwright spec that opens a map made by the real CLI from a snapshot of hostile names, then checks no dialog or page error, no injected elements or scripts, names shown as text, and the parsed inline JSON deep-equals the source. The hostile snapshot is `cli/tests/fixtures/hostile.snapshot.json`, generated from `cli/tests/snapshot_builders.py` (a test fails if they drift).
+
+**File handling.** The map is named `<database>-map.html` with the same safe naming as the snapshot (`safe_file_stem`: no separators, no device names) and written with the snapshot writer's atomic exclusive temp file (`write_bytes_atomic`), mode 0600 on POSIX. The map holds the whole snapshot, including definitions, so it is as sensitive as the snapshot. The browser is opened with the file's `file://` URI only; `--no-open` skips it, and a browser that cannot start is a note, not an error.
+
+**Not added.** No new dependency: the standard library (`webbrowser`, `hashlib`, `json`) covers it.
+
+## D-052 Content-Security-Policy in the map file (2026-11-11)
+
+**Decision.** The built viewer carries one `<meta http-equiv="Content-Security-Policy">` tag, so the browser guarantees the map makes no network request and runs no script of ours except the ones we shipped. Policy: `default-src 'none'; script-src 'sha256-…' (one per executable inline script); style-src 'unsafe-inline'; img-src data: blob:; font-src data:; worker-src blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'`. There is no `'unsafe-eval'` and no script `'unsafe-inline'`, ever. The reason: "your data never leaves your machine" was a promise backed by code review and tests; now the file itself enforces it, and an escaping bug could not turn into script execution.
+
+**How.** `viewer/scripts/add-csp.mjs` runs after `vite build` (`npm run build`), so after the single-file inlining. It parses the final file with jsdom (already a dev dependency, so no new dependency), hashes each executable inline script's parsed text (what the browser hashes: parsing normalises CRLF, and a regular expression would also trip on `<script>` inside a string of the bundle), and inserts the meta right after the charset tag, before any script. It refuses an external script, an import map, any script type other than JavaScript or a JSON data block, and a page that already has a policy. The JSON data script (`type="application/json"`) is not executable, so it has no hash and `schemamap view` embedding changes nothing; a test proves it.
+
+**Checks.** `check:bundle` also runs `cspProblems`: exactly one policy tag, before every script; no `unsafe-eval`; `script-src` only `sha256` sources; the listed hashes equal the inline scripts' hashes; and the whole policy equals the expected one, so loosening any directive fails. `tools/build_viewer.py` and `tools/check_wheel.py` require exactly one policy tag in the page.
+
+**Tests.** Vitest covers the builder and the guard (missing policy, `unsafe-eval`, a non-hash source, a wrong or stale hash, a script before the policy, two tags, a loosened directive). Playwright, in Chromium and Firefox, on maps made by the real CLI: the flow specs and an open-search-reload spec fail on any `securitypolicyviolation` and check the layout reached `done` (the blob worker runs); a `fetch` and an `<img>` to `https://example.com` are blocked with a violation and no request reaches the network layer; an injected inline `<script>` and `onerror` handler do not run. Each has a control run on a copy without the policy that shows the same page then does the forbidden thing.
+
+**Test changed on purpose.** The `bundle-guard` test's "clean" page had no policy, which the guard now rejects. Its clean and planted pages now carry a valid policy, so only the planted `new Function` can fail it. `flow.spec.ts` now also runs in the Firefox project, so the full flow is proven under the policy in both browsers.
+
+**Not added.** `frame-ancestors` is not supported in a meta tag, so the map can still be framed; it has no authenticated actions, so this is not an exposure. No dependency.
+
+## D-053 Schema containers: a readable overview at 2,000 tables (2026-11-11)
+
+**Problem.** P2-1: the real, sparse SchemaMapSynth (2,000 tables, 0.4 declared keys per table) opened on 290 cluster boxes, 222 of them with 2 or 3 tables, labelled like `Ca…e`. The tests missed it because the TypeScript synthetic was dense (115 clusters; P2-2).
+
+**Decision.** The overview is one **container per schema**: the schema name, its table and cluster counts, and up to 12 tiles. The tiles are its clusters of more than 3 tables (largest first), one **"Small groups"** tile, and its unrelated-tables clusters. Past 12, the smallest related clusters become one "+N clusters" tile. You drill **schema → cluster or small group → tables**:
+- A schema of 200 tables or fewer opens as its table map, the same view the schema filter gives.
+- A larger schema opens as its boxes. Each cluster of more than 3 tables keeps its own box. Its clusters of 3 or fewer (when there are at least two) fold into a small-groups box, packed in cluster order into parts of at most 200 tables. A small-groups box opens as one table map of all its tables.
+- When only one schema is in view, the root is that schema's boxes.
+- Pure code: `viewer/src/view/schemaGroups.ts` (`foldSchemas`) and `viewer/src/graph/overview.ts`.
+
+**Why 3.** On SchemaMapSynth, 222 of 290 clusters had 2 or 3 tables, and the dense synthetic has almost none. A box that holds 2 or 3 tables tells you less than the tables themselves.
+
+**Hash.** Cluster ids and `cluster=` are unchanged, so every cluster link still opens the same cluster, folded clusters included. There are two new keys: `drill=<schema id>` and `group=<small group id>`. A group id is `group:` plus its smallest table id, the same rule as cluster ids. The crumb asked for one new key, but small groups need an address of their own, so there are two. Nothing existing is repurposed. At most one place is kept: cluster, then group, then drill. Focus keeps the place as the breadcrumb's way back. The breadcrumb reads Overview › schema › cluster or small group › focus. Search and panel links to a table that is not on screen go to the deepest view that holds it: its schema's map when that fits, else its small group or cluster.
+
+**Layout.**
+- The schema overview is not laid out by ELK. Layered layout strung the six connected schemas of SchemaMapSynth into one row, at aspect 9:1. `graph/pack.ts` packs the containers in name order into rows instead. Of every row width that changes the result, it keeps the one whose bounding box is largest on a 1.6:1 screen. With 40 boxes or fewer this is instant and deterministic.
+- Edges between schemas are straight lines labelled with key counts. A curve between boxes side by side loops out of the box.
+- A schema's boxes still use ELK, as before.
+
+**Type.**
+- A full-size box only shows at zoom 0.6 and above, so its text is at least `--sm-text-box` (17 px, new token), which is 10 px on screen at 0.6. Schema containers use 20 px and up.
+- A cluster box puts its table count and key counts on one line, so it keeps its 110 px height. A full-size cluster or schema name that does not fit its box is cut in the middle by measuring it in the page's font, as compact names are (D-048), rather than by CSS. On CI's Linux fonts, `No relationships (1 of 2)` overflowed the 260 px box and CSS cut its end off. The whole name stays in the title and in the accessible name. Table nodes are unchanged.
+- A small-groups box is titled "<n> small groups".
+- Below 0.6, the compact rules of D-048 apply. A container keeps its name and count. Tile names show while a 10 px line fits in a tile, cut with an ellipsis, and the counts always show.
+
+**Accessibility.** Only the container is interactive ("Open schema dbo, 719 tables"). Its tiles are `aria-hidden`; the keyboard reaches clusters through the schema's level. The cluster box's key counts were an `aria-label` on a plain `div`, which ARIA prohibits. It was never seen while clusters were only drawn compact; the schema level draws them full size, so axe caught it. It is now visually hidden text.
+
+**Tests.**
+- `syntheticSnapshot` has a `sparse` shape after `tools/synth.py`: six schemas, 30% of about 1.3 true relationships per table declared. At 2,000 tables it gives 287 clusters, 221 of them small, and 811 keys. The real database gives 290, 222 and 830. The dense shape is unchanged byte for byte.
+- `e2e/overview.spec.ts` runs on both shapes at 1400×900 in fit view. It checks:
+  - 40 or fewer top-level boxes, all schema containers
+  - every name is whole, or middle-ellipsised keeping at least 6 letters
+  - no two names are the same; every label is at least 10 px and not clipped
+  - drill and back, and the keyboard
+- The sparse overview screenshot goes to the CI artifact.
+- `performance.spec` runs on both shapes.
+- **Changed on purpose:** the 2,000-table tests in `readable.spec`, `performance.spec` and `a11y.spec` counted one node per cluster. They now count schema containers, and new tests measure the schema level (readability and axe). The old `buildOverviewGraph` and its unit tests were removed with the one-box-per-cluster overview.
+
+**Known limit.** A database with more than 40 schemas still gets one box per schema. Grouping schemas is not part of this decision.
+
+**Not added.** No dependency.

@@ -54,3 +54,33 @@ def synth() -> ModuleType:
     sys.modules["schemamap_synth"] = module
     spec.loader.exec_module(module)
     return module
+
+
+BUILD_VIEWER_PATH = LAB_PATH.with_name("build_viewer.py")
+
+
+@pytest.fixture(scope="session")
+def build_viewer() -> ModuleType:
+    """Load tools/build_viewer.py (a standalone script, not part of the package) as a module."""
+    spec = importlib.util.spec_from_file_location("schemamap_build_viewer", BUILD_VIEWER_PATH)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["schemamap_build_viewer"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+CHECK_WHEEL_PATH = LAB_PATH.with_name("check_wheel.py")
+
+
+@pytest.fixture(scope="session")
+def check_wheel() -> ModuleType:
+    """Load tools/check_wheel.py (a standalone script, not part of the package) as a module."""
+    spec = importlib.util.spec_from_file_location("schemamap_check_wheel", CHECK_WHEEL_PATH)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["schemamap_check_wheel"] = module
+    spec.loader.exec_module(module)
+    return module

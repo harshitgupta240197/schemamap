@@ -28,34 +28,37 @@ def dump_snapshot(snapshot: Snapshot) -> str:
     return snapshot.model_dump_json(indent=2) + "\n"
 
 
-def default_output_path(database: str, compress: bool = False) -> Path:
-    """``<database>.snapshot.json[.gz]`` in the current directory.
+def safe_file_stem(database: str) -> str:
+    """A file-name stem made from an untrusted database name.
 
-    The database name is untrusted, so anything outside letters, digits, ``.``, ``_`` and ``-``
-    becomes ``_``; a name can never point the file at another folder. A name that Windows
-    reserves for a device (``CON``, ``NUL``, ``COM1``...) gets a leading ``_``.
+    Anything outside letters, digits, ``.``, ``_`` and ``-`` becomes ``_``; a name can never
+    point the file at another folder. A name that Windows reserves for a device (``CON``,
+    ``NUL``, ``COM1``...) gets a leading ``_``.
     """
     stem = _UNSAFE_FILENAME_CHARS.sub("_", database).strip(".") or "database"
     if stem.split(".")[0].upper() in _WINDOWS_DEVICES:
         stem = f"_{stem}"
-    return Path(f"{stem}.snapshot.json" + (".gz" if compress else ""))
+    return stem
 
 
-def write_snapshot(snapshot: Snapshot, path: Path, compress: bool = False) -> Path:
-    """Write the snapshot to ``path`` and return the path actually written.
+def default_output_path(database: str, compress: bool = False) -> Path:
+    """``<database>.snapshot.json[.gz]`` in the current directory, with a safe file name."""
+    return Path(f"{safe_file_stem(database)}.snapshot.json" + (".gz" if compress else ""))
 
-    With ``compress`` the file is gzip and ``.gz`` is appended unless the path already ends in
-    it. The gzip header carries no file name and a zero time, so equal snapshots give equal
-    bytes. The file is written beside the target and moved into place, so an interrupted run
-    never leaves a half-written snapshot. The temporary file gets a fresh random name and is
-    created exclusively, so a symlink planted in the folder is never followed, and it is
-    readable only by its owner (POSIX), as is the snapshot it becomes.
+
+def default_map_path(database: str) -> Path:
+    """``<database>-map.html`` in the current directory, with a safe file name."""
+    return Path(f"{safe_file_stem(database)}-map.html")
+
+
+def write_bytes_atomic(path: Path, data: bytes) -> None:
+    """Write ``data`` to ``path`` beside it and move it into place.
+
+    An interrupted run never leaves a half-written file. The temporary file gets a fresh random
+    name and is created exclusively, so a symlink planted in the folder is never followed, and it
+    is readable only by its owner (POSIX; ``mkstemp`` creates it with mode 0600), as is the file
+    it becomes.
     """
-    if compress and path.suffix != ".gz":
-        path = path.with_name(path.name + ".gz")
-    data = dump_snapshot(snapshot).encode("utf-8")
-    if compress:
-        data = gzip.compress(data, mtime=0)
     descriptor, name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     temporary = Path(name)
     try:
@@ -64,6 +67,22 @@ def write_snapshot(snapshot: Snapshot, path: Path, compress: bool = False) -> Pa
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def write_snapshot(snapshot: Snapshot, path: Path, compress: bool = False) -> Path:
+    """Write the snapshot to ``path`` and return the path actually written.
+
+    With ``compress`` the file is gzip and ``.gz`` is appended unless the path already ends in
+    it. The gzip header carries no file name and a zero time, so equal snapshots give equal
+    bytes. The write is atomic and the file is readable only by its owner (see
+    ``write_bytes_atomic``).
+    """
+    if compress and path.suffix != ".gz":
+        path = path.with_name(path.name + ".gz")
+    data = dump_snapshot(snapshot).encode("utf-8")
+    if compress:
+        data = gzip.compress(data, mtime=0)
+    write_bytes_atomic(path, data)
     return path
 
 

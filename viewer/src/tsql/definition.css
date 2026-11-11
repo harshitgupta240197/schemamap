@@ -1,0 +1,41 @@
+.sm-sql {
+  box-sizing: border-box;
+  max-height: 420px;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px solid var(--sm-border);
+  border-radius: var(--sm-radius-md);
+  background: var(--sm-header);
+  font-family: var(--sm-font-mono);
+  font-size: var(--sm-text-sm);
+  line-height: 1.5;
+  white-space: pre;
+  tab-size: 4;
+}
+
+.sm-sql__keyword {
+  color: var(--sm-sql-keyword);
+  font-weight: 600;
+}
+
+.sm-sql__string {
+  color: var(--sm-sql-string);
+}
+
+.sm-sql__quoted {
+  color: var(--sm-sql-quoted);
+}
+
+.sm-sql__comment {
+  color: var(--sm-sql-comment);
+  font-style: italic;
+}
+
+.sm-sql__number {
+  color: var(--sm-sql-number);
+}
+
+.sm-sql__variable {
+  color: var(--sm-sql-variable);
+}

@@ -1,7 +1,8 @@
 # Architecture
 
-Status: reviewed at gate 1 (crumb 1.11) against the code on `phase-1-extract`. Sections
-about `infer`, `export`, the viewer, telemetry and Pulse describe planned work. Decisions
+Status: extraction reviewed at gate 1 (crumb 1.11) against the code on `phase-1-extract`; the
+viewer and the `view` command reviewed at the Phase 2 gate (crumb 2.9, `docs/gates/PHASE2.md`).
+Sections about `infer`, `export`, telemetry and Pulse describe planned work. Decisions
 referenced as D-nnn live in [DECISIONS.md](DECISIONS.md).
 
 Schema Map reads system metadata from one SQL Server database through a read-only login,
@@ -38,7 +39,10 @@ cli/src/schemamap/
                   warnings for skipped sections, parses SQL text into join evidence.
   snapshot/       Pydantic models (format v1), IDs, JSON I/O, redaction, JSON Schema.
   infer/          (planned) Pure functions: Snapshot (+ overrides) -> inferred relationships.
-  export/         (planned) Builds the HTML map: viewer bundle + snapshot JSON inlined safely.
+  viewer.py       Builds the HTML map: the packaged viewer page (viewer_dist/, made by
+                  tools/build_viewer.py and checked against its sha256 manifest) with the
+                  snapshot JSON inlined safely (D-051).
+  export/         (planned) Data dictionary export (Markdown and HTML).
   telemetry/      (planned) Opt-in, count-only. The only module allowed to open a socket.
 viewer/           React + TypeScript app built into one HTML file; reads the inlined JSON.
 schema/           snapshot.v1.json, generated from snapshot/ and committed.
@@ -47,10 +51,11 @@ schema/           snapshot.v1.json, generated from snapshot/ and committed.
 Allowed imports (enforced by review now, by an import-linter test once the modules exist):
 
 ```
-cli ──> connect, extract, infer, export, telemetry, snapshot, errors
+cli ──> connect, extract, infer, export, viewer, telemetry, snapshot, errors
 extract ──> connect, queries, snapshot, errors        (sqlglot for parsing)
 infer ──> snapshot, errors                            (no connect, no I/O)
 export ──> snapshot, infer, errors                    (no connect)
+viewer ──> snapshot, errors                           (no connect)
 telemetry ──> errors                                  (never snapshot contents)
 snapshot ──> errors                                   (leaf)
 ```
@@ -75,14 +80,17 @@ flowchart LR
   X --> S[snapshot.json<br/>format v1]
   O[overrides.json<br/>user edits] --> I
   S --> I[infer<br/>pure]
-  I --> E[export]
-  S --> E
-  E --> H[map.html<br/>offline, single file]
+  I -. planned .-> V[view]
+  S --> V
+  V --> H[map.html<br/>offline, single file]
+  I -. planned .-> E[export]
+  S -. planned .-> E
+  E -.-> D[data dictionary]
   S -. later .-> P[Pulse]
 ```
 
 The stages are separate commands: `extract` (connect → read metadata → write snapshot),
-`view` (infer → export the map), `docs` and `path`. Each reads a snapshot file, so every stage
+`view` (snapshot → map; inferred edges join it in Phase 3), and later `docs` and `path`. Each reads a snapshot file, so every stage
 after `extract` runs without database access, which makes bug reports reproducible: a user can
 send a snapshot instead of database access. Snapshots are not anonymous; see section 10.
 
@@ -115,6 +123,27 @@ Infer then reads `join_evidence` as plain data. Keeping infer pure means it has 
 clock, network or parser dependency, it is deterministic, it can be unit-tested with
 hand-written snapshots, and re-running inference with new overrides or a better scoring model
 never needs database access again.
+
+### The viewer
+
+`viewer/` is a React + TypeScript app built by Vite into one HTML file with every script and
+style inline. `schemamap view` fills its one empty
+`<script type="application/json" id="schemamap-data">` with the escaped snapshot. Over `file://`
+the page:
+
+1. reads that element's `textContent` (never `innerHTML`), validates it with an Ajv validator
+   compiled at build time (no `eval`, D-044) and builds in-memory indexes (`snapshot/`);
+2. picks a level from the URL hash and the table count: focus, a drilled cluster, the full map
+   (200 tables or fewer) or the overview of clusters (`view/`, D-046, D-047; hash format in
+   `docs/VIEWER.md`);
+3. lays the visible subgraph out with elkjs in a Web Worker made from a Blob URL, cached per
+   view, with a grid fallback (`graph/`, D-045);
+4. renders with React Flow; names are always text (a lint rule bans raw HTML, D-045), and the
+   detail panel shows columns, keys, indexes, impact and definitions (`detail/`, `tsql/`).
+
+The page makes no network request: there is nothing to fetch, and the e2e suite fails on any
+request that is not `file:`, `data:` or `blob:`. Speed targets and numbers are in
+`docs/PERFORMANCE.md`.
 
 ## 4. Snapshot format v1
 
@@ -218,7 +247,7 @@ an inferred edge and a later-declared key with the same columns have the same ed
 Two foreign keys with identical columns share an edge (their `foreign_key` IDs still differ).
 
 **Rendering.** IDs and names are untrusted text. The viewer renders them as text, never HTML;
-export escapes `<`, `>`, `&`, U+2028 and U+2029 when inlining JSON.
+`view` escapes `<`, `>`, `&`, U+2028 and U+2029 when inlining JSON (D-051).
 
 ## 6. Error model
 

@@ -1,0 +1,536 @@
+{
+  "format": "schemamap.snapshot",
+  "format_version": "1.0",
+  "generator": {
+    "name": "schemamap",
+    "version": "0.0.0"
+  },
+  "captured_at": "2026-01-02T03:04:05Z",
+  "source": {
+    "server": null,
+    "server_redacted": true,
+    "database": "</script><svg onload=alert(1)>",
+    "product_version": null,
+    "engine_edition": null,
+    "edition": null,
+    "compatibility_level": null,
+    "collation": null,
+    "query_store": "unknown"
+  },
+  "schemas": [
+    {
+      "id": "schema:</script%3E<img src=x onerror=alert%281%29%3E",
+      "name": "</script><img src=x onerror=alert(1)>",
+      "description": null
+    },
+    {
+      "id": "schema:dbo",
+      "name": "dbo",
+      "description": null
+    }
+  ],
+  "tables": [
+    {
+      "id": "object:</script%3E<img src=x onerror=alert%281%29%3E.<!--",
+      "schema_id": "schema:</script%3E<img src=x onerror=alert%281%29%3E",
+      "name": "<!--",
+      "description": null,
+      "temporal_type": "none",
+      "memory_optimized": false,
+      "columns": [
+        {
+          "id": "column:</script%3E<img src=x onerror=alert%281%29%3E.<!--.<img src=x onerror=alert%281%29%3E",
+          "name": "<img src=x onerror=alert(1)>",
+          "ordinal": 1,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:</script%3E<img src=x onerror=alert%281%29%3E.<!--.</script%3E",
+          "name": "</script>",
+          "ordinal": 2,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:</script%3E<img src=x onerror=alert%281%29%3E.<!--.a&b",
+          "name": "a&b",
+          "ordinal": 3,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:</script%3E<img src=x onerror=alert%281%29%3E.<!--.Id",
+          "name": "Id",
+          "ordinal": 4,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        }
+      ],
+      "indexes": [
+        {
+          "id": "index:</script%3E<img src=x onerror=alert%281%29%3E.<!--.PK_<!--",
+          "name": "PK_<!--",
+          "kind": "clustered",
+          "unique": true,
+          "key_columns": [
+            {
+              "column": "column:</script%3E<img src=x onerror=alert%281%29%3E.<!--.<img src=x onerror=alert%281%29%3E",
+              "descending": false
+            }
+          ],
+          "included_columns": [],
+          "filter": null,
+          "disabled": false
+        }
+      ],
+      "key_constraints": [
+        {
+          "id": "constraint:</script%3E<img src=x onerror=alert%281%29%3E.PK_<!--",
+          "name": "PK_<!--",
+          "kind": "primary_key",
+          "columns": [
+            "column:</script%3E<img src=x onerror=alert%281%29%3E.<!--.<img src=x onerror=alert%281%29%3E"
+          ],
+          "index": "index:</script%3E<img src=x onerror=alert%281%29%3E.<!--.PK_<!--"
+        }
+      ],
+      "check_constraints": []
+    },
+    {
+      "id": "object:</script%3E<img src=x onerror=alert%281%29%3E.]]%3E",
+      "schema_id": "schema:</script%3E<img src=x onerror=alert%281%29%3E",
+      "name": "]]>",
+      "description": null,
+      "temporal_type": "none",
+      "memory_optimized": false,
+      "columns": [
+        {
+          "id": "column:</script%3E<img src=x onerror=alert%281%29%3E.]]%3E.<img src=x onerror=alert%281%29%3E",
+          "name": "<img src=x onerror=alert(1)>",
+          "ordinal": 1,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:</script%3E<img src=x onerror=alert%281%29%3E.]]%3E.</script%3E",
+          "name": "</script>",
+          "ordinal": 2,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:</script%3E<img src=x onerror=alert%281%29%3E.]]%3E.a&b",
+          "name": "a&b",
+          "ordinal": 3,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:</script%3E<img src=x onerror=alert%281%29%3E.]]%3E.Id",
+          "name": "Id",
+          "ordinal": 4,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        }
+      ],
+      "indexes": [
+        {
+          "id": "index:</script%3E<img src=x onerror=alert%281%29%3E.]]%3E.PK_]]%3E",
+          "name": "PK_]]>",
+          "kind": "clustered",
+          "unique": true,
+          "key_columns": [
+            {
+              "column": "column:</script%3E<img src=x onerror=alert%281%29%3E.]]%3E.<img src=x onerror=alert%281%29%3E",
+              "descending": false
+            }
+          ],
+          "included_columns": [],
+          "filter": null,
+          "disabled": false
+        }
+      ],
+      "key_constraints": [
+        {
+          "id": "constraint:</script%3E<img src=x onerror=alert%281%29%3E.PK_]]%3E",
+          "name": "PK_]]>",
+          "kind": "primary_key",
+          "columns": [
+            "column:</script%3E<img src=x onerror=alert%281%29%3E.]]%3E.<img src=x onerror=alert%281%29%3E"
+          ],
+          "index": "index:</script%3E<img src=x onerror=alert%281%29%3E.]]%3E.PK_]]%3E"
+        }
+      ],
+      "check_constraints": []
+    },
+    {
+      "id": "object:dbo.Orders",
+      "schema_id": "schema:dbo",
+      "name": "Orders",
+      "description": null,
+      "temporal_type": "none",
+      "memory_optimized": false,
+      "columns": [
+        {
+          "id": "column:dbo.Orders.<img src=x onerror=alert%281%29%3E",
+          "name": "<img src=x onerror=alert(1)>",
+          "ordinal": 1,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:dbo.Orders.</script%3E",
+          "name": "</script>",
+          "ordinal": 2,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:dbo.Orders.a&b",
+          "name": "a&b",
+          "ordinal": 3,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:dbo.Orders.Id",
+          "name": "Id",
+          "ordinal": 4,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        }
+      ],
+      "indexes": [
+        {
+          "id": "index:dbo.Orders.PK_Orders",
+          "name": "PK_Orders",
+          "kind": "clustered",
+          "unique": true,
+          "key_columns": [
+            {
+              "column": "column:dbo.Orders.<img src=x onerror=alert%281%29%3E",
+              "descending": false
+            }
+          ],
+          "included_columns": [],
+          "filter": null,
+          "disabled": false
+        }
+      ],
+      "key_constraints": [
+        {
+          "id": "constraint:dbo.PK_Orders",
+          "name": "PK_Orders",
+          "kind": "primary_key",
+          "columns": [
+            "column:dbo.Orders.<img src=x onerror=alert%281%29%3E"
+          ],
+          "index": "index:dbo.Orders.PK_Orders"
+        }
+      ],
+      "check_constraints": []
+    },
+    {
+      "id": "object:dbo.line break end",
+      "schema_id": "schema:dbo",
+      "name": "line break end",
+      "description": null,
+      "temporal_type": "none",
+      "memory_optimized": false,
+      "columns": [
+        {
+          "id": "column:dbo.line break end.<img src=x onerror=alert%281%29%3E",
+          "name": "<img src=x onerror=alert(1)>",
+          "ordinal": 1,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:dbo.line break end.</script%3E",
+          "name": "</script>",
+          "ordinal": 2,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:dbo.line break end.a&b",
+          "name": "a&b",
+          "ordinal": 3,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:dbo.line break end.Id",
+          "name": "Id",
+          "ordinal": 4,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        }
+      ],
+      "indexes": [
+        {
+          "id": "index:dbo.line break end.PK_line break end",
+          "name": "PK_line break end",
+          "kind": "clustered",
+          "unique": true,
+          "key_columns": [
+            {
+              "column": "column:dbo.line break end.<img src=x onerror=alert%281%29%3E",
+              "descending": false
+            }
+          ],
+          "included_columns": [],
+          "filter": null,
+          "disabled": false
+        }
+      ],
+      "key_constraints": [
+        {
+          "id": "constraint:dbo.PK_line break end",
+          "name": "PK_line break end",
+          "kind": "primary_key",
+          "columns": [
+            "column:dbo.line break end.<img src=x onerror=alert%281%29%3E"
+          ],
+          "index": "index:dbo.line break end.PK_line break end"
+        }
+      ],
+      "check_constraints": []
+    }
+  ],
+  "views": [
+    {
+      "definition": "SELECT '</script><script>alert(1)</script><!--' AS x -- $& $' $` \\1 \\g<0> {0} %s ]]>",
+      "definition_status": "available",
+      "id": "object:dbo.</style%3E",
+      "schema_id": "schema:dbo",
+      "name": "</style>",
+      "description": null,
+      "columns": [
+        {
+          "id": "column:dbo.</style%3E.x",
+          "name": "x",
+          "ordinal": 1,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        }
+      ],
+      "schema_bound": false
+    }
+  ],
+  "routines": [],
+  "synonyms": [],
+  "relationships": [
+    {
+      "id": "foreign_key:</script%3E<img src=x onerror=alert%281%29%3E.FK_]]%3E_Orders_</script%3E",
+      "name": "FK_]]>_Orders_</script>",
+      "edge": "edge:</script%3E<img src=x onerror=alert%281%29%3E.]]%3E(</script%3E)>dbo.Orders(Id)",
+      "from_object": "object:</script%3E<img src=x onerror=alert%281%29%3E.]]%3E",
+      "from_columns": [
+        "column:</script%3E<img src=x onerror=alert%281%29%3E.]]%3E.</script%3E"
+      ],
+      "to_object": "object:dbo.Orders",
+      "to_columns": [
+        "column:dbo.Orders.Id"
+      ],
+      "on_delete": "no_action",
+      "on_update": "no_action",
+      "disabled": false,
+      "trusted": true
+    },
+    {
+      "id": "foreign_key:dbo.FK_Orders_<!--_a&b",
+      "name": "FK_Orders_<!--_a&b",
+      "edge": "edge:dbo.Orders(a&b)></script%3E<img src=x onerror=alert%281%29%3E.<!--(Id)",
+      "from_object": "object:dbo.Orders",
+      "from_columns": [
+        "column:dbo.Orders.a&b"
+      ],
+      "to_object": "object:</script%3E<img src=x onerror=alert%281%29%3E.<!--",
+      "to_columns": [
+        "column:</script%3E<img src=x onerror=alert%281%29%3E.<!--.Id"
+      ],
+      "on_delete": "no_action",
+      "on_update": "no_action",
+      "disabled": false,
+      "trusted": true
+    }
+  ],
+  "dependencies": [],
+  "warnings": [],
+  "row_counts": null,
+  "query_history": null,
+  "join_evidence": null,
+  "filters": null
+}

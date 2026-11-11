@@ -1,0 +1,371 @@
+{
+  "format": "schemamap.snapshot",
+  "format_version": "1.0",
+  "generator": {
+    "name": "schemamap",
+    "version": "0.0.1"
+  },
+  "captured_at": "2000-01-01T00:00:00Z",
+  "source": {
+    "server": "localhost",
+    "server_redacted": false,
+    "database": "SchemaMapEdgeCasesBIN2",
+    "product_version": null,
+    "engine_edition": "3",
+    "edition": "Developer Edition (64-bit)",
+    "compatibility_level": 160,
+    "collation": "Latin1_General_100_BIN2",
+    "query_store": "unknown"
+  },
+  "schemas": [
+    {
+      "id": "schema:SYS",
+      "name": "SYS",
+      "description": null
+    },
+    {
+      "id": "schema:dbo",
+      "name": "dbo",
+      "description": null
+    }
+  ],
+  "tables": [
+    {
+      "id": "object:SYS.TABLES",
+      "schema_id": "schema:SYS",
+      "name": "TABLES",
+      "description": null,
+      "temporal_type": "none",
+      "memory_optimized": false,
+      "columns": [
+        {
+          "id": "column:SYS.TABLES.Id",
+          "name": "Id",
+          "ordinal": 1,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        }
+      ],
+      "indexes": [
+        {
+          "id": "index:SYS.TABLES.PK_SYS_TABLES",
+          "name": "PK_SYS_TABLES",
+          "kind": "clustered",
+          "unique": true,
+          "key_columns": [
+            {
+              "column": "column:SYS.TABLES.Id",
+              "descending": false
+            }
+          ],
+          "included_columns": [],
+          "filter": null,
+          "disabled": false
+        }
+      ],
+      "key_constraints": [
+        {
+          "id": "constraint:SYS.PK_SYS_TABLES",
+          "name": "PK_SYS_TABLES",
+          "kind": "primary_key",
+          "columns": [
+            "column:SYS.TABLES.Id"
+          ],
+          "index": "index:SYS.TABLES.PK_SYS_TABLES"
+        }
+      ],
+      "check_constraints": []
+    },
+    {
+      "id": "object:dbo.Orders",
+      "schema_id": "schema:dbo",
+      "name": "Orders",
+      "description": null,
+      "temporal_type": "none",
+      "memory_optimized": false,
+      "columns": [
+        {
+          "id": "column:dbo.Orders.Id",
+          "name": "Id",
+          "ordinal": 1,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:dbo.Orders.Name",
+          "name": "Name",
+          "ordinal": 2,
+          "data_type": "nvarchar",
+          "user_type": null,
+          "length": 50,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": "Latin1_General_100_BIN2",
+          "description": null
+        },
+        {
+          "id": "column:dbo.Orders.name",
+          "name": "name",
+          "ordinal": 3,
+          "data_type": "nvarchar",
+          "user_type": null,
+          "length": 50,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": "Latin1_General_100_BIN2",
+          "description": null
+        }
+      ],
+      "indexes": [
+        {
+          "id": "index:dbo.Orders.PK_Orders",
+          "name": "PK_Orders",
+          "kind": "clustered",
+          "unique": true,
+          "key_columns": [
+            {
+              "column": "column:dbo.Orders.Id",
+              "descending": false
+            }
+          ],
+          "included_columns": [],
+          "filter": null,
+          "disabled": false
+        }
+      ],
+      "key_constraints": [
+        {
+          "id": "constraint:dbo.PK_Orders",
+          "name": "PK_Orders",
+          "kind": "primary_key",
+          "columns": [
+            "column:dbo.Orders.Id"
+          ],
+          "index": "index:dbo.Orders.PK_Orders"
+        }
+      ],
+      "check_constraints": []
+    },
+    {
+      "id": "object:dbo.orders",
+      "schema_id": "schema:dbo",
+      "name": "orders",
+      "description": null,
+      "temporal_type": "none",
+      "memory_optimized": false,
+      "columns": [
+        {
+          "id": "column:dbo.orders.Id",
+          "name": "Id",
+          "ordinal": 1,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:dbo.orders.OrderRef",
+          "name": "OrderRef",
+          "ordinal": 2,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        }
+      ],
+      "indexes": [
+        {
+          "id": "index:dbo.orders.PK_orders",
+          "name": "PK_orders",
+          "kind": "clustered",
+          "unique": true,
+          "key_columns": [
+            {
+              "column": "column:dbo.orders.Id",
+              "descending": false
+            }
+          ],
+          "included_columns": [],
+          "filter": null,
+          "disabled": false
+        }
+      ],
+      "key_constraints": [
+        {
+          "id": "constraint:dbo.PK_orders",
+          "name": "PK_orders",
+          "kind": "primary_key",
+          "columns": [
+            "column:dbo.orders.Id"
+          ],
+          "index": "index:dbo.orders.PK_orders"
+        }
+      ],
+      "check_constraints": []
+    }
+  ],
+  "views": [
+    {
+      "definition": "CREATE VIEW dbo.LowerView AS SELECT Id, OrderRef FROM dbo.orders;\n",
+      "definition_status": "available",
+      "id": "object:dbo.LowerView",
+      "schema_id": "schema:dbo",
+      "name": "LowerView",
+      "description": null,
+      "columns": [
+        {
+          "id": "column:dbo.LowerView.Id",
+          "name": "Id",
+          "ordinal": 1,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        },
+        {
+          "id": "column:dbo.LowerView.OrderRef",
+          "name": "OrderRef",
+          "ordinal": 2,
+          "data_type": "int",
+          "user_type": null,
+          "length": null,
+          "is_max": false,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "identity": false,
+          "computed": null,
+          "default": null,
+          "collation": null,
+          "description": null
+        }
+      ],
+      "schema_bound": false
+    }
+  ],
+  "routines": [
+    {
+      "definition": "CREATE PROCEDURE dbo.UpperProc AS SELECT Id, Name FROM dbo.Orders;\n",
+      "definition_status": "available",
+      "id": "object:dbo.UpperProc",
+      "schema_id": "schema:dbo",
+      "name": "UpperProc",
+      "kind": "procedure",
+      "parent": null,
+      "description": null
+    }
+  ],
+  "synonyms": [],
+  "relationships": [
+    {
+      "id": "foreign_key:dbo.FK_orders_Orders",
+      "name": "FK_orders_Orders",
+      "edge": "edge:dbo.orders(OrderRef)>dbo.Orders(Id)",
+      "from_object": "object:dbo.orders",
+      "from_columns": [
+        "column:dbo.orders.OrderRef"
+      ],
+      "to_object": "object:dbo.Orders",
+      "to_columns": [
+        "column:dbo.Orders.Id"
+      ],
+      "on_delete": "no_action",
+      "on_update": "no_action",
+      "disabled": false,
+      "trusted": true
+    }
+  ],
+  "dependencies": [
+    {
+      "from_object": "object:dbo.LowerView",
+      "target": {
+        "scope": "local",
+        "name": {
+          "server": null,
+          "database": null,
+          "schema_name": "dbo",
+          "name": "orders"
+        },
+        "resolved": "object:dbo.orders"
+      }
+    },
+    {
+      "from_object": "object:dbo.UpperProc",
+      "target": {
+        "scope": "local",
+        "name": {
+          "server": null,
+          "database": null,
+          "schema_name": "dbo",
+          "name": "Orders"
+        },
+        "resolved": "object:dbo.Orders"
+      }
+    }
+  ],
+  "warnings": [
+    {
+      "section": "row_counts",
+      "code": "permission_missing",
+      "message": "VIEW DATABASE STATE is not granted. Row counts and sizes were skipped. Ask a DBA to run GRANT VIEW DATABASE STATE TO [<user>]; <user> is the database user the login maps to, which may differ from the login name."
+    }
+  ],
+  "row_counts": null,
+  "query_history": null,
+  "join_evidence": null,
+  "filters": null
+}
