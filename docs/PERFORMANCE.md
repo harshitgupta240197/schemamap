@@ -45,6 +45,19 @@ Recorded from the `PERF` lines of the viewer job's Playwright output.
 | AdventureWorks: aspect ratio / fit-view zoom | **1.80** / 0.23 |
 | WideWorldImporters: aspect ratio / fit-view zoom | **1.73** / 0.27 |
 
+## Map file (`schemamap view`)
+
+`cli/tests/test_view_performance.py` embeds a seeded 2,000-table snapshot built in Python (`cli/tests/snapshot_builders.py`: 12 schemas, 2,012 foreign keys, 400 views with definitions) and fails above 2 s. The map is the packaged viewer plus the snapshot JSON, so its size is the viewer's 2.19 MB plus the data.
+
+| Measure | Value (Apple M5, macOS, Python 3.13) |
+| --- | --- |
+| Embed 2,000 tables (`embed_snapshot`) | 0.13 s |
+| Whole `schemamap view` run, 2,000 tables (read, validate, embed, write) | 1.4 s |
+| Snapshot JSON on disk | 7.3 MB |
+| Inline data in the map | 4.58 MB (compact JSON, no indentation) |
+| **Map file, 2,000 tables** | **6.77 MB** |
+| Map file, AdventureWorks | 2.72 MB |
+
 ## Layout measurements behind the limit
 
 elkjs 0.12 `layered` in Node on the same machine, viewer options, synthetic FK trees (one key per table plus extra keys) and the two golden snapshots.

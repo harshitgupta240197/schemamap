@@ -27,7 +27,7 @@ def help_examples() -> list[tuple[str, list[str]]]:
 
 
 def test_help_has_examples() -> None:
-    assert {name for name, _ in help_examples()} == {"doctor", "extract"}
+    assert {name for name, _ in help_examples()} == {"doctor", "extract", "view"}
 
 
 @pytest.mark.parametrize(("name", "args"), help_examples())

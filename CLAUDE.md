@@ -17,7 +17,7 @@ cli/        Python package `schemamap` (extract, infer, export, CLI)
   src/schemamap/queries/   every SQL statement lives here as a .sql file
 viewer/     React + TypeScript single-file viewer (Vite)
 schema/     snapshot.v1.json, generated from cli/src/schemamap/snapshot/ (never edit by hand)
-tools/      lab.py (SQL Server Docker lab), synthetic schema generator
+tools/      lab.py (SQL Server Docker lab), synthetic schema generator, build_viewer.py (packages the viewer for `schemamap view`)
 docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate reports
 .github/    CI workflows
 ```
@@ -28,7 +28,8 @@ docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate repo
 - CLI integration tests (lab must be up): `cd cli && uv run pytest -m integration`
 - Viewer checks: `cd viewer && npm run lint && npm run typecheck && npm test && npm run build && npm run check:bundle`
 - Regenerate viewer types and the precompiled validator after changing `schema/snapshot.v1.json`: `cd viewer && npm run gen:types` (CI runs `npm run gen:check` and fails on drift)
-- Viewer end-to-end: `cd viewer && npx playwright test`
+- Package the viewer for `schemamap view` (needs `npm ci` in `viewer/`; output is gitignored): `uv run tools/build_viewer.py`
+- Viewer end-to-end (needs the packaged viewer; `view.spec.ts` runs the real CLI): `cd viewer && npx playwright test`
 - Regenerate the snapshot JSON Schema after changing `snapshot/` models: `cd cli && uv run python scripts/gen_snapshot_schema.py` (a test fails if `schema/snapshot.v1.json` is stale)
 - Lab: `uv run tools/lab.py up | restore all | status | down [--purge]` (also `restore <db>`, `grant <db> [--view-database-state]`, `edgecases`, `synth --tables N`; see `docs/LAB.md`)
 

@@ -58,6 +58,18 @@ describe("loader", () => {
     expect(readInlineSnapshot(document.implementation.createHTMLDocument("t"))).toBeNull();
   });
 
+  it("treats the empty placeholder the build ships as no inline snapshot", () => {
+    for (const text of ["", "  \n "]) {
+      const doc = document.implementation.createHTMLDocument("t");
+      const script = doc.createElement("script");
+      script.type = "application/json";
+      script.id = INLINE_DATA_ID;
+      script.textContent = text;
+      doc.body.append(script);
+      expect(readInlineSnapshot(doc)).toBeNull();
+    }
+  });
+
   it("loads a plain JSON file", async () => {
     const snapshot = await loadSnapshotFile(new File([AW], "aw.snapshot.json"));
     expect(snapshot.source.database).toBe("AdventureWorks2022");

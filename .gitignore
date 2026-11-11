@@ -45,3 +45,6 @@ viewer/screenshots/
 
 # Public synthetic/sample snapshots used by viewer tests
 !viewer/src/snapshot/__fixtures__/*.snapshot.json
+
+# Built viewer, packaged by tools/build_viewer.py (D-051)
+cli/src/schemamap/viewer_dist/

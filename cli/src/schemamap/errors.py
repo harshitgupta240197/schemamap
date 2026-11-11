@@ -61,3 +61,15 @@ class PermissionMissing(SchemaMapError):
         super().__init__(message)
         self.permission = permission
         self.message = message
+
+
+class ViewerUnavailableError(SchemaMapError):
+    """The packaged viewer is missing, unreadable or does not match its manifest.
+
+    Not a problem with the user's input: the install is incomplete. The message names the
+    command that builds it.
+    """
+
+
+class EmbedError(SchemaMapError):
+    """The viewer page has no data placeholder, or several, so a snapshot cannot be embedded."""

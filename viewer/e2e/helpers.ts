@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -19,18 +20,20 @@ export function escapeForScript(json: string): string {
     .replaceAll(String.fromCharCode(0x2029), "\\u2029");
 }
 
+/** The empty script the build ships; `schemamap view` fills it in. */
+const PLACEHOLDER = '<script type="application/json" id="schemamap-data"></script>';
+
 /** Write a copy of the built viewer with `json` inlined as the snapshot; return its file URL. */
 export function mapFile(outFile: string, json: string, hash = ""): string {
   const html = readFileSync(path.resolve("dist", "index.html"), "utf8");
-  const data = `<script type="application/json" id="schemamap-data">${escapeForScript(json)}</script>`;
-  const marker = "<body>";
-  if (!html.includes(marker)) {
-    throw new Error("built file has no <body>");
+  if (html.split(PLACEHOLDER).length !== 2) {
+    throw new Error("built file must contain the data placeholder exactly once");
   }
+  const data = `<script type="application/json" id="schemamap-data">${escapeForScript(json)}</script>`;
   // A replacer function: a replacement string would expand `$'` and `$&` found in SQL text.
   writeFileSync(
     outFile,
-    html.replace(marker, () => `${marker}${data}`),
+    html.replace(PLACEHOLDER, () => data),
   );
   return pathToFileURL(outFile).href + hash;
 }
@@ -45,4 +48,31 @@ export async function settled(page: Page): Promise<void> {
   await expect(page.locator(".sm-canvas")).toHaveAttribute("data-layout-status", "done", {
     timeout: 30_000,
   });
+}
+
+/** The CLI's hostile-name snapshot: names and SQL that would break a raw HTML embedding. */
+export const HOSTILE = path.join(FIXTURES, "hostile.snapshot.json");
+
+/**
+ * Make a map with the real CLI (`schemamap view --no-open`) and return its file URL.
+ * Needs `uv` and the packaged viewer (`uv run tools/build_viewer.py`).
+ */
+export function viewWithCli(snapshotPath: string, outFile: string, hash = ""): string {
+  execFileSync(
+    "uv",
+    [
+      "run",
+      "--locked",
+      "--project",
+      path.resolve("..", "cli"),
+      "schemamap",
+      "view",
+      snapshotPath,
+      "--output",
+      outFile,
+      "--no-open",
+    ],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  return pathToFileURL(outFile).href + hash;
 }
