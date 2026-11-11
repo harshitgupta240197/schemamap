@@ -170,5 +170,7 @@ describe("node geometry", () => {
     expect(nodeSize(0).height).toBe(NODE_MIN_HEIGHT);
     expect(nodeSize(1).height).toBe(NODE_MIN_HEIGHT);
     expect(nodeSize(10).height).toBeGreaterThan(NODE_MIN_HEIGHT);
+    expect(nodeSize(1, true).height).toBeLessThan(NODE_MIN_HEIGHT);
+    expect(nodeSize(10, true).height).toBe(nodeSize(10).height);
   });
 });

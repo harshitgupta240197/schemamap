@@ -1,7 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mapUrl, settled } from "./helpers";
 
-const nodes = (page: Page) => page.locator(".react-flow__node");
+// The minimap draws every laid-out table; the canvas draws only those in view, and a focus view
+// that does not fit at readable size is panned (D-050).
+const nodes = (page: Page) => page.locator(".react-flow__minimap-node");
 
 test("search focuses a table, hops re-lay out, breadcrumb returns, reload restores", async ({
   page,

@@ -2,7 +2,6 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { memo, useContext, type CSSProperties } from "react";
 import {
   NODE_WIDTH,
-  nodeSize,
   sourceHandleId,
   targetHandleId,
   type ColumnRow,
@@ -58,7 +57,7 @@ function TableNodeView({ data }: NodeProps<TableFlowNode>) {
           name={data.name}
           title={qualified}
           width={NODE_WIDTH}
-          height={nodeSize(data.rows.length).height}
+          height={data.height}
         />
         <div className="sm-table__meta">
           <span className="sm-badge" title={data.schemaName}>

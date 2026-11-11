@@ -7,6 +7,7 @@ import { ToggleExpandedContext, useExpanded } from "./expanded";
 import { FlowCanvas } from "./FlowCanvas";
 import { layoutKey, type LayoutRunner } from "./layout";
 import { TableNode } from "./TableNode";
+import { SMALL_VIEW_TABLES } from "./zoom";
 
 const NODE_TYPES: NodeTypes = { table: TableNode };
 
@@ -63,6 +64,7 @@ export function GraphCanvas({
           onOpen?.(node.data.objectId);
         }}
         centerOn={centerNode}
+        keepReadable={graph.nodes.length <= SMALL_VIEW_TABLES}
         pendingText={`Laying out ${String(graph.nodes.length)} tables…`}
         emptyText="No tables match this view."
       />

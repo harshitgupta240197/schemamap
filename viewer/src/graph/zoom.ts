@@ -7,6 +7,12 @@ import { createContext } from "react";
  */
 export const COMPACT_BELOW_ZOOM = 0.6;
 
+/**
+ * Views with at most this many tables (focus, a drilled cluster) never fit below the compact
+ * zoom: the view keeps full nodes and pans instead (D-050).
+ */
+export const SMALL_VIEW_TABLES = 25;
+
 /** Whether nodes draw their compact form at this zoom. */
 export function isCompact(zoom: number): boolean {
   return zoom < COMPACT_BELOW_ZOOM;

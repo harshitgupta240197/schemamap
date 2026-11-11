@@ -2,6 +2,7 @@ import type { Edge, Node } from "@xyflow/react";
 import type { Column1, Relationship, Table } from "../generated/snapshot";
 import type { SnapshotIndexes } from "../snapshot/indexes";
 import { schemaColorsOf } from "../snapshot/schemaColors";
+import { SMALL_VIEW_TABLES } from "./zoom";
 
 /** One visible column row of a table node. `index` is the column's position by ordinal. */
 export type ColumnRow = {
@@ -23,6 +24,8 @@ export type TableNodeData = {
   readonly keyColumnCount: number;
   readonly expanded: boolean;
   readonly rows: readonly ColumnRow[];
+  /** Laid-out height of the node in flow px. */
+  readonly height: number;
 };
 
 /** Data carried by an FK edge: every declared foreign key that shares this column mapping. */
@@ -50,14 +53,16 @@ export const NODE_PADDING = 10;
 /** Tall enough for a two-line compact label at the zoom a typical map opens at. */
 export const NODE_MIN_HEIGHT = 140;
 
-/** Size of a node with `rowCount` visible column rows. */
-export function nodeSize(rowCount: number): { width: number; height: number } {
+/**
+ * Size of a node with `rowCount` visible column rows. The compact two-line label needs
+ * `NODE_MIN_HEIGHT`; a view small enough to stay above the compact zoom (`smallView`, D-050)
+ * never shows it at fit view, so its nodes follow their content.
+ */
+export function nodeSize(rowCount: number, smallView = false): { width: number; height: number } {
+  const content = NODE_HEADER_HEIGHT + rowCount * NODE_ROW_HEIGHT + NODE_PADDING;
   return {
     width: NODE_WIDTH,
-    height: Math.max(
-      NODE_MIN_HEIGHT,
-      NODE_HEADER_HEIGHT + rowCount * NODE_ROW_HEIGHT + NODE_PADDING,
-    ),
+    height: smallView ? content : Math.max(NODE_MIN_HEIGHT, content),
   };
 }
 
@@ -139,6 +144,7 @@ export function buildGraph(
     }
   }
 
+  const smallView = tables.filter((table) => isShown(table.id)).length <= SMALL_VIEW_TABLES;
   const nodes: TableFlowNode[] = [];
   for (const table of tables) {
     const nodeId = nodeIdByObject.get(table.id);
@@ -164,7 +170,7 @@ export function buildGraph(
     });
     const isExpanded = expanded.has(table.id);
     const rows = isExpanded ? allRows : keyRows;
-    const size = nodeSize(rows.length);
+    const size = nodeSize(rows.length, smallView);
     const entity = indexes.byId(table.id);
     const schemaName = entity?.kind === "table" ? entity.schemaName : "";
     nodes.push({
@@ -182,6 +188,7 @@ export function buildGraph(
         keyColumnCount: keyRows.length,
         expanded: isExpanded,
         rows,
+        height: size.height,
       },
     });
   }

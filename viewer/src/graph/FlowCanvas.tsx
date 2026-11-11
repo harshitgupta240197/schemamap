@@ -21,7 +21,7 @@ import type { LayoutRunner } from "./layout";
 import { nearestInDirection, type Direction } from "./navigate";
 import { useLayout } from "./useLayout";
 import { useReducedMotion } from "./useReducedMotion";
-import { isCompact, zoomBucket, ZoomBucketContext } from "./zoom";
+import { COMPACT_BELOW_ZOOM, isCompact, zoomBucket, ZoomBucketContext } from "./zoom";
 
 const EDGE_OPTIONS: DefaultEdgeOptions = {
   markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
@@ -41,6 +41,12 @@ interface FlowCanvasProps<N extends Node, E extends Edge> {
   readonly onActivate?: (node: N) => void;
   /** React Flow node id to centre on once laid out, instead of fitting the whole graph. */
   readonly centerOn?: string | null;
+  /**
+   * Keep the fitted view at or above the compact zoom (D-050): when the whole graph does not fit
+   * that large, the view centres on `centerOn`, else the first selected node, and the rest is
+   * reached by panning.
+   */
+  readonly keepReadable?: boolean;
   /** Status text while the first layout runs, e.g. "Laying out 40 tables…". */
   readonly pendingText: string;
   /** Status text when the graph has no nodes. */
@@ -49,22 +55,47 @@ interface FlowCanvasProps<N extends Node, E extends Edge> {
 
 /**
  * Fits the view each time a layout lands, so a new view is never off screen; or, when `centerOn`
- * names a node, zooms to that node instead.
+ * names a node, zooms to that node instead. With `keepReadable`, a fit that would drop below the
+ * compact zoom is replaced by one at that zoom, centred on `anchor` (or on the whole graph when
+ * nothing is anchored).
  */
-function FitOnLayout({ layoutId, centerOn }: { layoutId: string; centerOn: string | null }) {
-  const { fitView } = useReactFlow();
+function FitOnLayout({
+  layoutId,
+  centerOn,
+  anchor,
+  keepReadable,
+}: {
+  layoutId: string;
+  centerOn: string | null;
+  anchor: string | null;
+  keepReadable: boolean;
+}) {
+  const { fitView, getZoom, getNode, setCenter } = useReactFlow();
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      void fitView(
-        centerOn === null
-          ? { duration: 0 }
-          : { duration: 0, nodes: [{ id: centerOn }], maxZoom: 1, padding: 0.4 },
-      );
+      if (centerOn !== null) {
+        void fitView({ duration: 0, nodes: [{ id: centerOn }], maxZoom: 1, padding: 0.4 });
+        return;
+      }
+      void fitView({ duration: 0 }).then(() => {
+        const node = anchor === null ? undefined : getNode(anchor);
+        if (!keepReadable || getZoom() >= COMPACT_BELOW_ZOOM) {
+          return;
+        }
+        if (node?.measured?.width === undefined || node.measured.height === undefined) {
+          return fitView({ duration: 0, minZoom: COMPACT_BELOW_ZOOM });
+        }
+        return setCenter(
+          node.position.x + node.measured.width / 2,
+          node.position.y + node.measured.height / 2,
+          { duration: 0, zoom: COMPACT_BELOW_ZOOM },
+        );
+      });
     });
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [fitView, layoutId, centerOn]);
+  }, [fitView, getZoom, getNode, setCenter, layoutId, centerOn, anchor, keepReadable]);
   return null;
 }
 
@@ -91,6 +122,11 @@ function ZoomMonitor({ onBucket }: { onBucket: (bucket: number) => void }) {
   return null;
 }
 
+/** The first selected node in id order: what a fit that cannot show everything centres on. */
+function placedAnchor(nodes: readonly Node[], selectedIds: ReadonlySet<string>): string | null {
+  return nodes.find((node) => selectedIds.has(node.id))?.id ?? null;
+}
+
 const ARROWS: Record<string, Direction> = {
   ArrowLeft: "left",
   ArrowRight: "right",
@@ -112,12 +148,14 @@ export function FlowCanvas<N extends Node, E extends Edge>({
   selectedIds,
   onActivate,
   centerOn = null,
+  keepReadable = false,
   pendingText,
   emptyText,
 }: FlowCanvasProps<N, E>) {
   const graph = useMemo(() => ({ nodes, edges }), [nodes, edges]);
   const [bucket, setBucket] = useState(1);
   const reducedMotion = useReducedMotion();
+  const anchor = useMemo(() => placedAnchor(nodes, selectedIds), [nodes, selectedIds]);
   const { positions, status } = useLayout(graph, layoutId, runLayout);
 
   // While a new view lays out, the previous positions linger; only nodes they cover are drawn.
@@ -215,6 +253,8 @@ export function FlowCanvas<N extends Node, E extends Edge>({
             <FitOnLayout
               layoutId={status === "pending" ? "pending" : layoutId}
               centerOn={centerOn}
+              anchor={anchor}
+              keepReadable={keepReadable}
             />
             <ZoomMonitor onBucket={setBucket} />
             <Background />

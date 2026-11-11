@@ -368,3 +368,11 @@ Choices: draft 2020-12 (`ajv/dist/2020`), strict mode, `allErrors` for useful me
 **Load errors.** The screen leads with a plain sentence per error kind (`plainMessage`); the technical message and violation paths sit under a "Details" disclosure.
 
 **Tests changed on purpose.** `keyboard.spec` and `detail.spec` now expect the heading, not the panel, to have focus. `detail.spec` finds a node by its title (qualified name) because a compact label is split over lines. The `graph.spec` expand test uses a 1920×1200 window: with larger nodes the Person.Person focus view no longer fits above the 0.6 compact threshold in the default window.
+
+## D-050 Small views keep full nodes (2026-11-11)
+
+**Threshold.** A view with at most 25 tables (`SMALL_VIEW_TABLES` in `graph/zoom.ts`) never fits below the compact zoom (0.6). If the whole graph does not fit at 0.6, the view centres on the focused or selected table (else on the middle of the graph) and the rest is reached by panning. Why 25: at 300 px wide nodes a 1280×720 screen shows about four columns of nodes at 0.6, so up to a couple of dozen tables is browsable by panning, while larger views are better read as a whole map. Larger views keep fit-all with compact labels below 0.6.
+
+**Node height.** In a small view a full node is as tall as its content (header, rows, padding). The 140 px minimum (`NODE_MIN_HEIGHT`) applies only to larger views, where the two-line compact label needs it. The node's height is carried in its data so layout and render agree.
+
+**Test changed on purpose.** `focus.spec` counted `.react-flow__node`, but nodes outside the panned viewport are not rendered (`onlyRenderVisibleElements`). It now counts minimap nodes, which draw every laid-out table. The `graph.spec` expand test is back on the default viewport.
