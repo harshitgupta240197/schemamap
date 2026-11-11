@@ -33,3 +33,4 @@
 2026-11-11 | 2.6 | 46e613f | Design tokens (light/dark, contrast-tested), semantic zoom below 0.6 (D-048), designed states, arrow-key node nav, focus kept on drill/breadcrumb, reduced motion, About footer; axe zero serious/critical in both themes (@axe-core/playwright)
 2026-11-11 | 2.6a | c68ce60 | Readable labels (2 lines, measured widths, middle ellipsis) distinct on AW/WWI/2,000-table overview, 8-colour schema stripes (3:1 both themes), 300 px nodes, 440 px panel with heading focus, plain load errors (D-049); axe zero serious/critical
 2026-11-11 | 2.6b | bfa3ef0 | focus and small cluster views keep full nodes on laptop screens (D-050)
+2026-11-11 | 2.7 | 71e6ff5 | schemamap view: placeholder embedding (exact single replace, < > & U+2028/9 escaped), tools/build_viewer.py + sha256 manifest, hostile-name e2e via the real CLI; 2,000 tables embed 0.13 s, map 6.77 MB (D-051)
