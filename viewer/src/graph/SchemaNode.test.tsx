@@ -66,7 +66,14 @@ describe("SchemaNode", () => {
 
   it("shows the schema name, counts and tiles, every name as text", () => {
     const { container } = renderAt(1);
-    expect(container.querySelector(".sm-schema__name")?.textContent).toBe(HOSTILE);
+    // Too long for the header at full size: cut in the middle, whole in the title and hidden text.
+    const name = container.querySelector(".sm-schema__name");
+    expect(name?.getAttribute("title")).toBe(HOSTILE);
+    expect(name?.querySelector(".sm-visually-hidden")?.textContent).toBe(HOSTILE);
+    const shown = name?.querySelector(".sm-label__line")?.textContent ?? "";
+    expect(shown).toContain("…");
+    expect(HOSTILE.startsWith(shown.split("…")[0] ?? "x")).toBe(true);
+    expect(HOSTILE.endsWith(shown.split("…")[1] ?? "x")).toBe(true);
     expect(screen.getByText("8 tables · 3 clusters")).toBeDefined();
     const tiles = [...container.querySelectorAll(".sm-schema__tile")];
     expect(tiles.map((tile) => [tile.getAttribute("data-kind"), tile.textContent])).toEqual([

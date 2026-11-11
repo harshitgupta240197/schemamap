@@ -426,7 +426,7 @@ Choices: draft 2020-12 (`ajv/dist/2020`), strict mode, `allErrors` for useful me
 
 **Type.**
 - A full-size box only shows at zoom 0.6 and above, so its text is at least `--sm-text-box` (17 px, new token), which is 10 px on screen at 0.6. Schema containers use 20 px and up.
-- A cluster box puts its table count and key counts on one line, so it keeps its 110 px height.
+- A cluster box puts its table count and key counts on one line, so it keeps its 110 px height. A full-size cluster or schema name that does not fit its box is cut in the middle by measuring it in the page's font, as compact names are (D-048), rather than by CSS. On CI's Linux fonts, `No relationships (1 of 2)` overflowed the 260 px box and CSS cut its end off. The whole name stays in the title and in the accessible name. Table nodes are unchanged.
 - A small-groups box is titled "<n> small groups".
 - Below 0.6, the compact rules of D-048 apply. A container keeps its name and count. Tile names show while a 10 px line fits in a tile, cut with an ellipsis, and the counts always show.
 

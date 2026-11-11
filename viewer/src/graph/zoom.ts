@@ -46,6 +46,11 @@ export function compactLimitEm(zoom: number, width: number): number {
   return ((width - LABEL_PADDING) * zoom) / MIN_LABEL_PX;
 }
 
+/** How wide a full-size label may be, in em, in a node `width` flow px wide with text at `px`. */
+export function fullLimitEm(width: number, px: number): number {
+  return (width - LABEL_PADDING) / px;
+}
+
 /**
  * The font size, in flow px, at which a line `em` wide just fills a node `width` px wide (less
  * padding). The compact form uses it as the size that keeps a label whole, within the readable

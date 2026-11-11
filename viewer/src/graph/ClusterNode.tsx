@@ -1,6 +1,11 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { memo, useContext, type CSSProperties } from "react";
-import { CLUSTER_NODE_HEIGHT, CLUSTER_NODE_WIDTH, type ClusterFlowNode } from "./overview";
+import {
+  CLUSTER_NAME_PX,
+  CLUSTER_NODE_HEIGHT,
+  CLUSTER_NODE_WIDTH,
+  type ClusterFlowNode,
+} from "./overview";
 import { middleEllipsis } from "./labels";
 import { measureEm } from "./measure";
 import { NodeLabel } from "./NodeLabel";
@@ -40,6 +45,7 @@ function ClusterNodeView({ data }: NodeProps<ClusterFlowNode>) {
         width={CLUSTER_NODE_WIDTH}
         height={CLUSTER_NODE_HEIGHT}
         reservedLines={compact && showSchema ? 1 : 0}
+        fullPx={CLUSTER_NAME_PX}
       />
       <div className="sm-cluster__meta">
         <div className="sm-cluster__count">{count(data.tableCount, "table", "tables")}</div>

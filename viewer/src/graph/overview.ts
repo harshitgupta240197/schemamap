@@ -59,6 +59,9 @@ export interface BoxGraph<N extends BoxFlowNode> {
 /** Fixed cluster box size, shared by the layout and the node CSS. */
 export const CLUSTER_NODE_WIDTH = 260;
 export const CLUSTER_NODE_HEIGHT = 110;
+/** Full-size name sizes in flow px; must match `.sm-cluster__name` and `.sm-schema__name`. */
+export const CLUSTER_NAME_PX = 17 * 1.2;
+export const SCHEMA_NAME_PX = 20 * 1.4;
 
 /** Schema container geometry, shared by the layout and the node CSS. */
 export const SCHEMA_HEADER_HEIGHT = 96;

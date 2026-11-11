@@ -3,6 +3,7 @@ import { memo, useContext, type CSSProperties } from "react";
 import { NodeLabel } from "./NodeLabel";
 import {
   SCHEMA_HEADER_HEIGHT,
+  SCHEMA_NAME_PX,
   SCHEMA_TILE_GAP,
   SCHEMA_TILE_HEIGHT,
   SCHEMA_TILE_WIDTH,
@@ -44,7 +45,9 @@ function SchemaNodeView({ data }: NodeProps<SchemaFlowNode>) {
         <NodeLabel
           className="sm-schema__name"
           name={data.schemaName}
-          width={width}
+          // The header's padding is 6 px wider than a cluster's, which the label limits assume.
+          width={width - 6}
+          fullPx={SCHEMA_NAME_PX}
           height={SCHEMA_HEADER_HEIGHT}
           reservedLines={compact && showCount ? 1 : 0}
         />
