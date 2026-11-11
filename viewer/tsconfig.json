@@ -18,9 +18,11 @@
   "include": [
     "src",
     "e2e",
+    "site-shots",
     "scripts/*.d.mts",
     "vite.config.ts",
     "playwright.config.ts",
+    "playwright.site.config.ts",
     "eslint.config.js"
   ]
 }

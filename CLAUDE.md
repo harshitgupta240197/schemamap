@@ -16,6 +16,7 @@ Schema Map connects to a SQL Server database with a read-only login, reads only 
 cli/        Python package `schemamap` (extract, infer, export, CLI)
   src/schemamap/queries/   every SQL statement lives here as a .sql file
 viewer/     React + TypeScript single-file viewer (Vite)
+site/       Landing page and waitlist: static HTML plus one Vercel function (api/join), no build step
 schema/     snapshot.v1.json, generated from cli/src/schemamap/snapshot/ (never edit by hand)
 tools/      lab.py (SQL Server Docker lab), synthetic schema generator, build_viewer.py (packages the viewer for `schemamap view`), check_wheel.py (checks the wheel carries it)
 docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate reports
@@ -28,6 +29,8 @@ docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate repo
 - CLI integration tests (lab must be up): `cd cli && uv run pytest -m integration`
 - Viewer checks: `cd viewer && npm run lint && npm run typecheck && npm test && npm run build && npm run check:bundle`
 - Regenerate viewer types and the precompiled validator after changing `schema/snapshot.v1.json`: `cd viewer && npm run gen:types` (CI runs `npm run gen:check` and fails on drift)
+- Site checks: `cd site && npm run lint && npm test && npm run e2e` (needs `npx playwright install chromium`)
+- Landing-page screenshots (needs the packaged viewer): `cd viewer && npm run site:shots && cd .. && uv run tools/site_shots.py`
 - Package the viewer for `schemamap view` (needs `npm ci` in `viewer/`; output is gitignored): `uv run tools/build_viewer.py`
 - Viewer end-to-end (needs the packaged viewer; the global setup makes the AdventureWorks and WWI maps with the real CLI; Firefox needs `npx playwright install firefox`): `cd viewer && npx playwright test`
 - Wheel contains the viewer and a matching manifest: `cd cli && uv build --wheel && cd .. && uv run tools/check_wheel.py cli/dist/*.whl`

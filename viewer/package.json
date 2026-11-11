@@ -10,6 +10,7 @@
     "test": "vitest run",
     "build": "tsc --noEmit && vite build && node scripts/add-csp.mjs",
     "e2e": "playwright test",
+    "site:shots": "playwright test -c playwright.site.config.ts",
     "gen:types": "node scripts/gen-types.mjs",
     "gen:check": "npm run gen:types && git diff --exit-code -- src/generated",
     "check:bundle": "node scripts/bundle-guard.mjs"
