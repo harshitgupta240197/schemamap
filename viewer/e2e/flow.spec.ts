@@ -59,7 +59,9 @@ for (const map of FLOW_MAPS) {
       expect(page.url()).toContain(`#focus=object%3A${map.table}`);
       await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText(map.table);
 
-      // Hops: each enabled step shows at least as many tables, and 2 is always reachable.
+      // Hops: both maps are far under the 200-table limit, so 2 and 3 are always enabled, and
+      // each step shows at least as many tables (WWI's Sales.Orders has the same 29 at 2 and 3).
+      // The disabled case is covered by the allowedHops unit tests.
       const hopButton = (hops: number) =>
         page.getByRole("group", { name: "Hops from the focused table" }).getByRole("button", {
           name: String(hops),
@@ -70,10 +72,7 @@ for (const map of FLOW_MAPS) {
       expect(previous).toBeLessThan(all);
       let reached = 1;
       for (const hops of [2, 3]) {
-        if (await hopButton(hops).isDisabled()) {
-          expect(hops).toBe(3);
-          continue;
-        }
+        await expect(hopButton(hops)).toBeEnabled();
         await hopButton(hops).click();
         await expect(hopButton(hops)).toHaveAttribute("aria-pressed", "true");
         await settled(page);
@@ -83,7 +82,7 @@ for (const map of FLOW_MAPS) {
         reached = hops;
         await shot(page, map, `3-hops-${String(hops)}`);
       }
-      expect(reached).toBeGreaterThanOrEqual(2);
+      expect(reached).toBe(3);
 
       // Panel: open the focused table from its node.
       await page

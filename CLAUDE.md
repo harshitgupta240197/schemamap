@@ -17,7 +17,7 @@ cli/        Python package `schemamap` (extract, infer, export, CLI)
   src/schemamap/queries/   every SQL statement lives here as a .sql file
 viewer/     React + TypeScript single-file viewer (Vite)
 schema/     snapshot.v1.json, generated from cli/src/schemamap/snapshot/ (never edit by hand)
-tools/      lab.py (SQL Server Docker lab), synthetic schema generator, build_viewer.py (packages the viewer for `schemamap view`)
+tools/      lab.py (SQL Server Docker lab), synthetic schema generator, build_viewer.py (packages the viewer for `schemamap view`), check_wheel.py (checks the wheel carries it)
 docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate reports
 .github/    CI workflows
 ```

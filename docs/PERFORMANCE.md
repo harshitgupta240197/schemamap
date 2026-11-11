@@ -45,6 +45,28 @@ Recorded from the `PERF` lines of the viewer job's Playwright output.
 | AdventureWorks: aspect ratio / fit-view zoom | **1.80** / 0.23 |
 | WideWorldImporters: aspect ratio / fit-view zoom | **1.73** / 0.27 |
 
+## Real lab databases (crumb 2.9)
+
+Every lab database the reader can open, run through the real CLI: `schemamap extract` as `schemamap_reader` (default lab grants, so row counts were skipped with one warning), then `schemamap view --no-open`. Each map was opened three times over `file://` in Playwright 1.65's Chromium and Firefox at 1400×900; the table shows the median `schemamap:layout-done` mark. "Drill" is a click on the first overview cluster until its own layout is done. Extract and view times are wall time, including `uv run` and Python start-up. Apple M5, macOS, Node 26.7, SQL Server 2022 CU27 in Docker (amd64 emulation).
+
+| Database | Tables | FKs | Extract s | Snapshot MB | View s | Map MB | Opens as | Layout ms Chromium | Layout ms Firefox | Drill ms Chr / FF |
+| --- | --: | --: | --: | --: | --: | --: | --- | --: | --: | --: |
+| AdventureWorks2022 | 71 | 90 | 2.9 | 0.78 | 0.4 | 2.72 | full map | 337 | 551 | – |
+| AdventureWorksDW2022 | 31 | 44 | 0.5 | 0.29 | 0.3 | 2.38 | full map | 275 | 452 | – |
+| WideWorldImporters | 48 | 98 | 1.9 | 0.85 | 0.4 | 2.86 | full map | 373 | 577 | – |
+| SchemaMapEdgeCases | 6 | 2 | 0.4 | 0.02 | 0.2 | 2.21 | full map | 214 | 336 | – |
+| SchemaMapEdgeCasesBIN2 | 3 | 1 | 0.4 | 0.01 | 0.3 | 2.20 | full map | 195 | 319 | – |
+| SchemaMapEdgeCasesCS | 3 | 1 | 0.4 | 0.01 | 0.3 | 2.20 | full map | 196 | 323 | – |
+| SchemaMapSynth200 | 200 | 82 | 1.6 | 1.05 | 0.4 | 2.84 | full map | 337 | 571 | – |
+| SchemaMapSynthTest200 | 200 | 79 | 0.9 | 1.03 | 0.4 | 2.83 | full map | 335 | 564 | – |
+| SchemaMapSynthPerf500 | 500 | 203 | 1.8 | 2.61 | 0.6 | 3.81 | overview, 73 clusters | 285 | 463 | 78 / 118 |
+| **SchemaMapSynth** | **2,000** | 830 | **10.7** | 10.34 | **1.5** | **8.58** | overview, **290 clusters** | **466** | **754** | 124 / 153 |
+
+- On SchemaMapSynth, drilling into the largest cluster (200 tables, no relationships) takes 203 ms including its layout, and the slowest search keystroke is 12 ms (Chromium).
+- 60 page loads, 0 requests other than `file:`, `data:` or `blob:`, and 0 console errors or warnings.
+- `SchemaMapEdgeCasesOther` is not in the table: it exists only as the target of cross-database references, and the reader login has no user there, so extract exits 3 with a clear login message (as designed).
+- The real 2,000-table database is sparser than the TypeScript synthetic snapshot (0.4 keys per table against 1.2), so its overview has 290 clusters against 115. That is fast but not readable at fit view (D-047 amendment, `docs/gates/PHASE2.md` P2-1).
+
 ## Map file (`schemamap view`)
 
 `cli/tests/test_view_performance.py` embeds a seeded 2,000-table snapshot built in Python (`cli/tests/snapshot_builders.py`: 12 schemas, 2,012 foreign keys, 400 views with definitions) and fails above 2 s. The map is the packaged viewer plus the snapshot JSON, so its size is the viewer's 2.19 MB plus the data.
