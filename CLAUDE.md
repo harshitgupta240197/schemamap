@@ -29,7 +29,8 @@ docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate repo
 - Viewer checks: `cd viewer && npm run lint && npm run typecheck && npm test && npm run build && npm run check:bundle`
 - Regenerate viewer types and the precompiled validator after changing `schema/snapshot.v1.json`: `cd viewer && npm run gen:types` (CI runs `npm run gen:check` and fails on drift)
 - Package the viewer for `schemamap view` (needs `npm ci` in `viewer/`; output is gitignored): `uv run tools/build_viewer.py`
-- Viewer end-to-end (needs the packaged viewer; `view.spec.ts` runs the real CLI): `cd viewer && npx playwright test`
+- Viewer end-to-end (needs the packaged viewer; the global setup makes the AdventureWorks and WWI maps with the real CLI; Firefox needs `npx playwright install firefox`): `cd viewer && npx playwright test`
+- Wheel contains the viewer and a matching manifest: `cd cli && uv build --wheel && cd .. && uv run tools/check_wheel.py cli/dist/*.whl`
 - Regenerate the snapshot JSON Schema after changing `snapshot/` models: `cd cli && uv run python scripts/gen_snapshot_schema.py` (a test fails if `schema/snapshot.v1.json` is stale)
 - Lab: `uv run tools/lab.py up | restore all | status | down [--purge]` (also `restore <db>`, `grant <db> [--view-database-state]`, `edgecases`, `synth --tables N`; see `docs/LAB.md`)
 

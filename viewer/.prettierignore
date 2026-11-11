@@ -4,3 +4,4 @@ test-results
 package-lock.json
 src/generated
 src/snapshot/__fixtures__
+.flow-maps

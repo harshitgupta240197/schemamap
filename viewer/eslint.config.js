@@ -5,7 +5,17 @@ import tseslint from "typescript-eslint";
 import { NO_RAW_HTML } from "./scripts/no-raw-html.mjs";
 
 export default tseslint.config(
-  { ignores: ["src/generated", "dist", "playwright-report", "test-results", "node_modules"] },
+  {
+    ignores: [
+      "src/generated",
+      "dist",
+      "playwright-report",
+      "test-results",
+      "node_modules",
+      ".flow-maps",
+      "screenshots",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {
