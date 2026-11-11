@@ -100,7 +100,7 @@ function page(title, message, ok) {
 <main class="notice" id="main">
 <h1>${title}</h1>
 <p role="${ok ? "status" : "alert"}">${message}</p>
-<p>To have your details deleted, write to <a href="mailto:YOUR-ADDRESS">YOUR-ADDRESS</a>.</p>
+<p>To have your details deleted, write to <a href="mailto:aukaaatsebahar@gmail.com">aukaaatsebahar@gmail.com</a>.</p>
 <p><a href="/${ok ? "" : "#join"}">${ok ? "Back to Schema Map" : "Back to the form"}</a></p>
 </main>
 </body>
