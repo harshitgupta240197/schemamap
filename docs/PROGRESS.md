@@ -34,3 +34,4 @@
 2026-11-11 | 2.6a | c68ce60 | Readable labels (2 lines, measured widths, middle ellipsis) distinct on AW/WWI/2,000-table overview, 8-colour schema stripes (3:1 both themes), 300 px nodes, 440 px panel with heading focus, plain load errors (D-049); axe zero serious/critical
 2026-11-11 | 2.6b | bfa3ef0 | focus and small cluster views keep full nodes on laptop screens (D-050)
 2026-11-11 | 2.7 | 71e6ff5 | schemamap view: placeholder embedding (exact single replace, < > & U+2028/9 escaped), tools/build_viewer.py + sha256 manifest, hostile-name e2e via the real CLI; 2,000 tables embed 0.13 s, map 6.77 MB (D-051)
+2026-11-11 | 2.8 | bda1118 | E2E flow suite on CLI-made AW and WWI maps (1280x720: open, search, hops 1-3, panel, impact, reload, dark, keyboard) with step screenshots; Firefox opens AW over file:// and finishes layout; CI wheel check (tools/check_wheel.py) passes
