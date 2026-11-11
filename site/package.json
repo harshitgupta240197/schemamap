@@ -6,7 +6,9 @@
   "scripts": {
     "lint": "eslint . && prettier --check .",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "local:up": "node scripts/local-up.mjs",
+    "test:integration": "vitest run --config vitest.integration.config.js"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

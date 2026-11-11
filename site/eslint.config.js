@@ -6,7 +6,15 @@ export default [
   js.configs.recommended,
   { files: ["join.js", "e2e/*.js"], languageOptions: { globals: globals.browser } },
   {
-    files: ["api/*.js", "tests/*.js", "e2e/*.js", "*.mjs", "*.config.js"],
+    files: [
+      "api/*.js",
+      "tests/*.js",
+      "integration/*.js",
+      "scripts/*.mjs",
+      "e2e/*.js",
+      "*.mjs",
+      "*.config.js",
+    ],
     languageOptions: { globals: globals.node },
   },
 ];

@@ -199,3 +199,16 @@ describe("api/join", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("contact address", () => {
+  it("is offered on the no-JS response page and the landing page, with no GitHub-issue wording", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const res = fakeRes();
+    await handler(post(valid, { json: false, type: "application/json" }), res);
+    const landing = await readFile(new URL("../index.html", import.meta.url), "utf8");
+    for (const html of [res.payload, landing]) {
+      expect(html).toContain('href="mailto:');
+      expect(html).not.toMatch(/open an issue/i);
+    }
+  });
+});

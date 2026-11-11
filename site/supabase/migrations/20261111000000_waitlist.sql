@@ -1,4 +1,5 @@
--- Schema Map waitlist. Run once in the Supabase SQL editor (Project > SQL Editor > New query).
+-- Schema Map waitlist. This migration is the single source of truth: `supabase start` applies it
+-- locally, and for production paste it into the Supabase SQL editor (Project > SQL Editor > New query).
 --
 -- The website's function connects with the public "anon" key, so anyone who finds that key can
 -- do whatever this file allows the anon role to do. It allows exactly one thing: add a row.
