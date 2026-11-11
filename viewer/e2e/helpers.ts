@@ -76,3 +76,25 @@ export function viewWithCli(snapshotPath: string, outFile: string, hash = ""): s
   );
   return pathToFileURL(outFile).href + hash;
 }
+
+/**
+ * Record every `securitypolicyviolation` the page raises, across reloads, as
+ * `<directive> <blocked URI>`. Pushes into `into` when given, else into the returned array.
+ * Playwright's init script is not itself subject to the page's policy.
+ */
+export async function watchViolations(page: Page, into: string[] = []): Promise<string[]> {
+  await page.exposeFunction("__smViolation", (text: string) => into.push(`violation: ${text}`));
+  await page.addInitScript(() => {
+    document.addEventListener(
+      "securitypolicyviolation",
+      (event) => {
+        const report = (window as unknown as Record<string, (text: string) => void>)[
+          "__smViolation"
+        ];
+        report?.(`${event.violatedDirective} ${event.blockedURI}`);
+      },
+      true,
+    );
+  });
+  return into;
+}

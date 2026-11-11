@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { FLOW_MAPS, flowUrl, type FlowMap } from "./flow-maps";
-import { settled } from "./helpers";
+import { settled, watchViolations } from "./helpers";
 
 // The main flows as a user meets them: maps made by the real `schemamap view`, opened over
 // file:// at the default 1280x720 viewport. Each step is screenshotted into screenshots/flow/
@@ -19,9 +19,10 @@ async function shot(page: Page, map: FlowMap, step: string): Promise<void> {
   await page.screenshot({ path: path.join(SHOTS, `${map.name}-${step}.png`) });
 }
 
-/** Collect console problems and page errors for the whole flow. */
-function watch(page: Page): string[] {
+/** Collect console problems, page errors and CSP violations for the whole flow. */
+async function watch(page: Page): Promise<string[]> {
   const problems: string[] = [];
+  await watchViolations(page, problems);
   page.on("console", (msg) => {
     if (msg.type() === "error" || msg.type() === "warning") {
       problems.push(`${msg.type()}: ${msg.text()}`);
@@ -46,7 +47,7 @@ for (const map of FLOW_MAPS) {
     test("open, search, focus with hops 1 to 3, panel, impact links, hash reload", async ({
       page,
     }) => {
-      const problems = watch(page);
+      const problems = await watch(page);
       await page.goto(flowUrl(map));
       await settled(page);
       await expect(page.locator(".react-flow__node").first()).toBeVisible();
@@ -128,7 +129,7 @@ for (const map of FLOW_MAPS) {
     });
 
     test("dark mode follows the system and changes the page", async ({ page }) => {
-      const problems = watch(page);
+      const problems = await watch(page);
       await page.emulateMedia({ colorScheme: "light" });
       await page.goto(flowUrl(map, `#focus=object%3A${map.table}`));
       await settled(page);
@@ -149,6 +150,7 @@ for (const map of FLOW_MAPS) {
     test("keyboard only: search, open, follow a link, Esc, back to the full map", async ({
       page,
     }) => {
+      const problems = await watch(page);
       await page.goto(flowUrl(map));
       await settled(page);
       await search(page, map.table);
@@ -185,6 +187,7 @@ for (const map of FLOW_MAPS) {
       await settled(page);
       expect(page.url()).not.toContain("focus=");
       await shot(page, map, "11-keyboard-back");
+      expect(problems).toEqual([]);
     });
   });
 }

@@ -1,7 +1,9 @@
 // Fails if the built single-file viewer contains runtime code generation, which a strict
-// no-eval Content-Security-Policy would block. Usage: node scripts/bundle-guard.mjs [file]
+// no-eval Content-Security-Policy would block, or if its policy is missing or wrong.
+// Usage: node scripts/bundle-guard.mjs [file]
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { cspProblems } from "./csp.mjs";
 
 const FORBIDDEN = ["new Function", "eval(", "require("];
 
@@ -29,15 +31,27 @@ export function findForbiddenWithContext(html) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const file = process.argv[2] ?? "dist/index.html";
   const html = readFileSync(file, "utf8");
+  let failed = false;
   const found = findForbidden(html);
   if (found.length > 0) {
+    failed = true;
     console.error(`${file} contains runtime codegen: ${found.join(", ")}`);
     for (const match of findForbiddenWithContext(html)) {
       console.error(
         `  ${match.needle} at offset ${String(match.offset)}: ${JSON.stringify(match.context)}`,
       );
     }
+  }
+  const problems = cspProblems(html);
+  if (problems.length > 0) {
+    failed = true;
+    console.error(`${file} has a bad Content-Security-Policy:`);
+    for (const problem of problems) {
+      console.error(`  ${problem}`);
+    }
+  }
+  if (failed) {
     process.exit(1);
   }
-  console.log(`${file}: no runtime codegen`);
+  console.log(`${file}: no runtime codegen, Content-Security-Policy matches the inline scripts`);
 }

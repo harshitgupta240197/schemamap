@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VIEWER = ROOT / "viewer"
 DEST = ROOT / "cli" / "src" / "schemamap" / "viewer_dist"
 PLACEHOLDER = '<script type="application/json" id="schemamap-data"></script>'
+CSP_MARKER = 'http-equiv="Content-Security-Policy"'
 
 
 class BuildError(Exception):
@@ -60,13 +61,19 @@ def package(built: Path, dest: Path, version: str) -> dict[str, object]:
     """Copy ``built`` into ``dest`` with its manifest; return the manifest.
 
     Refuses a page that does not hold the data placeholder exactly once, since `schemamap view`
-    could not embed a snapshot in it. Both files are written to temporary names and then moved,
+    could not embed a snapshot in it, and a page without exactly one Content-Security-Policy
+    meta tag, since the map would then not carry its no-network guarantee (D-052). Both files are written to temporary names and then moved,
     the page first, so a failure never leaves a manifest that describes a different page.
     """
     page = built.read_bytes()
     found = page.decode("utf-8").count(PLACEHOLDER)
     if found != 1:
         raise BuildError(f"the built viewer must hold its data placeholder once, found {found}")
+    policies = page.decode("utf-8").count(CSP_MARKER)
+    if policies != 1:
+        raise BuildError(
+            f"the built viewer must hold one Content-Security-Policy meta tag, found {policies}"
+        )
     manifest: dict[str, object] = {
         "viewer_version": version,
         "bytes": len(page),

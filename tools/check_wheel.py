@@ -4,7 +4,8 @@
     uv run tools/check_wheel.py cli/dist/schemamap-*.whl
 
 The wheel must contain schemamap/viewer_dist/index.html and manifest.json, and the manifest's
-sha256 and byte count must match the index.html in the wheel (D-051).
+sha256 and byte count must match the index.html in the wheel (D-051), and the page must carry
+exactly one Content-Security-Policy meta tag (D-052).
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from pathlib import Path
 
 PAGE = "schemamap/viewer_dist/index.html"
 MANIFEST = "schemamap/viewer_dist/manifest.json"
+CSP_MARKER = b'http-equiv="Content-Security-Policy"'
 
 
 class WheelError(Exception):
@@ -40,6 +42,9 @@ def check_wheel(wheel: Path) -> None:
         raise WheelError(f"{MANIFEST} sha256 does not match {PAGE} (file is {digest})")
     if manifest.get("bytes") != len(page):
         raise WheelError(f"{MANIFEST} byte count does not match {PAGE} ({len(page)} bytes)")
+    policies = page.count(CSP_MARKER)
+    if policies != 1:
+        raise WheelError(f"{PAGE} must hold one Content-Security-Policy meta tag, found {policies}")
 
 
 def main(argv: list[str]) -> int:
@@ -51,7 +56,7 @@ def main(argv: list[str]) -> int:
     except (WheelError, OSError, zipfile.BadZipFile) as error:
         print(f"check_wheel: {error}", file=sys.stderr)
         return 1
-    print(f"{argv[1]}: viewer and manifest present, sha256 matches")
+    print(f"{argv[1]}: viewer and manifest present, sha256 matches, one Content-Security-Policy")
     return 0
 
 

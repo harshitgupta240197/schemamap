@@ -11,9 +11,10 @@ export default defineConfig({
       use: { browserName: "chromium" },
     },
     {
-      // One spec only: the map must open over file:// and finish its layout.
+      // The map must open over file:// and finish its layout, and its Content-Security-Policy
+      // must hold (csp.spec.ts runs in both browsers).
       name: "firefox",
-      testMatch: "firefox.spec.ts",
+      testMatch: ["firefox.spec.ts", "csp.spec.ts", "flow.spec.ts"],
       use: { browserName: "firefox" },
     },
   ],

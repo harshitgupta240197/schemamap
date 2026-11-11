@@ -8,7 +8,7 @@
     "lint": "eslint . && prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/add-csp.mjs",
     "e2e": "playwright test",
     "gen:types": "node scripts/gen-types.mjs",
     "gen:check": "npm run gen:types && git diff --exit-code -- src/generated",

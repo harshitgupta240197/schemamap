@@ -8,6 +8,7 @@ import {
   findForbidden,
   findForbiddenWithContext,
 } from "../../scripts/bundle-guard.mjs";
+import { addCsp } from "../../scripts/csp.mjs";
 
 const GUARD = path.resolve("scripts", "bundle-guard.mjs");
 
@@ -50,16 +51,19 @@ describe("bundle guard", () => {
   it("fails on a planted new Function in a temp copy and passes on the clean copy", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "bundle-guard-"));
     try {
-      const clean = "<html><script>const a = 1;</script></html>";
+      // Both copies carry a valid policy, so only the planted code generation can fail the guard.
+      const page = (code: string): string =>
+        addCsp(`<html><head><meta charset="UTF-8" /><script>${code}</script></head></html>`);
+      const clean = page("const a = 1;");
       const cleanFile = path.join(dir, "clean.html");
       const plantedFile = path.join(dir, "planted.html");
       writeFileSync(cleanFile, clean);
-      writeFileSync(plantedFile, clean.replace("const a = 1;", 'new Function("return 1")();'));
+      writeFileSync(plantedFile, page('new Function("return 1")();'));
       expect(runGuard(cleanFile).code).toBe(0);
       const planted = runGuard(plantedFile);
       expect(planted.code).toBe(1);
       expect(planted.stderr).toContain("new Function");
-      expect(planted.stderr).toContain('new Function(\\"return 1\\")();</script></html>');
+      expect(planted.stderr).toContain('new Function(\\"return 1\\")();</script></head></html>');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

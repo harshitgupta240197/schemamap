@@ -12,7 +12,8 @@ import pytest
 
 from schemamap.viewer import PLACEHOLDER, load_viewer
 
-PAGE = f"<html><body>{PLACEHOLDER}<script>var a = 1;</script></body></html>"
+CSP = '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'" />'
+PAGE = f"<html><head>{CSP}</head><body>{PLACEHOLDER}<script>var a = 1;</script></body></html>"
 
 
 def built(tmp_path: Path, html: str = PAGE) -> Path:
@@ -53,12 +54,22 @@ def test_packaged_files_are_world_readable(build_viewer: ModuleType, tmp_path: P
     assert [p.stat().st_mode & 0o777 for p in sorted(dest.iterdir())] == [0o644, 0o644]
 
 
-@pytest.mark.parametrize("html", ["<html></html>", f"{PLACEHOLDER}{PLACEHOLDER}"])
+@pytest.mark.parametrize("html", ["<html></html>", f"{CSP}{PLACEHOLDER}{PLACEHOLDER}"])
 def test_a_page_without_exactly_one_placeholder_is_refused(
     build_viewer: ModuleType, tmp_path: Path, html: str
 ) -> None:
     dest = tmp_path / "viewer_dist"
     with pytest.raises(build_viewer.BuildError, match="placeholder"):
+        build_viewer.package(built(tmp_path, html), dest, "1.0.0")
+    assert not dest.exists()
+
+
+@pytest.mark.parametrize("html", [f"<html>{PLACEHOLDER}</html>", f"{CSP}{CSP}{PLACEHOLDER}"])
+def test_a_page_without_exactly_one_policy_is_refused(
+    build_viewer: ModuleType, tmp_path: Path, html: str
+) -> None:
+    dest = tmp_path / "viewer_dist"
+    with pytest.raises(build_viewer.BuildError, match="Content-Security-Policy"):
         build_viewer.package(built(tmp_path, html), dest, "1.0.0")
     assert not dest.exists()
 
