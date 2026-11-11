@@ -35,3 +35,4 @@
 2026-11-11 | 2.6b | bfa3ef0 | focus and small cluster views keep full nodes on laptop screens (D-050)
 2026-11-11 | 2.7 | 71e6ff5 | schemamap view: placeholder embedding (exact single replace, < > & U+2028/9 escaped), tools/build_viewer.py + sha256 manifest, hostile-name e2e via the real CLI; 2,000 tables embed 0.13 s, map 6.77 MB (D-051)
 2026-11-11 | 2.8 | bda1118 | E2E flow suite on CLI-made AW and WWI maps (1280x720: open, search, hops 1-3, panel, impact, reload, dark, keyboard) with step screenshots; Firefox opens AW over file:// and finishes layout; CI wheel check (tools/check_wheel.py) passes
+2026-11-11 | 2.9 | 00e68ba | Phase 2 review: real-data run on 10 lab DBs (2,000 tables: extract 10.7 s, map 8.58 MB, layout 466 ms Chr / 754 ms FF, 0 external requests); overview unreadable at 290 clusters (P2-1 → 2.10); hash-based CSP verified, proposed 2.11; focus/flow spec carry-overs fixed; docs/gates/PHASE2.md
