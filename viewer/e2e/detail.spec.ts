@@ -4,7 +4,7 @@ import { mapUrl, settled } from "./helpers";
 const panel = (page: Page) => page.getByRole("complementary");
 const nodeNamed = (page: Page, name: string) =>
   page.locator(".react-flow__node", {
-    has: page.locator(".sm-table__name", { hasText: new RegExp(`^${name}$`) }),
+    has: page.locator(`.sm-table__name[title$=".${name}"]`),
   });
 
 async function open(page: Page, testInfo: { outputPath: (name: string) => string }, hash = "") {
@@ -65,7 +65,7 @@ test("a foreign key link jumps to the other table", async ({ page }, testInfo) =
   await panel(page).getByRole("button", { name: "Sales.Customer" }).first().click();
   await expect(panel(page).getByRole("heading", { level: 2 })).toHaveText("Sales.Customer");
   expect(page.url()).toContain("select=object%3ASales.Customer");
-  await expect(panel(page)).toBeFocused();
+  await expect(panel(page).getByRole("heading", { level: 2 })).toBeFocused();
 });
 
 test("a view found in the palette shows its definition", async ({ page }, testInfo) => {

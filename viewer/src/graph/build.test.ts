@@ -3,7 +3,14 @@ import { describe, expect, it } from "vitest";
 import type { SchemaMapSnapshotV1 } from "../generated/snapshot";
 import { buildIndexes } from "../snapshot/indexes";
 import { parseSnapshot } from "../snapshot/parse";
-import { buildGraph, nodeSize, sourceHandleId, targetHandleId, type Graph } from "./build";
+import {
+  buildGraph,
+  NODE_MIN_HEIGHT,
+  nodeSize,
+  sourceHandleId,
+  targetHandleId,
+  type Graph,
+} from "./build";
 import { toggleExpanded } from "./expanded";
 
 /** The CLI's AdventureWorks golden, read in place. */
@@ -155,5 +162,13 @@ describe("toggleExpanded", () => {
     const twice = toggleExpanded(once, "a");
     expect(twice.size).toBe(0);
     expect(once.has("a")).toBe(true);
+  });
+});
+
+describe("node geometry", () => {
+  it("never makes a node shorter than a two-line compact label needs", () => {
+    expect(nodeSize(0).height).toBe(NODE_MIN_HEIGHT);
+    expect(nodeSize(1).height).toBe(NODE_MIN_HEIGHT);
+    expect(nodeSize(10).height).toBeGreaterThan(NODE_MIN_HEIGHT);
   });
 });

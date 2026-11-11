@@ -6,6 +6,10 @@ export type ClusterNodeData = {
   readonly clusterId: string;
   readonly name: string;
   readonly schemaName: string;
+  /** Palette slot of the schema (see schemaColors.ts). */
+  readonly schemaColor: number;
+  /** The most-connected table's name; what the node shows as its title. */
+  readonly hubName: string;
   readonly tableCount: number;
   readonly outgoing: number;
   readonly incoming: number;
@@ -58,6 +62,8 @@ export function buildOverviewGraph(
       clusterId: cluster.id,
       name: cluster.name,
       schemaName: cluster.schemaName,
+      schemaColor: clustering.schemaColors.get(cluster.schemaName) ?? 0,
+      hubName: cluster.hubName,
       tableCount: cluster.tableIds.length,
       outgoing: cluster.outgoing,
       incoming: cluster.incoming,

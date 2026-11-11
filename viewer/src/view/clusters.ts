@@ -1,6 +1,7 @@
 import type { Table } from "../generated/snapshot";
 import { LAYOUT_LIMIT } from "../graph/layout";
 import type { SnapshotIndexes } from "../snapshot/indexes";
+import { schemaColorsOf } from "../snapshot/schemaColors";
 
 /** A group of tables shown as one box in the overview. Names are untrusted text. */
 export interface Cluster {
@@ -9,6 +10,8 @@ export interface Cluster {
   readonly schemaId: string;
   readonly schemaName: string;
   readonly name: string;
+  /** The most-connected table's name, or "No relationships" for unrelated tables. */
+  readonly hubName: string;
   /** Member table ids, sorted. */
   readonly tableIds: readonly string[];
   /** True for the tables of a schema that relate to no other table in that schema. */
@@ -30,6 +33,8 @@ export interface Clustering {
   /** Ordered by schema name, related before isolated, larger first, then id. */
   readonly clusters: readonly Cluster[];
   readonly byId: ReadonlyMap<string, Cluster>;
+  /** Palette slot of every schema in the snapshot (see schemaColors.ts). */
+  readonly schemaColors: ReadonlyMap<string, number>;
   /** Cluster id of every table. */
   readonly clusterOf: ReadonlyMap<string, string>;
   /** Ordered by source cluster, then target cluster. */
@@ -267,17 +272,18 @@ export function clusterTables(indexes: SnapshotIndexes, limit: number = LAYOUT_L
     for (const tableId of group.tableIds) {
       clusterOf.set(tableId, id);
     }
-    let name = group.schemaName;
-    if ((perSchema.get(group.schemaId) ?? 0) > 1) {
-      const hub = indexes.byId(hubOf(group.tableIds, neighbours));
-      const label = group.isolated
-        ? `no relationships${group.part}`
+    const hub = indexes.byId(hubOf(group.tableIds, neighbours));
+    const hubName =
+      group.isolated && group.tableIds.length > 1
+        ? `No relationships${group.part}`
         : hub?.kind === "table"
           ? hub.item.name
-          : "";
-      name = `${group.schemaName} · ${label}`;
+          : group.schemaName;
+    let name = group.schemaName;
+    if ((perSchema.get(group.schemaId) ?? 0) > 1) {
+      name = `${group.schemaName} · ${group.isolated ? `no relationships${group.part}` : hubName}`;
     }
-    return { id, group, name };
+    return { id, group, name, hubName };
   });
 
   // One count per distinct edge id, taken from its first relationship by id, as the graph does.
@@ -313,15 +319,22 @@ export function clusterTables(indexes: SnapshotIndexes, limit: number = LAYOUT_L
     (a, b) => rank(a.source) - rank(b.source) || rank(a.target) - rank(b.target),
   );
 
-  const clusters: Cluster[] = named.map(({ id, group, name }) => ({
+  const clusters: Cluster[] = named.map(({ id, group, name, hubName }) => ({
     id,
     schemaId: group.schemaId,
     schemaName: group.schemaName,
     name,
+    hubName,
     tableIds: group.tableIds,
     isolated: group.isolated,
     outgoing: outgoing.get(id) ?? 0,
     incoming: incoming.get(id) ?? 0,
   }));
-  return { clusters, byId: new Map(clusters.map((c) => [c.id, c])), clusterOf, edges };
+  return {
+    clusters,
+    byId: new Map(clusters.map((c) => [c.id, c])),
+    schemaColors: schemaColorsOf(indexes),
+    clusterOf,
+    edges,
+  };
 }

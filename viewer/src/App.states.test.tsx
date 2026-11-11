@@ -41,6 +41,20 @@ describe("page states", () => {
     expect(within(alert).getByLabelText("Open another snapshot")).toBeDefined();
   });
 
+  it("says what went wrong in plain English first, with the technical text under Details", () => {
+    inline('{"not":"a snapshot"}');
+    render(<App />);
+    const alert = screen.getByRole("alert");
+    const plain = within(alert).getByText("That file does not look like a Schema Map snapshot.");
+    const details = alert.querySelector("details");
+    expect(details).not.toBeNull();
+    expect(details?.querySelector("summary")?.textContent).toBe("Details");
+    expect(details?.textContent).toContain("format_version");
+    expect(details?.contains(plain)).toBe(false);
+    expect(plain.textContent).not.toContain("format_version");
+    expect(details?.open).toBe(false);
+  });
+
   it("lists the violation paths of an invalid snapshot", () => {
     inline(JSON.stringify({ format_version: "1.0" }));
     render(<App />);

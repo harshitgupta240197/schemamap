@@ -161,3 +161,31 @@ describe("clusterTables", () => {
     expect(LAYOUT_LIMIT).toBe(200);
   });
 });
+
+describe("cluster labels and schema colours", () => {
+  const snapshot = makeSnapshot(
+    ["Sales.Orders", "Sales.Lines", "Sales.Products", "Sales.Notes", "Sales.Memos", "HR.Staff"].map(
+      table,
+    ),
+    [
+      ["Sales.Lines", "Sales.Orders"],
+      ["Sales.Lines", "Sales.Products"],
+    ],
+  );
+  const clustering = cluster(snapshot);
+
+  it("titles a cluster with its most-connected table, or says it has no relationships", () => {
+    const byName = new Map(clustering.clusters.map((c) => [c.name, c.hubName]));
+    expect(byName.get("Sales · Lines")).toBe("Lines");
+    expect(byName.get("Sales · no relationships")).toBe("No relationships");
+    expect(byName.get("HR")).toBe("Staff");
+    expect(clustering.clusters.some((c) => c.hubName === "Notes")).toBe(false);
+  });
+
+  it("gives every schema a colour slot in sorted order", () => {
+    expect([...clustering.schemaColors]).toEqual([
+      ["HR", 0],
+      ["Sales", 1],
+    ]);
+  });
+});

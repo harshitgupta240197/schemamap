@@ -1,7 +1,9 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { memo, type CSSProperties } from "react";
-import { CLUSTER_NODE_WIDTH, type ClusterFlowNode } from "./overview";
-import { nameFitPx } from "./zoom";
+import { memo, useContext, type CSSProperties } from "react";
+import { CLUSTER_NODE_HEIGHT, CLUSTER_NODE_WIDTH, type ClusterFlowNode } from "./overview";
+import { middleEllipsis } from "./labels";
+import { NodeLabel } from "./NodeLabel";
+import { compactChars, compactLineBudget, isCompact, ZoomBucketContext } from "./zoom";
 
 function count(n: number, one: string, many: string): string {
   return `${String(n)} ${n === 1 ? one : many}`;
@@ -9,23 +11,32 @@ function count(n: number, one: string, many: string): string {
 
 /** A cluster on the overview. Every name is rendered as React text, never as HTML. */
 function ClusterNodeView({ data }: NodeProps<ClusterFlowNode>) {
+  const bucket = useContext(ZoomBucketContext);
+  const compact = isCompact(bucket);
+  // A compact cluster shows its schema above the name when the box is tall enough for both.
+  const showSchema = !compact || compactLineBudget(CLUSTER_NODE_HEIGHT, bucket) >= 2;
+  const schema = compact
+    ? middleEllipsis(data.schemaName, compactChars(bucket, CLUSTER_NODE_WIDTH))
+    : data.schemaName;
   return (
-    <div className="sm-cluster">
+    <div
+      className="sm-cluster"
+      style={{ "--sm-schema": `var(--sm-schema-${String(data.schemaColor)})` } as CSSProperties}
+    >
       <Handle type="target" position={Position.Left} isConnectable={false} />
-      <span className="sm-badge" title={data.schemaName}>
-        {data.schemaName}
-      </span>
-      <div
+      {showSchema ? (
+        <span className="sm-badge sm-cluster__schema" title={data.schemaName}>
+          {schema}
+        </span>
+      ) : null}
+      <NodeLabel
         className="sm-cluster__name"
+        name={data.hubName}
         title={data.name}
-        style={
-          {
-            "--sm-name-fit": `${String(nameFitPx(data.name, CLUSTER_NODE_WIDTH))}px`,
-          } as CSSProperties
-        }
-      >
-        {data.name}
-      </div>
+        width={CLUSTER_NODE_WIDTH}
+        height={CLUSTER_NODE_HEIGHT}
+        reservedLines={compact && showSchema ? 1 : 0}
+      />
       <div className="sm-cluster__count">{count(data.tableCount, "table", "tables")}</div>
       <div
         className="sm-cluster__links"

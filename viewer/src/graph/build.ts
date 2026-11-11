@@ -1,6 +1,7 @@
 import type { Edge, Node } from "@xyflow/react";
 import type { Column1, Relationship, Table } from "../generated/snapshot";
 import type { SnapshotIndexes } from "../snapshot/indexes";
+import { schemaColorsOf } from "../snapshot/schemaColors";
 
 /** One visible column row of a table node. `index` is the column's position by ordinal. */
 export type ColumnRow = {
@@ -16,6 +17,8 @@ export type TableNodeData = {
   readonly objectId: string;
   readonly name: string;
   readonly schemaName: string;
+  /** Palette slot of the schema (see schemaColors.ts). */
+  readonly schemaColor: number;
   readonly columnCount: number;
   readonly keyColumnCount: number;
   readonly expanded: boolean;
@@ -38,17 +41,23 @@ export interface Graph {
 }
 
 /** Fixed geometry shared by the layout and the node CSS, so laid-out sizes are exact. */
-export const NODE_WIDTH = 260;
-export const NODE_HEADER_HEIGHT = 52;
-export const NODE_ROW_HEIGHT = 22;
+export const NODE_WIDTH = 300;
+export const NODE_HEADER_HEIGHT = 60;
+export const NODE_ROW_HEIGHT = 24;
 /** Column list padding (4 + 4) plus the 1px top and bottom border. */
 export const NODE_PADDING = 10;
+
+/** Tall enough for a two-line compact label at the zoom a typical map opens at. */
+export const NODE_MIN_HEIGHT = 140;
 
 /** Size of a node with `rowCount` visible column rows. */
 export function nodeSize(rowCount: number): { width: number; height: number } {
   return {
     width: NODE_WIDTH,
-    height: NODE_HEADER_HEIGHT + rowCount * NODE_ROW_HEIGHT + NODE_PADDING,
+    height: Math.max(
+      NODE_MIN_HEIGHT,
+      NODE_HEADER_HEIGHT + rowCount * NODE_ROW_HEIGHT + NODE_PADDING,
+    ),
   };
 }
 
@@ -92,6 +101,7 @@ export function buildGraph(
     return fresh;
   });
   const relationships = [...(indexes.snapshot.relationships ?? [])].sort(byId);
+  const schemaColors = schemaColorsOf(indexes);
 
   const nodeIdByObject = new Map<string, string>();
   const isShown = (objectId: string): boolean => visible === null || visible.has(objectId);
@@ -156,6 +166,7 @@ export function buildGraph(
     const rows = isExpanded ? allRows : keyRows;
     const size = nodeSize(rows.length);
     const entity = indexes.byId(table.id);
+    const schemaName = entity?.kind === "table" ? entity.schemaName : "";
     nodes.push({
       id: nodeId,
       type: "table",
@@ -165,7 +176,8 @@ export function buildGraph(
       data: {
         objectId: table.id,
         name: table.name,
-        schemaName: entity?.kind === "table" ? entity.schemaName : "",
+        schemaName,
+        schemaColor: schemaColors.get(schemaName) ?? 0,
         columnCount: columns.length,
         keyColumnCount: keyRows.length,
         expanded: isExpanded,

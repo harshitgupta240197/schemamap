@@ -354,3 +354,17 @@ Choices: draft 2020-12 (`ajv/dist/2020`), strict mode, `allErrors` for useful me
 **Keyboard.** Arrow keys on a focused node move focus to the nearest node in that direction (`graph/navigate.ts`, pure). Nodes are no longer draggable, so React Flow cannot move a node with the arrows. After a drill-down, Esc or breadcrumb click, focus goes to the new current crumb or, if it would otherwise fall to the page body, to the map region.
 
 **Dependency.** `@axe-core/playwright` 4.14.0 (dev only, pinned): runs axe-core against the built file in both colour schemes and fails on serious or critical violations. Nothing else was added.
+
+## D-049 Readable names, schema colours and panel layout (2026-11-11)
+
+**Compact labels.** D-048 found that two-line names clip in the shortest nodes. The fix is to size the node for them and to pick the line count from the real height. A compact name breaks at CamelCase, underscore, dot, dash, space and letter-to-digit boundaries (`graph/labels.ts`), balanced over at most two lines; a line that is still too long gets a middle ellipsis that keeps its start and end; a single long word gets one line with a middle ellipsis. The characters per line come from the zoom (`compactChars`: the node width at the 10 px minimum, 0.7 em per glyph, which covers wide letters and the ellipsis) and the line count from the node height (`compactLineBudget`). Nodes re-render only when the zoom bucket (a 0.01 step while compact) changes, never on each wheel tick. Table nodes are at least `NODE_MIN_HEIGHT = 140` px tall so two 10 px lines fit at the zoom AdventureWorks opens at (about 0.2); a taller minimum was tried and shrinks the fit zoom more than it gains. The full name stays in the title and, as hidden text, in the accessible name.
+
+**Schema colours.** Eight colour-blind-safe hues in `tokens.css` (`--sm-schema-0` to `-7`, separate light and dark values, each at least 3:1 on the canvas, card and header, checked in `theme.test.ts`). Schemas take slots in code-point order of their names across the whole snapshot (`snapshot/schemaColors.ts`), so a colour does not change with filters or focus. Tables and clusters get a 6 px stripe and their schema badge a matching left edge; the schema name is always text (badge, title, accessible name), so colour is never the only cue.
+
+**Node geometry.** Full nodes are 300 px wide with a 14 px title and 12 px columns (header 60 px, rows 24 px); `NODE_*` in `graph/build.ts` and the CSS agree. Overview clusters show the schema as a small line above the most-connected table's name and the table count.
+
+**Detail panel.** 440 px wide (never wider than the window). Focus goes to the panel heading, not the panel, and the ring shows for keyboard focus only (`:focus-visible`). Names break only at word boundaries through `<wbr>`; header and type cells never wrap. Column headers read "Null" and "Key".
+
+**Load errors.** The screen leads with a plain sentence per error kind (`plainMessage`); the technical message and violation paths sit under a "Details" disclosure.
+
+**Tests changed on purpose.** `keyboard.spec` and `detail.spec` now expect the heading, not the panel, to have focus. `detail.spec` finds a node by its title (qualified name) because a compact label is split over lines. The `graph.spec` expand test uses a 1920×1200 window: with larger nodes the Person.Person focus view no longer fits above the 0.6 compact threshold in the default window.

@@ -78,7 +78,9 @@ test("AdventureWorks map lays out in a worker and renders offline over file://",
 
 test("expanding a table relays out and shows all its columns", async ({ page }, testInfo) => {
   // A focused view, not the full map: the full map fits below the semantic-zoom threshold, where
-  // nodes show only their name and the All button is hidden (D-048).
+  // nodes show only their name and the All button is hidden (D-048). The nodes are larger since
+  // crumb 2.6a, so the view needs a larger window to fit above that threshold.
+  await page.setViewportSize({ width: 1920, height: 1200 });
   await page.goto(mapUrl(testInfo.outputPath("expand.html"), "#focus=object%3APerson.Person"));
   const canvas = page.locator(".sm-canvas");
   await expect(canvas).toHaveAttribute("data-layout-status", "done", { timeout: 30_000 });

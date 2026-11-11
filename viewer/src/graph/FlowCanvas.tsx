@@ -14,14 +14,14 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./graph.css";
-import { useEffect, useMemo, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { LAYOUT_DONE_MARK, mark } from "../perf";
 import { Spinner, StateCard } from "../ui/StateCard";
 import type { LayoutRunner } from "./layout";
 import { nearestInDirection, type Direction } from "./navigate";
 import { useLayout } from "./useLayout";
 import { useReducedMotion } from "./useReducedMotion";
-import { isCompact } from "./zoom";
+import { isCompact, zoomBucket, ZoomBucketContext } from "./zoom";
 
 const EDGE_OPTIONS: DefaultEdgeOptions = {
   markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
@@ -71,11 +71,12 @@ function FitOnLayout({ layoutId, centerOn }: { layoutId: string; centerOn: strin
 /**
  * Mirrors the zoom onto the React Flow element: `--sm-zoom` scales compact names so they stay
  * readable at fit view, and `data-compact` switches nodes to their compact form. Written to the
- * DOM, not React state, so zooming never re-renders the nodes.
+ * DOM, not React state, so zooming never re-renders the nodes. Only the zoom bucket (a coarse
+ * step used to pick compact labels) reaches React, so nodes re-render a few times per zoom range.
  */
-function ZoomMonitor() {
+function ZoomMonitor({ onBucket }: { onBucket: (bucket: number) => void }) {
   const store = useStoreApi();
-  const zoom = useStore((state) => Math.round(state.transform[2] * 1000) / 1000);
+  const zoom = useStore((state) => Math.floor(state.transform[2] * 1000) / 1000);
   useEffect(() => {
     const element = store.getState().domNode;
     if (element !== null) {
@@ -83,6 +84,10 @@ function ZoomMonitor() {
       element.dataset.compact = String(isCompact(zoom));
     }
   }, [store, zoom]);
+  const bucket = zoomBucket(zoom);
+  useEffect(() => {
+    onBucket(bucket);
+  }, [bucket, onBucket]);
   return null;
 }
 
@@ -111,6 +116,7 @@ export function FlowCanvas<N extends Node, E extends Edge>({
   emptyText,
 }: FlowCanvasProps<N, E>) {
   const graph = useMemo(() => ({ nodes, edges }), [nodes, edges]);
+  const [bucket, setBucket] = useState(1);
   const reducedMotion = useReducedMotion();
   const { positions, status } = useLayout(graph, layoutId, runLayout);
 
@@ -168,50 +174,55 @@ export function FlowCanvas<N extends Node, E extends Edge>({
   };
 
   return (
-    <div className="sm-canvas" data-layout-status={status} onKeyDown={onKeyDown}>
-      {status === "failed" ? (
-        <p className="sm-notice" role="status">
-          Automatic layout failed, so the map is shown in a grid.
-        </p>
-      ) : null}
-      {nodes.length === 0 ? (
-        <div className="sm-canvas__state">
-          <StateCard title={emptyText} role="status">
-            <p>Change the schema filter or go back to the full map to see tables again.</p>
-          </StateCard>
-        </div>
-      ) : positions === null ? (
-        <div className="sm-canvas__state">
-          <p className="sm-canvas__pending" role="status">
-            <Spinner />
-            {pendingText}
+    <ZoomBucketContext.Provider value={bucket}>
+      <div className="sm-canvas" data-layout-status={status} onKeyDown={onKeyDown}>
+        {status === "failed" ? (
+          <p className="sm-notice" role="status">
+            Automatic layout failed, so the map is shown in a grid.
           </p>
-        </div>
-      ) : (
-        <ReactFlow<N, E>
-          nodes={placed}
-          edges={drawnEdges}
-          nodeTypes={nodeTypes}
-          defaultEdgeOptions={EDGE_OPTIONS}
-          nodesConnectable={false}
-          onNodeClick={(_event, node) => {
-            onActivate?.(node);
-          }}
-          nodesDraggable={false}
-          edgesFocusable={false}
-          zoomOnDoubleClick={!reducedMotion}
-          onlyRenderVisibleElements
-          fitView
-          minZoom={0.05}
-          maxZoom={2}
-        >
-          <FitOnLayout layoutId={status === "pending" ? "pending" : layoutId} centerOn={centerOn} />
-          <ZoomMonitor />
-          <Background />
-          <Controls showInteractive={false} />
-          <MiniMap pannable zoomable ariaLabel="Map overview" />
-        </ReactFlow>
-      )}
-    </div>
+        ) : null}
+        {nodes.length === 0 ? (
+          <div className="sm-canvas__state">
+            <StateCard title={emptyText} role="status">
+              <p>Change the schema filter or go back to the full map to see tables again.</p>
+            </StateCard>
+          </div>
+        ) : positions === null ? (
+          <div className="sm-canvas__state">
+            <p className="sm-canvas__pending" role="status">
+              <Spinner />
+              {pendingText}
+            </p>
+          </div>
+        ) : (
+          <ReactFlow<N, E>
+            nodes={placed}
+            edges={drawnEdges}
+            nodeTypes={nodeTypes}
+            defaultEdgeOptions={EDGE_OPTIONS}
+            nodesConnectable={false}
+            onNodeClick={(_event, node) => {
+              onActivate?.(node);
+            }}
+            nodesDraggable={false}
+            edgesFocusable={false}
+            zoomOnDoubleClick={!reducedMotion}
+            onlyRenderVisibleElements
+            fitView
+            minZoom={0.05}
+            maxZoom={2}
+          >
+            <FitOnLayout
+              layoutId={status === "pending" ? "pending" : layoutId}
+              centerOn={centerOn}
+            />
+            <ZoomMonitor onBucket={setBucket} />
+            <Background />
+            <Controls showInteractive={false} />
+            <MiniMap pannable zoomable ariaLabel="Map overview" />
+          </ReactFlow>
+        )}
+      </div>
+    </ZoomBucketContext.Provider>
   );
 }

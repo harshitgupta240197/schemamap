@@ -124,3 +124,20 @@
     transform: rotate(360deg);
   }
 }
+
+.sm-state__more summary {
+  width: max-content;
+  color: var(--sm-accent);
+  cursor: pointer;
+}
+
+.sm-state__more summary:focus-visible {
+  outline: 2px solid var(--sm-focus);
+  outline-offset: 2px;
+}
+
+.sm-state__technical {
+  margin: var(--sm-space-2) 0;
+  font-size: var(--sm-text-md);
+  overflow-wrap: anywhere;
+}

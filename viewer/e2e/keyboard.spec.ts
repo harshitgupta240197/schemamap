@@ -45,9 +45,9 @@ test("keyboard only: search, open a table, follow an FK, Esc, breadcrumb back", 
   await page.keyboard.press("Enter");
   await settled(page);
 
-  // The panel took focus.
+  // The panel's heading took focus.
   const panel = page.getByRole("complementary", { name: "Details: Person.Person" });
-  await expect(panel).toBeFocused();
+  await expect(panel.getByRole("heading", { level: 2, name: "Person.Person" })).toBeFocused();
 
   // Follow a foreign-key link inside the panel.
   await tabTo(page, ".sm-detail .sm-link");

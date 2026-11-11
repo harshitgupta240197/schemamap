@@ -1,4 +1,5 @@
-import { forwardRef, useRef, type ReactNode } from "react";
+import { forwardRef, Fragment, useRef, type ReactNode } from "react";
+import { nameParts } from "../graph/labels";
 import { Definition } from "../tsql/Definition";
 import { CopyButton } from "./CopyButton";
 import type { DetailModel, ForeignKeyDetail, ObjectLink } from "./model";
@@ -8,6 +9,20 @@ interface DetailPanelProps {
   readonly model: DetailModel;
   readonly onSelect: (id: string) => void;
   readonly onClose: () => void;
+}
+
+/** A name that can break only at word boundaries: CamelCase, underscore, dot, dash and space. */
+function Breakable({ text }: { text: string }) {
+  return (
+    <>
+      {nameParts(text).map((part, i) => (
+        <Fragment key={String(i)}>
+          {i === 0 ? null : <wbr />}
+          {part}
+        </Fragment>
+      ))}
+    </>
+  );
 }
 
 function Flags({ flags }: { flags: readonly string[] }) {
@@ -44,7 +59,11 @@ function Section({
 
 function LinkText({ link, onSelect }: { link: ObjectLink; onSelect: (id: string) => void }) {
   if (link.kind === "text") {
-    return <span className="sm-link sm-link--text">{link.label}</span>;
+    return (
+      <span className="sm-link sm-link--text">
+        <Breakable text={link.label} />
+      </span>
+    );
   }
   return (
     <button
@@ -54,7 +73,7 @@ function LinkText({ link, onSelect }: { link: ObjectLink; onSelect: (id: string)
         onSelect(link.id);
       }}
     >
-      {link.label}
+      <Breakable text={link.label} />
     </button>
   );
 }
@@ -121,18 +140,20 @@ function ColumnsTable({ model }: { model: DetailModel }) {
             <th scope="col">Column</th>
             <th scope="col">Type</th>
             <th scope="col">Null</th>
-            {isTable ? <th scope="col">Keys</th> : null}
+            {isTable ? <th scope="col">Key</th> : null}
             <th scope="col">Other</th>
           </tr>
         </thead>
         <tbody>
           {model.columns.map((column) => (
             <tr key={column.id}>
-              <th scope="row">{column.name}</th>
-              <td>{column.type}</td>
-              <td>{column.nullable ? "yes" : "no"}</td>
+              <th scope="row">
+                <Breakable text={column.name} />
+              </th>
+              <td className="sm-nowrap">{column.type}</td>
+              <td className="sm-nowrap">{column.nullable ? "yes" : "no"}</td>
               {isTable ? (
-                <td>
+                <td className="sm-nowrap">
                   {[
                     column.isPrimaryKey ? "PK" : null,
                     column.isUnique ? "UQ" : null,
@@ -261,14 +282,13 @@ export const DetailPanel = forwardRef<HTMLElement, DetailPanelProps>(function De
       ref={ref}
       className="sm-detail"
       aria-label={`Details: ${model.qualified}`}
-      tabIndex={-1}
       data-object-kind={model.kind}
     >
       <header className="sm-detail__head">
         <div className="sm-detail__titles">
           <span className="sm-detail__kind">{model.kindLabel}</span>
-          <h2 ref={nameRef} className="sm-detail__name">
-            {model.qualified}
+          <h2 ref={nameRef} className="sm-detail__name" tabIndex={-1} data-panel-heading>
+            <Breakable text={model.qualified} />
           </h2>
         </div>
         <CopyButton text={model.qualified} label="Copy name" source={nameRef} />

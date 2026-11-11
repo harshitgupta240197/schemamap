@@ -1,6 +1,7 @@
 .sm-detail {
   box-sizing: border-box;
-  width: 400px;
+  width: 440px;
+  max-width: 100%;
   flex: none;
   overflow-y: auto;
   padding: 0 14px 24px;
@@ -9,13 +10,14 @@
   font-size: var(--sm-text-md);
 }
 
-.sm-detail:focus {
+/* Focus moves to the heading on open; the ring shows for keyboard focus only. */
+.sm-detail__name:focus {
   outline: none;
 }
 
-.sm-detail:focus-visible {
+.sm-detail__name:focus-visible {
   outline: 2px solid var(--sm-focus);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 .sm-detail__head {
@@ -45,7 +47,7 @@
 .sm-detail__name {
   margin: 2px 0 0;
   font-size: var(--sm-text-xl);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .sm-detail__close,
@@ -123,7 +125,11 @@
   text-align: left;
   vertical-align: top;
   font-weight: 400;
-  overflow-wrap: anywhere;
+}
+
+.sm-detail__table thead th,
+.sm-detail__table .sm-nowrap {
+  white-space: nowrap;
 }
 
 .sm-detail__table thead th {

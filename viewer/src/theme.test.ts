@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
+import { SCHEMA_PALETTE_SIZE } from "./snapshot/schemaColors";
 
 const css = readFileSync(path.resolve("src", "tokens.css"), "utf8");
 const [lightPart = "", darkPart = ""] = css.split("@media (prefers-color-scheme: dark)");
@@ -65,4 +66,24 @@ describe.each([...themes])("%s theme contrast", (_name, theme) => {
       expect(contrast(front ?? "", back ?? "")).toBeGreaterThanOrEqual(min);
     },
   );
+});
+
+/** The schema stripe colours sit on cards (surface), the canvas (bg) and headers. */
+describe.each([...themes])("%s theme schema palette", (_name, theme) => {
+  const slots = Array.from({ length: SCHEMA_PALETTE_SIZE }, (_, i) => `sm-schema-${String(i)}`);
+
+  test.each(slots.flatMap((slot) => ["sm-bg", "sm-surface", "sm-header"].map((bg) => [slot, bg])))(
+    "%s on %s is at least 3:1",
+    (slot, bg) => {
+      const front = theme.get(slot);
+      const back = theme.get(bg);
+      expect(front, slot).toBeDefined();
+      expect(contrast(front ?? "", back ?? "")).toBeGreaterThanOrEqual(3);
+    },
+  );
+
+  test("every slot is a different colour", () => {
+    const colours = slots.map((slot) => theme.get(slot));
+    expect(new Set(colours).size).toBe(SCHEMA_PALETTE_SIZE);
+  });
 });

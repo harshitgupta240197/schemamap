@@ -101,6 +101,19 @@
   color: var(--sm-text);
 }
 
+/* The schema stripe: the same colour as the schema's badge. */
+.sm-table::before,
+.sm-cluster::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
+  background: var(--sm-schema, var(--sm-edge));
+}
+
 .react-flow__node-table.selected .sm-table {
   border-color: var(--sm-accent);
   box-shadow: 0 0 0 2px var(--sm-accent-ring);
@@ -108,17 +121,17 @@
 
 .sm-table__header {
   box-sizing: border-box;
-  height: 52px;
-  padding: 7px 10px 0;
+  height: 60px;
+  padding: 9px 12px 0 18px;
   border-bottom: 1px solid var(--sm-border);
   background: var(--sm-header);
 }
 
 .sm-table__name {
   overflow: hidden;
-  font-size: var(--sm-text-md);
+  font-size: var(--sm-text-lg);
   font-weight: 600;
-  line-height: 18px;
+  line-height: 20px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -128,13 +141,14 @@
   align-items: center;
   gap: 6px;
   height: 20px;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .sm-badge {
-  max-width: 110px;
+  max-width: 130px;
   overflow: hidden;
   padding: 0 6px;
+  border-left: 3px solid var(--sm-schema, var(--sm-edge));
   border-radius: var(--sm-radius-sm);
   background: var(--sm-badge-bg);
   color: var(--sm-badge-fg);
@@ -179,8 +193,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 22px;
-  padding: 0 10px;
+  height: 24px;
+  padding: 0 12px 0 18px;
 }
 
 .sm-col__keys {
@@ -205,7 +219,7 @@
 }
 
 .sm-col__type {
-  max-width: 90px;
+  max-width: 110px;
   overflow: hidden;
   color: var(--sm-muted);
   white-space: nowrap;
@@ -240,7 +254,8 @@
   gap: 4px;
   width: 100%;
   height: 100%;
-  padding: 10px 12px;
+  padding: 10px 12px 10px 18px;
+  position: relative;
   overflow: hidden;
   border: 1px solid var(--sm-edge);
   border-radius: var(--sm-radius-xl);
@@ -300,40 +315,51 @@
   align-items: center;
   justify-content: center;
   height: auto;
-  padding: var(--sm-space-1) var(--sm-space-2);
+  padding: 3px var(--sm-space-2);
   border-bottom: none;
 }
 
 .react-flow[data-compact="true"] .sm-table__meta,
-.react-flow[data-compact="true"] .sm-cluster .sm-badge,
 .react-flow[data-compact="true"] .sm-cluster__count,
 .react-flow[data-compact="true"] .sm-cluster__links {
   display: none;
 }
 
 /*
- * One line, as large as the name allows between 10 px (the least that is readable on screen) and
- * 12 px. --sm-name-fit is the size that makes this name fill the node's width (zoom.ts); a name
- * too long for 10 px is cut with an ellipsis and keeps its full text in the title.
+ * Up to two lines, as large as the node allows between 10 px (the least that is readable on
+ * screen) and 12 px. NodeLabel breaks the name at word boundaries for the characters that fit
+ * at 10 px; --sm-name-fit is the size that makes its longest line fill the node's width
+ * (zoom.ts). Nothing is clipped: a line that would not fit was already cut in the middle.
  */
 .react-flow[data-compact="true"] .sm-table__name,
 .react-flow[data-compact="true"] .sm-cluster__name {
   max-width: 100%;
   overflow: hidden;
-  font-size: min(
-    64px,
-    max(
-      calc(10px / var(--sm-zoom, 1)),
-      min(calc(12px / var(--sm-zoom, 1)), var(--sm-name-fit, 12px))
-    )
+  font-size: max(
+    calc(10px / var(--sm-zoom, 1)),
+    min(calc(12px / var(--sm-zoom, 1)), var(--sm-name-fit, 12px))
   );
-  line-height: 1.25;
+  line-height: 1.1;
   text-align: center;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sm-label__line {
+  display: block;
 }
 
 .react-flow[data-compact="true"] .sm-cluster {
   align-items: center;
   justify-content: center;
+  gap: 0;
+}
+
+.react-flow[data-compact="true"] .sm-cluster__schema {
+  max-width: 100%;
+  padding: 0;
+  border-left: none;
+  background: none;
+  color: var(--sm-muted);
+  font-size: calc(10px / var(--sm-zoom, 1));
+  line-height: 1.1;
 }

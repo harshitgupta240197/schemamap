@@ -6,7 +6,7 @@ import { describeObject } from "./detail/model";
 import type { SchemaMapSnapshotV1 } from "./generated/snapshot";
 import { GraphCanvas } from "./graph/GraphCanvas";
 import { OverviewCanvas } from "./graph/OverviewCanvas";
-import { SnapshotLoadError } from "./snapshot/errors";
+import { plainMessage, SnapshotLoadError } from "./snapshot/errors";
 import { formatCapturedAt } from "./snapshot/display";
 import { StateCard } from "./ui/StateCard";
 import { buildIndexes } from "./snapshot/indexes";
@@ -34,13 +34,21 @@ interface CenterTarget {
 
 type LoadState =
   | { kind: "empty" }
-  | { kind: "error"; message: string; details: readonly string[] }
+  | { kind: "error"; plain: string; message: string; details: readonly string[] }
   | { kind: "loaded"; snapshot: SchemaMapSnapshotV1 };
 
-function describe(error: unknown): { message: string; details: readonly string[] } {
+function describe(error: unknown): {
+  plain: string;
+  message: string;
+  details: readonly string[];
+} {
   return error instanceof SnapshotLoadError
-    ? { message: error.message, details: error.details }
-    : { message: "The snapshot could not be read.", details: [] };
+    ? { plain: plainMessage(error.kind), message: error.message, details: error.details }
+    : {
+        plain: "That file could not be read.",
+        message: "The snapshot could not be read.",
+        details: [],
+      };
 }
 
 function initialState(): LoadState {
@@ -129,7 +137,7 @@ function Loaded({ snapshot }: { snapshot: SchemaMapSnapshotV1 }) {
       const active = document.activeElement;
       opener.current = active instanceof HTMLElement && active !== document.body ? active : null;
     }
-    panel.current?.focus();
+    panel.current?.querySelector<HTMLElement>("[data-panel-heading]")?.focus();
   }, [selected]);
 
   // A drill-down or breadcrumb click can remove the element that had focus. When that leaves
@@ -355,14 +363,18 @@ export function App() {
           role="alert"
           actions={picker}
         >
-          <p>{state.message}</p>
-          {state.details.length === 0 ? null : (
-            <ul className="sm-state__details">
-              {state.details.map((line, index) => (
-                <li key={String(index)}>{line}</li>
-              ))}
-            </ul>
-          )}
+          <p>{state.plain}</p>
+          <details className="sm-state__more">
+            <summary>Details</summary>
+            <p className="sm-state__technical">{state.message}</p>
+            {state.details.length === 0 ? null : (
+              <ul className="sm-state__details">
+                {state.details.map((line, index) => (
+                  <li key={String(index)}>{line}</li>
+                ))}
+              </ul>
+            )}
+          </details>
         </StateCard>
       ) : (
         <StateCard title="Open a snapshot to see the map" actions={picker}>

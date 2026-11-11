@@ -2,13 +2,14 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { memo, useContext, type CSSProperties } from "react";
 import {
   NODE_WIDTH,
+  nodeSize,
   sourceHandleId,
   targetHandleId,
   type ColumnRow,
   type TableFlowNode,
 } from "./build";
 import { ToggleExpandedContext } from "./expanded";
-import { nameFitPx } from "./zoom";
+import { NodeLabel } from "./NodeLabel";
 
 function columnCountLabel(count: number): string {
   return count === 1 ? "1 column" : `${String(count)} columns`;
@@ -47,17 +48,18 @@ function TableNodeView({ data }: NodeProps<TableFlowNode>) {
   const qualified = `${data.schemaName}.${data.name}`;
   const canExpand = data.keyColumnCount < data.columnCount;
   return (
-    <div className="sm-table">
+    <div
+      className="sm-table"
+      style={{ "--sm-schema": `var(--sm-schema-${String(data.schemaColor)})` } as CSSProperties}
+    >
       <div className="sm-table__header">
-        <div
+        <NodeLabel
           className="sm-table__name"
+          name={data.name}
           title={qualified}
-          style={
-            { "--sm-name-fit": `${String(nameFitPx(data.name, NODE_WIDTH))}px` } as CSSProperties
-          }
-        >
-          {data.name}
-        </div>
+          width={NODE_WIDTH}
+          height={nodeSize(data.rows.length).height}
+        />
         <div className="sm-table__meta">
           <span className="sm-badge" title={data.schemaName}>
             {data.schemaName}

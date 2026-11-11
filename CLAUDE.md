@@ -83,8 +83,9 @@ Run the full checks for every area you touched before every commit. If a command
 
 1. All checks green for the areas touched.
 2. Commit and push, then `gh run watch` the pushed commit. The crumb is not done until CI is green.
-3. Append one line to `docs/PROGRESS.md`: `YYYY-MM-DD | <crumb ID> | <commit hash> | <one-line note>`.
-4. Five-line summary.
+3. Append one line to `docs/PROGRESS.md`: `YYYY-MM-DD | <crumb ID> | <commit hash> | <one-line note>`, then commit and push it.
+4. Run `gh run watch --exit-status` on that last (PROGRESS) commit and wait for it. The crumb is not done until that run is green too.
+5. Five-line summary, including the result of that last run.
 
 ## Decisions and dependencies
 

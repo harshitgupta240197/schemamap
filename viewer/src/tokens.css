@@ -30,6 +30,16 @@
   --sm-scrim: rgb(0 0 0 / 30%);
   --sm-mask: rgb(0 0 0 / 6%);
 
+  /* Schema stripe colours: colour-blind-safe hues, each 3:1 on the surfaces (theme.test.ts). */
+  --sm-schema-0: #0072b2;
+  --sm-schema-1: #c25400;
+  --sm-schema-2: #00785a;
+  --sm-schema-3: #a8467f;
+  --sm-schema-4: #8a6600;
+  --sm-schema-5: #2a82b8;
+  --sm-schema-6: #5c6670;
+  --sm-schema-7: #7a4fbf;
+
   --sm-space-1: 4px;
   --sm-space-2: 8px;
   --sm-space-3: 12px;
@@ -82,5 +92,13 @@
     --sm-shadow-raised: rgb(0 0 0 / 60%);
     --sm-scrim: rgb(0 0 0 / 55%);
     --sm-mask: rgb(0 0 0 / 35%);
+    --sm-schema-0: #56b4e9;
+    --sm-schema-1: #ff8a4c;
+    --sm-schema-2: #3dd6a3;
+    --sm-schema-3: #e58fc0;
+    --sm-schema-4: #f0d060;
+    --sm-schema-5: #8fb8ff;
+    --sm-schema-6: #a9b4c2;
+    --sm-schema-7: #b9a3f5;
   }
 }
