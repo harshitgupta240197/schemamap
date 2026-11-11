@@ -40,18 +40,23 @@ What the viewer has to hit, how it is measured, and the numbers. Decisions behin
 
 Before 2.10 (one box per cluster), the dense overview had 115 boxes and its layout was done at 467 ms. Schema containers are packed on the main thread instead of laid out by ELK (D-053), so the first layout is faster.
 
-### CI: GitHub Actions `ubuntu-latest`, viewer job (run 42826636988, commit dc7f71f)
+### CI: GitHub Actions `ubuntu-latest`, viewer job (run 43019358060, commit 8ba7763, crumb 2.10)
 
 Recorded from the `PERF` lines of the viewer job's Playwright output.
 
+| Measure | Dense | Sparse |
+| --- | --: | --: |
+| 2,000 tables: overview layout done | 392 ms | 396 ms |
+| 2,000 tables: click response | 27 ms | 30 ms |
+| 2,000 tables: **interactive** | **419 ms** | **426 ms** |
+| 2,000 tables: **slowest search keystroke** | **20 ms** | **23 ms** |
+
 | Measure | Value |
 | --- | --- |
-| 2,000 tables: overview layout done | 879 ms |
-| 2,000 tables: click response | 48 ms |
-| 2,000 tables: **interactive** | **926 ms** |
-| 2,000 tables: **slowest search keystroke** | **19 ms** |
-| AdventureWorks: aspect ratio / fit-view zoom | **1.80** / 0.23 |
-| WideWorldImporters: aspect ratio / fit-view zoom | **1.73** / 0.27 |
+| AdventureWorks: aspect ratio / fit-view zoom | **1.68** / 0.20 |
+| WideWorldImporters: aspect ratio / fit-view zoom | **1.68** / 0.22 |
+
+Before 2.10 (run 42826636988, commit dc7f71f, dense only), the overview layout was done at 879 ms and the interactive total was 926 ms.
 
 ## Real lab databases (crumb 2.9)
 
