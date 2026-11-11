@@ -83,3 +83,20 @@ describe("compactLabel", () => {
     }
   });
 });
+
+describe("measured widths", () => {
+  /** Wide letters take two units, the rest one: m and W stand for wide glyphs. */
+  const width = (text: string): number =>
+    Array.from(text).reduce((sum, char) => sum + ("mW…".includes(char) ? 2 : 1), 0);
+
+  it("cuts a line by its width, not its length", () => {
+    expect(middleEllipsis("Shipment0866", 10, width)).toBe("Ship…0866");
+    expect(width(middleEllipsis("mmmmmmmmmmmm", 9, width))).toBeLessThanOrEqual(9);
+  });
+
+  it("breaks a name so each line fits the width", () => {
+    for (const line of compactLabel("WorkOrderRoutingMember", 12, 2, width)) {
+      expect(width(line)).toBeLessThanOrEqual(12);
+    }
+  });
+});

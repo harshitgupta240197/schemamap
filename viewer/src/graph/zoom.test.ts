@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
 import {
   COMPACT_BELOW_ZOOM,
-  compactChars,
+  compactLimitEm,
   compactLineBudget,
   heightFitPx,
   isCompact,
-  nameFitPx,
+  fitPx,
   zoomBucket,
 } from "./zoom";
 
@@ -16,10 +16,10 @@ test("nodes go compact strictly below the threshold", () => {
   expect(isCompact(0.05)).toBe(true);
 });
 
-test("nameFitPx shrinks as names get longer and never reaches zero width", () => {
-  expect(nameFitPx("Shift", 260)).toBeGreaterThan(nameFitPx("BusinessEntityAddress", 260));
-  expect(nameFitPx("", 260)).toBe(nameFitPx("x", 260));
-  expect(nameFitPx("Ünïcödé", 260)).toBe(nameFitPx("Unicode", 260));
+test("fitPx shrinks as lines get wider and never divides by zero", () => {
+  expect(fitPx(3, 300)).toBeGreaterThan(fitPx(12, 300));
+  expect(fitPx(0, 300)).toBe(fitPx(0.5, 300));
+  expect(fitPx(10, 300) * 10).toBeLessThanOrEqual(266);
 });
 
 test("the zoom bucket floors while compact and is constant once nodes are full", () => {
@@ -30,9 +30,9 @@ test("the zoom bucket floors while compact and is constant once nodes are full",
   expect(zoomBucket(1.7)).toBe(1);
 });
 
-test("fewer characters fit a line as the map zooms out", () => {
-  expect(compactChars(0.4, 300)).toBeGreaterThan(compactChars(0.2, 300));
-  expect(compactChars(0.01, 300)).toBe(1);
+test("less width fits a line as the map zooms out", () => {
+  expect(compactLimitEm(0.4, 300)).toBeGreaterThan(compactLimitEm(0.2, 300));
+  expect(compactLimitEm(0.2, 300)).toBeCloseTo(5.32, 5);
 });
 
 test("a node needs height for each readable line, and the font never overflows it", () => {

@@ -255,3 +255,23 @@ test("the load error says what happened plainly and keeps the technical text und
   await details.locator("summary").click();
   await expect(alert.getByText("format_version")).toBeVisible();
 });
+
+test("labels are measured, not guessed: a wide font still clips nothing", async ({
+  page,
+}, testInfo) => {
+  await page.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      const style = document.createElement("style");
+      style.textContent =
+        ":root, body, .react-flow { --sm-font: 'Courier New', monospace !important; font-family: 'Courier New', monospace !important; }";
+      document.head.append(style);
+    });
+  });
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto(mapUrl(testInfo.outputPath("wide-font.html")));
+  await settled(page);
+  const found = await labels(page, "table");
+  expect(found.length).toBeGreaterThan(10);
+  expect(found.filter((label) => label.screenPx < 10).map((label) => label.text)).toEqual([]);
+  expect(found.filter((label) => label.clipped).map((label) => label.text)).toEqual([]);
+});

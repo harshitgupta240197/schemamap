@@ -12,14 +12,14 @@ export function isCompact(zoom: number): boolean {
   return zoom < COMPACT_BELOW_ZOOM;
 }
 
-/** Average glyph width of a system UI font, as a multiple of its font size. */
-export const AVERAGE_GLYPH = 0.7;
-
 /** The smallest font size, on screen, that a compact label may use. */
 export const MIN_LABEL_PX = 10;
 
-/** Horizontal padding inside a node, in flow px, that a compact label cannot use. */
-const LABEL_PADDING = 20;
+/**
+ * Horizontal space inside a node, in flow px, that a compact label cannot use: the schema stripe,
+ * the cluster's padding and its border.
+ */
+const LABEL_PADDING = 34;
 
 /**
  * The zoom as nodes see it: floored to a step of 0.01 while compact, and 1 once the full form
@@ -33,26 +33,20 @@ export function zoomBucket(zoom: number): number {
 export const ZoomBucketContext = createContext(1);
 
 /**
- * How many characters of a compact label fit on one line of a node `width` flow px wide at
- * `zoom`, with text at the smallest readable size (10 px on screen).
+ * How wide a line of a compact label may be, in em, in a node `width` flow px wide at `zoom`,
+ * with text at the smallest readable size (10 px on screen).
  */
-export function compactChars(zoom: number, width: number): number {
-  const fontInFlowPx = MIN_LABEL_PX / zoom;
-  return Math.max(1, Math.floor((width - LABEL_PADDING) / (fontInFlowPx * AVERAGE_GLYPH)));
+export function compactLimitEm(zoom: number, width: number): number {
+  return ((width - LABEL_PADDING) * zoom) / MIN_LABEL_PX;
 }
 
 /**
- * The font size, in flow px, at which `chars` characters just fill a node `width` px wide (less
+ * The font size, in flow px, at which a line `em` wide just fills a node `width` px wide (less
  * padding). The compact form uses it as the size that keeps a label whole, within the readable
  * range.
  */
-export function fitPx(chars: number, width: number): number {
-  return Math.floor((width - LABEL_PADDING) / (Math.max(1, chars) * AVERAGE_GLYPH));
-}
-
-/** `fitPx` for a whole name on one line. */
-export function nameFitPx(name: string, width: number): number {
-  return fitPx(Array.from(name).length, width);
+export function fitPx(em: number, width: number): number {
+  return Math.floor((width - LABEL_PADDING) / Math.max(0.5, em));
 }
 
 /** Line height of a compact label, as a multiple of its font size. */

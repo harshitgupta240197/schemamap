@@ -2,8 +2,9 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { memo, useContext, type CSSProperties } from "react";
 import { CLUSTER_NODE_HEIGHT, CLUSTER_NODE_WIDTH, type ClusterFlowNode } from "./overview";
 import { middleEllipsis } from "./labels";
+import { measureEm } from "./measure";
 import { NodeLabel } from "./NodeLabel";
-import { compactChars, compactLineBudget, isCompact, ZoomBucketContext } from "./zoom";
+import { compactLimitEm, compactLineBudget, isCompact, ZoomBucketContext } from "./zoom";
 
 function count(n: number, one: string, many: string): string {
   return `${String(n)} ${n === 1 ? one : many}`;
@@ -16,7 +17,7 @@ function ClusterNodeView({ data }: NodeProps<ClusterFlowNode>) {
   // A compact cluster shows its schema above the name when the box is tall enough for both.
   const showSchema = !compact || compactLineBudget(CLUSTER_NODE_HEIGHT, bucket) >= 2;
   const schema = compact
-    ? middleEllipsis(data.schemaName, compactChars(bucket, CLUSTER_NODE_WIDTH))
+    ? middleEllipsis(data.schemaName, compactLimitEm(bucket, CLUSTER_NODE_WIDTH), measureEm)
     : data.schemaName;
   return (
     <div

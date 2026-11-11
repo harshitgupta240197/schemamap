@@ -1,7 +1,8 @@
 import { useContext, type CSSProperties } from "react";
 import { compactLabel, longestLine } from "./labels";
+import { measureEm } from "./measure";
 import {
-  compactChars,
+  compactLimitEm,
   compactLineBudget,
   fitPx,
   heightFitPx,
@@ -45,10 +46,10 @@ export function NodeLabel({
     );
   }
   const room = Math.max(1, Math.min(2, compactLineBudget(height, bucket) - reservedLines));
-  const lines = compactLabel(name, compactChars(bucket, width), room);
+  const lines = compactLabel(name, compactLimitEm(bucket, width), room, measureEm);
   const reserved = (reservedLines * 10) / bucket;
   const fit = Math.min(
-    fitPx(longestLine(lines), width),
+    fitPx(longestLine(lines, measureEm), width),
     heightFitPx(lines.length, height - reserved),
   );
   const style = { "--sm-name-fit": `${String(fit)}px` };
