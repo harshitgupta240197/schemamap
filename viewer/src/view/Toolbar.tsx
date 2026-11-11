@@ -5,18 +5,21 @@ import type { Clustering } from "./clusters";
 import {
   backToCluster,
   backToRoot,
+  backToSchema,
   focusOn,
-  rootTableCount,
-  viewLevel,
+  levelSchema,
+  rootLevel,
   withSchemas,
   type Level,
 } from "./level";
-import { makeViewState, type Hops, type ViewState } from "./viewState";
+import type { Folding } from "./schemaGroups";
+import { withHops, type Hops, type ViewState } from "./viewState";
 import "./toolbar.css";
 
 interface ToolbarProps {
   readonly indexes: SnapshotIndexes;
   readonly clustering: Clustering;
+  readonly folding: Folding;
   readonly level: Level;
   /** Most hops the current focus allows within the layout limit. */
   readonly maxHops: Hops;
@@ -38,30 +41,45 @@ function focusLabel(indexes: SnapshotIndexes, focus: readonly string[]): string 
   return `${String(focus.length)} tables`;
 }
 
+function plural(n: number, one: string, many: string): string {
+  return `${String(n)} ${n === 1 ? one : many}`;
+}
+
 function countLine(
   level: Level,
-  clustering: Clustering,
+  folding: Folding,
   schemas: ReadonlySet<string>,
+  schema: string | null,
   shown: number,
   total: number,
 ): string {
+  if (level === "schema") {
+    const group = schema === null ? undefined : folding.schemaById.get(schema);
+    return `${plural(group?.tableCount ?? 0, "table", "tables")} in ${plural(group?.clusterCount ?? 0, "cluster", "clusters")}`;
+  }
   if (level !== "overview") {
     return `${String(shown)} of ${String(total)} tables`;
   }
-  const clusters = clustering.clusters.filter(
-    (cluster) => schemas.size === 0 || schemas.has(cluster.schemaId),
-  );
-  const tables = clusters.reduce((sum, cluster) => sum + cluster.tableIds.length, 0);
-  return `${String(tables)} tables in ${String(clusters.length)} clusters`;
+  const inView = folding.schemas.filter((s) => schemas.size === 0 || schemas.has(s.schemaId));
+  const tables = inView.reduce((sum, s) => sum + s.tableCount, 0);
+  return `${plural(tables, "table", "tables")} in ${plural(inView.length, "schema", "schemas")}`;
+}
+
+interface Crumb {
+  readonly key: string;
+  readonly label: string;
+  readonly to: ViewState;
 }
 
 /**
  * Search button, schema filter, hop control, Focus button, and the breadcrumb: the overview or
- * full map, then the cluster drilled into, then the focus. Each earlier crumb leads back.
+ * full map, then the schema drilled into, then the cluster or small group, then the focus. Each
+ * earlier crumb leads back.
  */
 export function Toolbar({
   indexes,
   clustering,
+  folding,
   level,
   maxHops,
   state,
@@ -76,11 +94,31 @@ export function Toolbar({
   const selected = new Set(state.schemas);
   const inFocus = state.focus.length > 0;
   const root = backToRoot(state);
-  const rootLabel =
-    viewLevel(root, rootTableCount(indexes, state.schemas)) === "overview"
-      ? "Overview"
-      : "Full map";
+  const rootIs = rootLevel(indexes, state);
   const cluster = state.cluster === null ? undefined : clustering.byId.get(state.cluster);
+  const group = state.group === null ? undefined : folding.groups.get(state.group);
+  // The schema crumb leads to the schema's own level when the root is the schema overview.
+  const schemaId =
+    state.drill ?? (rootIs === "overview" ? (cluster?.schemaId ?? group?.schemaId ?? null) : null);
+  const schema = schemaId === null ? undefined : folding.schemaById.get(schemaId);
+  const crumbs: Crumb[] = [
+    {
+      key: "root",
+      label: rootIs === "overview" || rootIs === "schema" ? "Overview" : "Full map",
+      to: root,
+    },
+  ];
+  if (schema !== undefined) {
+    crumbs.push({
+      key: "schema",
+      label: schema.schemaName,
+      to: backToSchema(state, schema.schemaId),
+    });
+  }
+  const place = cluster?.name ?? group?.name;
+  if (place !== undefined) {
+    crumbs.push({ key: "place", label: place, to: backToCluster(state) });
+  }
   const chosen = state.selected === null ? undefined : indexes.byId(state.selected);
   const focusable =
     chosen?.kind === "table" && !(state.focus.length === 1 && state.focus[0] === chosen.id)
@@ -163,9 +201,7 @@ export function Toolbar({
                   : undefined
               }
               onClick={() => {
-                onChange(
-                  makeViewState(state.focus, hops, state.schemas, state.selected, state.cluster),
-                );
+                onChange(withHops(state, hops));
               }}
             >
               {hops}
@@ -187,42 +223,25 @@ export function Toolbar({
       )}
       <nav className="sm-toolbar__crumbs" aria-label="Breadcrumb">
         <ol>
-          <li>
-            {inFocus || cluster !== undefined ? (
-              <button
-                type="button"
-                className="sm-toolbar__link"
-                onClick={() => {
-                  goTo(root);
-                }}
-              >
-                {rootLabel}
-              </button>
-            ) : (
-              <span ref={current} tabIndex={-1} aria-current="page">
-                {rootLabel}
-              </span>
-            )}
-          </li>
-          {cluster === undefined ? null : (
-            <li>
-              {inFocus ? (
+          {crumbs.map((crumb, i) => (
+            <li key={crumb.key}>
+              {inFocus || i < crumbs.length - 1 ? (
                 <button
                   type="button"
                   className="sm-toolbar__link"
                   onClick={() => {
-                    goTo(backToCluster(state));
+                    goTo(crumb.to);
                   }}
                 >
-                  {cluster.name}
+                  {crumb.label}
                 </button>
               ) : (
                 <span ref={current} tabIndex={-1} aria-current="page">
-                  {cluster.name}
+                  {crumb.label}
                 </span>
               )}
             </li>
-          )}
+          ))}
           {inFocus ? (
             <li>
               <span aria-current="page">{focusLabel(indexes, state.focus)}</span>
@@ -231,7 +250,7 @@ export function Toolbar({
         </ol>
       </nav>
       <span className="sm-toolbar__count" role="status">
-        {countLine(level, clustering, selected, shown, total)}
+        {countLine(level, folding, selected, levelSchema(indexes, state), shown, total)}
       </span>
     </div>
   );

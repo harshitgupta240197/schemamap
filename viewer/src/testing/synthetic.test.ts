@@ -56,4 +56,68 @@ describe("syntheticSnapshot", () => {
       expect(small.tables).toHaveLength(tables);
     }
   });
+
+  it("is the dense shape when no shape is given", () => {
+    expect(JSON.stringify(syntheticSnapshot({ tables: 2000, seed: 42, shape: "dense" }))).toBe(
+      json,
+    );
+  });
+});
+
+describe("syntheticSnapshot, sparse shape (like tools/synth.py)", () => {
+  const json = JSON.stringify(syntheticSnapshot({ tables: 2000, seed: 42, shape: "sparse" }));
+  const snapshot = parseSnapshot(json);
+  const indexes = buildIndexes(snapshot);
+
+  it("passes the snapshot validator with six schemas", () => {
+    expect(snapshot.tables).toHaveLength(2000);
+    expect(indexes.duplicateIds).toEqual([]);
+    expect((snapshot.schemas ?? []).map((s) => s.name)).toEqual([
+      "dbo",
+      "sales",
+      "hr",
+      "inventory",
+      "finance",
+      "dw",
+    ]);
+  });
+
+  it("is the same for the same seed and different for another", () => {
+    expect(JSON.stringify(syntheticSnapshot({ tables: 2000, seed: 42, shape: "sparse" }))).toBe(
+      json,
+    );
+    expect(JSON.stringify(syntheticSnapshot({ tables: 2000, seed: 7, shape: "sparse" }))).not.toBe(
+      json,
+    );
+  });
+
+  it("declares about 0.4 keys per table, each pointing at real columns", () => {
+    const relationships = snapshot.relationships ?? [];
+    const perTable = relationships.length / 2000;
+    expect(perTable).toBeGreaterThan(0.35);
+    expect(perTable).toBeLessThan(0.45);
+    for (const r of relationships) {
+      expect(indexes.byId(r.from_columns[0])?.kind).toBe("column");
+      expect(indexes.byId(r.to_columns[0])?.kind).toBe("column");
+    }
+  });
+
+  it("clusters into hundreds of boxes, mostly of 2 or 3 tables, as the real database does", () => {
+    const clustering = clusterTables(indexes);
+    expect(clustering.clusters.length).toBeGreaterThan(200);
+    const small = clustering.clusters.filter(
+      (c) => c.tableIds.length >= 2 && c.tableIds.length <= 3 && !c.isolated,
+    );
+    expect(small.length).toBeGreaterThan(150);
+    expect(clustering.clusters.some((c) => c.tableIds.length > 10 && !c.isolated)).toBe(true);
+  });
+
+  it("scales down to small sizes", () => {
+    for (const tables of [3, 10, 250]) {
+      const small = parseSnapshot(
+        JSON.stringify(syntheticSnapshot({ tables, seed: 1, shape: "sparse" })),
+      );
+      expect(small.tables).toHaveLength(tables);
+    }
+  });
 });

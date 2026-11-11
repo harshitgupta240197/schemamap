@@ -85,8 +85,8 @@ worker-src blob:; img-src data: blob:; font-src data:; connect-src 'none'; base-
 
 | ID | Severity | Issue | Where it goes |
 | --- | --- | --- | --- |
-| P2-1 | **High** | The overview of a real, sparse 2,000-table database is unreadable at fit view: 290 clusters, 222 of them with 2 or 3 tables, labels cut to a few letters. `readable.spec` passes because it measures font size and clipping on the TypeScript synthetic (115 clusters), not usefulness on real data. | **2.10** (proposed) |
-| P2-2 | Medium | The TypeScript synthetic (1.2 keys per table) does not look like the lab's SchemaMapSynth (0.4). Speed and readability are tested only on the denser shape. | 2.10 |
+| P2-1 | **High** | The overview of a real, sparse 2,000-table database is unreadable at fit view: 290 clusters, 222 of them with 2 or 3 tables, labels cut to a few letters. `readable.spec` passes because it measures font size and clipping on the TypeScript synthetic (115 clusters), not usefulness on real data. | **Resolved in 2.10** (D-053): 6 schema boxes with whole names on the real database |
+| P2-2 | Medium | The TypeScript synthetic (1.2 keys per table) does not look like the lab's SchemaMapSynth (0.4). Speed and readability are tested only on the denser shape. | **Resolved in 2.10**: a `sparse` synthetic shape; speed, readability and axe now run on both |
 | P2-3 | Medium | No CSP, so "no network" and "no script injection" rest on code review and tests alone. | **2.11** (proposed) |
 | P2-4 | Medium | Impact is one level and object-level only. No column-level impact, so "Can I drop this column?" is not answered. | **3.10a** (proposed) |
 | P2-5 | Low | A view link works only in the same map file at the same path. | 5.1 (README: "send the file, then the link"); revisit with 3.10 |

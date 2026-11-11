@@ -13,6 +13,8 @@ import type { Column1, Relationship, SchemaMapSnapshotV1, Table } from "../gener
 export interface SyntheticOptions {
   readonly tables: number;
   readonly seed: number;
+  /** `dense` (the default, described above) or `sparse` (like the lab's SchemaMapSynth). */
+  readonly shape?: "dense" | "sparse";
 }
 
 const SCHEMAS = [
@@ -42,6 +44,30 @@ const DATA_COLUMNS: readonly (readonly [string, string, number | null])[] = [
   ["IsActive", "bit", null],
   ["Reference", "varchar", 50],
 ];
+/** The sparse shape's schemas, as in tools/synth.py's default of six. */
+const SPARSE_SCHEMAS = ["dbo", "sales", "hr", "inventory", "finance", "dw"];
+/** Share of true relationships declared as foreign keys (tools/synth.py's default). */
+const SPARSE_DECLARED_SHARE = 0.3;
+const SPARSE_WORDS = [
+  "Customer",
+  "Order",
+  "Product",
+  "Invoice",
+  "Supplier",
+  "Employee",
+  "Warehouse",
+  "Shipment",
+  "Payment",
+  "Contract",
+  "Ticket",
+  "Campaign",
+  "Booking",
+  "Vehicle",
+  "Document",
+  "Subscription",
+  "Ledger",
+  "Address",
+];
 /** Size of the one component larger than a layout, in the largest schema. */
 const GIANT_COMPONENT = 350;
 
@@ -60,7 +86,7 @@ function prng(seed: number): () => number {
 interface Draft {
   readonly schema: string;
   readonly name: string;
-  readonly keys: { readonly to: Draft; readonly column: string }[];
+  readonly keys: { readonly to: Draft; readonly column: string; readonly declared: boolean }[];
 }
 
 /** Table counts per schema, Zipf-like, summing to `total`, each at least 3. */
@@ -122,35 +148,46 @@ function column(
   };
 }
 
-/** Build the synthetic snapshot described above. */
-export function syntheticSnapshot({ tables, seed }: SyntheticOptions): SchemaMapSnapshotV1 {
-  const random = prng(seed);
-  const pick = <T>(items: readonly T[]): T => {
-    const item = items[Math.floor(random() * items.length)];
-    if (item === undefined) {
-      throw new Error("pick from an empty list");
-    }
-    return item;
-  };
+type Pick = <T>(items: readonly T[]) => T;
 
+interface Drafts {
+  readonly drafts: readonly Draft[];
+  readonly schemaNames: readonly string[];
+}
+
+/** A draft list that numbers tables in creation order and files them by schema. */
+function draftBook(nameOf: (index: number) => string): {
+  readonly drafts: Draft[];
+  readonly bySchema: Map<string, Draft[]>;
+  readonly newTable: (schema: string) => Draft;
+} {
   const drafts: Draft[] = [];
   const bySchema = new Map<string, Draft[]>();
   const newTable = (schema: string): Draft => {
-    const index = drafts.length;
-    const draft: Draft = {
-      schema,
-      name: `${NOUNS[index % NOUNS.length] ?? "T"}${String(index).padStart(4, "0")}`,
-      keys: [],
-    };
+    const draft: Draft = { schema, name: nameOf(drafts.length), keys: [] };
     drafts.push(draft);
-    bySchema.get(schema)?.push(draft);
+    const list = bySchema.get(schema);
+    if (list === undefined) {
+      bySchema.set(schema, [draft]);
+    } else {
+      list.push(draft);
+    }
     return draft;
   };
-  const addKey = (from: Draft, to: Draft): void => {
-    const column = `${to.name}Id${from.keys.length > 0 ? String(from.keys.length + 1) : ""}`;
-    from.keys.push({ to, column });
-  };
+  return { drafts, bySchema, newTable };
+}
 
+function addKey(from: Draft, to: Draft, declared = true): void {
+  const column = `${to.name}Id${from.keys.length > 0 ? String(from.keys.length + 1) : ""}`;
+  from.keys.push({ to, column, declared });
+}
+
+/** The dense shape: about 1.2 declared keys per table over a dozen schemas. */
+function denseDrafts(tables: number, random: () => number, pick: Pick): Drafts {
+  const book = draftBook(
+    (index) => `${NOUNS[index % NOUNS.length] ?? "T"}${String(index).padStart(4, "0")}`,
+  );
+  const { drafts, bySchema, newTable } = book;
   for (const [i, size] of schemaSizes(tables).entries()) {
     const schema = SCHEMAS[i] ?? `S${String(i)}`;
     bySchema.set(schema, []);
@@ -188,6 +225,108 @@ export function syntheticSnapshot({ tables, seed }: SyntheticOptions): SchemaMap
       }
     }
   }
+  return { drafts, schemaNames };
+}
+
+/**
+ * The sparse shape, after `tools/synth.py` (the lab's SchemaMapSynth): six schemas, `dbo` three
+ * times as likely as the others for entity tables, 18% star-schema tables in `dw`, 5% detail
+ * tables, 4% staging tables. The true relationships number about 1.3 per table, and only
+ * `SPARSE_DECLARED_SHARE` of them are declared as foreign keys, so the declared graph falls
+ * apart into many components of two or three tables, as in real databases that declare few keys.
+ * Undeclared relationships keep their column, as they would in a real table.
+ */
+function sparseDrafts(tables: number, random: () => number, pick: Pick): Drafts {
+  const { drafts, bySchema, newTable } = draftBook(
+    (index) => `${pick(SPARSE_WORDS)}${String(index).padStart(4, "0")}`,
+  );
+  const link = (from: Draft, to: Draft): void => {
+    addKey(from, to, random() < SPARSE_DECLARED_SHARE);
+  };
+  const entitySchemas = SPARSE_SCHEMAS.filter((name) => name !== "dw");
+  const weights = entitySchemas.map((name) => (name === "dbo" ? 3 : 1));
+  const weightSum = weights.reduce((a, b) => a + b, 0);
+  const entitySchema = (): string => {
+    let roll = random() * weightSum;
+    for (const [i, name] of entitySchemas.entries()) {
+      roll -= weights[i] ?? 0;
+      if (roll < 0) {
+        return name;
+      }
+    }
+    return entitySchemas[0] ?? "dbo";
+  };
+
+  const islands = tables >= 10 ? Math.round(tables * 0.18) : 0;
+  const staging = Math.round(tables * 0.04);
+  const details = Math.round(tables * 0.05);
+  const coreCount = Math.max(1, tables - islands - staging - details);
+
+  const core: Draft[] = [];
+  for (let n = 0; n < coreCount; n += 1) {
+    const table = newTable(entitySchema());
+    // Only entity tables exist while this loop runs, so the schema's list is its entity tables.
+    const local = (bySchema.get(table.schema) ?? []).filter((t) => t !== table);
+    const wanted = core.length === 0 ? 0 : pick([0, 1, 1, 2, 2, 3]);
+    for (let k = 0; k < wanted; k += 1) {
+      const pool = local.length > 0 && random() < 0.7 ? local : core;
+      const parent = pick(pool);
+      if (!table.keys.some((key) => key.to === parent)) {
+        link(table, parent);
+      }
+    }
+    if (random() < 0.06) {
+      link(table, table);
+    }
+    core.push(table);
+  }
+  for (let n = 0; n < details && drafts.length < tables; n += 1) {
+    const parent = pick(core);
+    link(newTable(parent.schema), parent);
+  }
+  let left = Math.min(islands, tables - drafts.length - staging);
+  while (left > 0) {
+    const count = left > 1 ? Math.min(left - 1, 3 + Math.floor(random() * 4)) : 1;
+    const dims = Array.from({ length: count }, () => newTable("dw"));
+    left -= count;
+    if (left > 0) {
+      const fact = newTable("dw");
+      for (const dim of dims) {
+        link(fact, dim);
+      }
+      left -= 1;
+    }
+  }
+  while (drafts.length < tables) {
+    const table = newTable(pick(SPARSE_SCHEMAS));
+    const parents = Math.floor(random() * 3);
+    for (let k = 0; k < parents; k += 1) {
+      const parent = pick(core);
+      if (!table.keys.some((key) => key.to === parent)) {
+        link(table, parent);
+      }
+    }
+  }
+  const schemaNames = SPARSE_SCHEMAS.filter((name) => (bySchema.get(name)?.length ?? 0) > 0);
+  return { drafts, schemaNames };
+}
+
+/** Build the synthetic snapshot described above, in the dense shape unless asked otherwise. */
+export function syntheticSnapshot({
+  tables,
+  seed,
+  shape = "dense",
+}: SyntheticOptions): SchemaMapSnapshotV1 {
+  const random = prng(seed);
+  const pick: Pick = <T>(items: readonly T[]): T => {
+    const item = items[Math.floor(random() * items.length)];
+    if (item === undefined) {
+      throw new Error("pick from an empty list");
+    }
+    return item;
+  };
+  const { drafts, schemaNames } =
+    shape === "sparse" ? sparseDrafts(tables, random, pick) : denseDrafts(tables, random, pick);
 
   const qualified = (draft: Draft): string => `${draft.schema}.${draft.name}`;
   const relationships: Relationship[] = [];
@@ -236,7 +375,7 @@ export function syntheticSnapshot({ tables, seed }: SyntheticOptions): SchemaMap
       ],
       check_constraints: [],
     });
-    for (const key of draft.keys) {
+    for (const key of draft.keys.filter((k) => k.declared)) {
       const target = qualified(key.to);
       const name = `FK_${draft.schema}_${draft.name}_${key.column}`;
       relationships.push({

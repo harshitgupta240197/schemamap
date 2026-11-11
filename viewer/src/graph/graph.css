@@ -103,7 +103,8 @@
 
 /* The schema stripe: the same colour as the schema's badge. */
 .sm-table::before,
-.sm-cluster::before {
+.sm-cluster::before,
+.sm-schema::before {
   content: "";
   position: absolute;
   z-index: 1;
@@ -265,9 +266,15 @@
   font-size: var(--sm-text-sm);
 }
 
+/*
+ * A full-size box only shows at zoom 0.6 and above; at --sm-text-box its text is never under
+ * 10 px on screen.
+ */
 .sm-cluster .sm-badge {
   align-self: flex-start;
   max-width: 100%;
+  font-size: var(--sm-text-box);
+  line-height: 1.3;
 }
 
 .react-flow__node-cluster:focus-visible .sm-cluster,
@@ -277,17 +284,20 @@
 
 .sm-cluster__name {
   overflow: hidden;
-  font-size: var(--sm-text-lg);
+  font-size: calc(var(--sm-text-box) * 1.2);
   font-weight: 600;
-  line-height: 20px;
+  line-height: 1.2;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.sm-cluster__count,
-.sm-cluster__links {
+.sm-cluster__meta {
+  display: flex;
+  gap: 12px;
   color: var(--sm-muted);
-  font-size: var(--sm-text-sm);
+  font-size: var(--sm-text-box);
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .sm-cluster__links {
@@ -297,6 +307,152 @@
 
 .sm-cluster .react-flow__handle {
   opacity: 0;
+}
+
+/*
+ * Schema container geometry must match SCHEMA_* in overview.ts: header, then the tile grid with
+ * SCHEMA_PADDING around it (plus the 6 px stripe on the left). SchemaNode passes the sizes in.
+ */
+.react-flow__node-schema {
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.sm-schema {
+  box-sizing: border-box;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--sm-edge);
+  border-radius: var(--sm-radius-xl);
+  background: var(--sm-surface);
+  box-shadow: 0 1px 2px var(--sm-shadow);
+  color: var(--sm-text);
+  font-size: var(--sm-text-sm);
+}
+
+.react-flow__node-schema:focus-visible .sm-schema,
+.react-flow__node-schema:hover .sm-schema {
+  border-color: var(--sm-accent);
+}
+
+.sm-schema__header {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  height: var(--sm-schemabox-header);
+  padding: 0 16px 0 22px;
+  border-bottom: 1px solid var(--sm-border);
+  background: var(--sm-header);
+}
+
+/*
+ * A full-size container only shows at zoom 0.6 and above, so its text is at least 20 px: never
+ * under 12 px on screen.
+ */
+.sm-schema__name {
+  overflow: hidden;
+  font-size: calc(var(--sm-text-2xl) * 1.4);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sm-schema__count {
+  color: var(--sm-muted);
+  font-size: var(--sm-text-2xl);
+  white-space: nowrap;
+}
+
+.sm-schema__tiles {
+  display: grid;
+  grid-template-columns: repeat(var(--sm-schemabox-columns), var(--sm-schemabox-tile-width));
+  grid-auto-rows: var(--sm-schemabox-tile-height);
+  gap: var(--sm-schemabox-tile-gap);
+  padding: 16px 16px 16px 22px;
+}
+
+.sm-schema__tile {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sm-space-2);
+  min-width: 0;
+  padding: 0 10px;
+  overflow: hidden;
+  border: 1px solid var(--sm-border);
+  border-left: 4px solid var(--sm-schema, var(--sm-border));
+  border-radius: var(--sm-radius-lg);
+  background: var(--sm-bg);
+  font-size: var(--sm-text-2xl);
+}
+
+.sm-schema__tile[data-kind="group"] {
+  border-style: dashed;
+  border-left-style: solid;
+}
+
+.sm-schema__tile[data-kind="more"] {
+  color: var(--sm-muted);
+}
+
+.sm-schema__tile-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sm-schema__tile-count {
+  flex: none;
+  color: var(--sm-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sm-schema .react-flow__handle {
+  opacity: 0;
+}
+
+/*
+ * A compact container keeps its name and count at a readable size on screen (as compact table
+ * and cluster names do). Tiles keep their names, cut with an ellipsis, while a readable line
+ * fits (SchemaNode drops them below that) and always show their table counts.
+ */
+.react-flow[data-compact="true"] .sm-schema__name {
+  max-width: 100%;
+  font-size: max(
+    calc(10px / var(--sm-zoom, 1)),
+    min(calc(16px / var(--sm-zoom, 1)), var(--sm-name-fit, 16px))
+  );
+  line-height: 1.1;
+}
+
+.react-flow[data-compact="true"] .sm-schema__count {
+  font-size: calc(10px / var(--sm-zoom, 1));
+  line-height: 1.1;
+}
+
+.react-flow[data-compact="true"] .sm-schema__tile {
+  padding: 0 4px;
+  gap: 4px;
+}
+
+.react-flow[data-compact="true"] .sm-schema__tile-name,
+.react-flow[data-compact="true"] .sm-schema__tile-count {
+  font-size: calc(10px / var(--sm-zoom, 1));
+  line-height: 1.1;
+}
+
+.react-flow[data-compact="true"] .sm-schema__tile:has(.sm-schema__tile-name) {
+  justify-content: space-between;
+}
+
+.react-flow[data-compact="true"] .sm-schema__tile:not(:has(.sm-schema__tile-name)) {
+  justify-content: center;
 }
 
 /*
@@ -320,8 +476,7 @@
 }
 
 .react-flow[data-compact="true"] .sm-table__meta,
-.react-flow[data-compact="true"] .sm-cluster__count,
-.react-flow[data-compact="true"] .sm-cluster__links {
+.react-flow[data-compact="true"] .sm-cluster__meta {
   display: none;
 }
 

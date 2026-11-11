@@ -236,3 +236,34 @@ describe("cluster in the hash", () => {
     );
   });
 });
+
+describe("group and drill in the hash", () => {
+  const groups = new Set(["group:object:dbo.A"]);
+
+  it("drops unknown groups, a drill that is not a schema, and bad encoding", () => {
+    for (const hash of [
+      "#group=group%3Aobject%3Adbo.Nope",
+      "#group=cluster%3Aobject%3Adbo.A",
+      "#drill=object%3Adbo.A",
+      "#drill=schema%3ANope",
+      "#drill=%E0%A4%A",
+      "#group=__proto__",
+    ]) {
+      expect(parseHash(hash, indexes, new Set(), groups)).toEqual(FULL_MAP);
+    }
+  });
+
+  it("reads a known group and a schema drill, the cluster winning over both", () => {
+    expect(parseHash("#group=group%3Aobject%3Adbo.A", indexes, new Set(), groups).group).toBe(
+      "group:object:dbo.A",
+    );
+    expect(parseHash("#drill=schema%3Adbo", indexes).drill).toBe("schema:dbo");
+    const all = parseHash(
+      "#drill=schema%3Adbo&group=group%3Aobject%3Adbo.A&cluster=cluster%3Aobject%3Adbo.A",
+      indexes,
+      new Set(["cluster:object:dbo.A"]),
+      groups,
+    );
+    expect([all.cluster, all.group, all.drill]).toEqual(["cluster:object:dbo.A", null, null]);
+  });
+});

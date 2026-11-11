@@ -53,6 +53,8 @@
   --sm-text-lg: 14px;
   --sm-text-xl: 16px;
   --sm-text-2xl: 20px;
+  /* Text in overview boxes: 10 px on screen at the compact threshold (zoom 0.6, zoom.ts). */
+  --sm-text-box: 17px;
 
   --sm-radius-sm: 4px;
   --sm-radius-md: 6px;

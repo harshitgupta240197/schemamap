@@ -343,7 +343,7 @@ Choices: draft 2020-12 (`ajv/dist/2020`), strict mode, `allErrors` for useful me
 
 **Rendering.** React Flow `onlyRenderVisibleElements` on both canvases. Table and overview layouts share `useLayout` and the per-view cache; keys are prefixed `t:` and `c:`. Performance marks (`schemamap:layout-done`, `schemamap:search`) feed the e2e speed tests and stay in the page.
 
-**Amendment (2026-11-11, crumb 2.9): the overview on a real 2,000-table database.** The claim above that one "no relationships" cluster per schema keeps the overview from being hundreds of single boxes held on the TypeScript synthetic snapshot (115 clusters) but not on the lab's `SchemaMapSynth` (830 foreign keys for 2,000 tables): its overview has 290 clusters, 222 of them with 2 or 3 tables, and at fit view the names are cut to a few letters. It is fast (layout 0.47 s) but not readable. The rules here are unchanged for now; `docs/gates/PHASE2.md` (finding P2-1) proposes the fix.
+**Amendment (2026-11-11, crumb 2.9): the overview on a real 2,000-table database.** The claim above that one "no relationships" cluster per schema keeps the overview from being hundreds of single boxes held on the TypeScript synthetic snapshot (115 clusters) but not on the lab's `SchemaMapSynth` (830 foreign keys for 2,000 tables): its overview has 290 clusters, 222 of them with 2 or 3 tables, and at fit view the names are cut to a few letters. It is fast (layout 0.47 s) but not readable. `docs/gates/PHASE2.md` (finding P2-1) proposed the fix; D-053 makes it. The cluster rules here are unchanged; the overview now shows them per schema.
 
 ## D-048 Design tokens, semantic zoom and accessibility testing (2026-11-11)
 
@@ -404,3 +404,45 @@ Choices: draft 2020-12 (`ajv/dist/2020`), strict mode, `allErrors` for useful me
 **Test changed on purpose.** The `bundle-guard` test's "clean" page had no policy, which the guard now rejects. Its clean and planted pages now carry a valid policy, so only the planted `new Function` can fail it. `flow.spec.ts` now also runs in the Firefox project, so the full flow is proven under the policy in both browsers.
 
 **Not added.** `frame-ancestors` is not supported in a meta tag, so the map can still be framed; it has no authenticated actions, so this is not an exposure. No dependency.
+
+## D-053 Schema containers: a readable overview at 2,000 tables (2026-11-11)
+
+**Problem.** P2-1: the real, sparse SchemaMapSynth (2,000 tables, 0.4 declared keys per table) opened on 290 cluster boxes, 222 of them with 2 or 3 tables, labelled like `Ca…e`. The tests missed it because the TypeScript synthetic was dense (115 clusters; P2-2).
+
+**Decision.** The overview is one **container per schema**: the schema name, its table and cluster counts, and up to 12 tiles. The tiles are its clusters of more than 3 tables (largest first), one **"Small groups"** tile, and its unrelated-tables clusters. Past 12, the smallest related clusters become one "+N clusters" tile. You drill **schema → cluster or small group → tables**:
+- A schema of 200 tables or fewer opens as its table map, the same view the schema filter gives.
+- A larger schema opens as its boxes. Each cluster of more than 3 tables keeps its own box. Its clusters of 3 or fewer (when there are at least two) fold into a small-groups box, packed in cluster order into parts of at most 200 tables. A small-groups box opens as one table map of all its tables.
+- When only one schema is in view, the root is that schema's boxes.
+- Pure code: `viewer/src/view/schemaGroups.ts` (`foldSchemas`) and `viewer/src/graph/overview.ts`.
+
+**Why 3.** On SchemaMapSynth, 222 of 290 clusters had 2 or 3 tables, and the dense synthetic has almost none. A box that holds 2 or 3 tables tells you less than the tables themselves.
+
+**Hash.** Cluster ids and `cluster=` are unchanged, so every cluster link still opens the same cluster, folded clusters included. There are two new keys: `drill=<schema id>` and `group=<small group id>`. A group id is `group:` plus its smallest table id, the same rule as cluster ids. The crumb asked for one new key, but small groups need an address of their own, so there are two. Nothing existing is repurposed. At most one place is kept: cluster, then group, then drill. Focus keeps the place as the breadcrumb's way back. The breadcrumb reads Overview › schema › cluster or small group › focus. Search and panel links to a table that is not on screen go to the deepest view that holds it: its schema's map when that fits, else its small group or cluster.
+
+**Layout.**
+- The schema overview is not laid out by ELK. Layered layout strung the six connected schemas of SchemaMapSynth into one row, at aspect 9:1. `graph/pack.ts` packs the containers in name order into rows instead. Of every row width that changes the result, it keeps the one whose bounding box is largest on a 1.6:1 screen. With 40 boxes or fewer this is instant and deterministic.
+- Edges between schemas are straight lines labelled with key counts. A curve between boxes side by side loops out of the box.
+- A schema's boxes still use ELK, as before.
+
+**Type.**
+- A full-size box only shows at zoom 0.6 and above, so its text is at least `--sm-text-box` (17 px, new token), which is 10 px on screen at 0.6. Schema containers use 20 px and up.
+- A cluster box puts its table count and key counts on one line, so it keeps its 110 px height.
+- A small-groups box is titled "<n> small groups".
+- Below 0.6, the compact rules of D-048 apply. A container keeps its name and count. Tile names show while a 10 px line fits in a tile, cut with an ellipsis, and the counts always show.
+
+**Accessibility.** Only the container is interactive ("Open schema dbo, 719 tables"). Its tiles are `aria-hidden`; the keyboard reaches clusters through the schema's level. The cluster box's key counts were an `aria-label` on a plain `div`, which ARIA prohibits. It was never seen while clusters were only drawn compact; the schema level draws them full size, so axe caught it. It is now visually hidden text.
+
+**Tests.**
+- `syntheticSnapshot` has a `sparse` shape after `tools/synth.py`: six schemas, 30% of about 1.3 true relationships per table declared. At 2,000 tables it gives 287 clusters, 221 of them small, and 811 keys. The real database gives 290, 222 and 830. The dense shape is unchanged byte for byte.
+- `e2e/overview.spec.ts` runs on both shapes at 1400×900 in fit view. It checks:
+  - 40 or fewer top-level boxes, all schema containers
+  - every name is whole, or middle-ellipsised keeping at least 6 letters
+  - no two names are the same; every label is at least 10 px and not clipped
+  - drill and back, and the keyboard
+- The sparse overview screenshot goes to the CI artifact.
+- `performance.spec` runs on both shapes.
+- **Changed on purpose:** the 2,000-table tests in `readable.spec`, `performance.spec` and `a11y.spec` counted one node per cluster. They now count schema containers, and new tests measure the schema level (readability and axe). The old `buildOverviewGraph` and its unit tests were removed with the one-box-per-cluster overview.
+
+**Known limit.** A database with more than 40 schemas still gets one box per schema. Grouping schemas is not part of this decision.
+
+**Not added.** No dependency.

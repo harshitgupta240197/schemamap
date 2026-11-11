@@ -6,6 +6,7 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { buildIndexes } from "../src/snapshot/indexes";
 import { syntheticSnapshot } from "../src/testing/synthetic";
 import { clusterTables } from "../src/view/clusters";
+import { foldSchemas } from "../src/view/schemaGroups";
 import { mapFile, mapUrl, settled } from "./helpers";
 
 // Axe on the built single file over file://, in both colour schemes. Only serious and critical
@@ -90,11 +91,30 @@ for (const scheme of SCHEMES) {
 
     test("2,000-table overview", async ({ page }, testInfo) => {
       const snapshot = syntheticSnapshot({ tables: 2000, seed: 2000 });
-      const clusters = clusterTables(buildIndexes(snapshot)).clusters.length;
+      const schemas = foldSchemas(clusterTables(buildIndexes(snapshot))).schemas.length;
       await open(page, scheme, mapFile(testInfo.outputPath("big.html"), JSON.stringify(snapshot)));
       await settled(page);
-      await expect(page.locator(".react-flow__node-cluster")).toHaveCount(clusters);
+      await expect(page.locator(".react-flow__node-schema")).toHaveCount(schemas);
       await audit(page, scheme, "overview-2000");
+    });
+
+    test("2,000-table schema level", async ({ page }, testInfo) => {
+      const snapshot = syntheticSnapshot({ tables: 2000, seed: 2000, shape: "sparse" });
+      const dbo = foldSchemas(clusterTables(buildIndexes(snapshot))).schemaById.get("schema:dbo");
+      await open(
+        page,
+        scheme,
+        mapFile(
+          testInfo.outputPath("schema.html"),
+          JSON.stringify(snapshot),
+          "#drill=schema%3Adbo",
+        ),
+      );
+      await settled(page);
+      await expect(page.locator(".react-flow__node-cluster")).toHaveCount(
+        (dbo?.tiles.length ?? 0) + (dbo?.smallGroups.length ?? 0),
+      );
+      await audit(page, scheme, "schema-2000");
     });
 
     test("compact zoom", async ({ page }, testInfo) => {

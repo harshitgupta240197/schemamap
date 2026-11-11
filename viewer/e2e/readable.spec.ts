@@ -2,60 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { buildIndexes } from "../src/snapshot/indexes";
 import { syntheticSnapshot } from "../src/testing/synthetic";
 import { clusterTables } from "../src/view/clusters";
-import { AW, mapFile, mapUrl, settled, WWI } from "./helpers";
-
-interface LabelFacts {
-  /** What a person reads: the schema line (clusters) then the name lines. */
-  readonly text: string;
-  /** Rendered size of the text on screen, in px. */
-  readonly screenPx: number;
-  readonly clipped: boolean;
-}
-
-/** Facts about every label of `kind` that is drawn on the canvas right now. */
-async function labels(page: Page, kind: "table" | "cluster"): Promise<LabelFacts[]> {
-  return page.evaluate((nodeKind) => {
-    const facts: {
-      text: string;
-      screenPx: number;
-      clipped: boolean;
-    }[] = [];
-    for (const node of document.querySelectorAll(`.react-flow__node-${nodeKind}`)) {
-      const name = node.querySelector<HTMLElement>(`.sm-${nodeKind}__name`);
-      if (name === null) {
-        continue;
-      }
-      const lines = [...name.querySelectorAll<HTMLElement>(".sm-label__line")];
-      const schema = node.querySelector<HTMLElement>(".sm-cluster__schema");
-      const viewport = document.querySelector(".react-flow__viewport");
-      const scale = new DOMMatrixReadOnly(
-        viewport === null ? "none" : getComputedStyle(viewport).transform,
-      ).a;
-      const parts = [schema, ...lines].filter((part): part is HTMLElement => part !== null);
-      const sizes = parts.map((part) => parseFloat(getComputedStyle(part).fontSize) * scale);
-      const box = node.querySelector<HTMLElement>(`.sm-${nodeKind}`);
-      const clipped =
-        lines.some((line) => line.scrollWidth > name.clientWidth + 1) ||
-        (box !== null &&
-          parts.some((part) => {
-            const inner = part.getBoundingClientRect();
-            const outer = box.getBoundingClientRect();
-            return (
-              inner.left < outer.left - 1 ||
-              inner.right > outer.right + 1 ||
-              inner.top < outer.top - 1 ||
-              inner.bottom > outer.bottom + 1
-            );
-          }));
-      facts.push({
-        text: parts.map((part) => part.textContent.trim()).join(" / "),
-        screenPx: Math.min(...sizes),
-        clipped,
-      });
-    }
-    return facts;
-  }, kind);
-}
+import { foldSchemas } from "../src/view/schemaGroups";
+import { AW, labels, mapFile, mapUrl, settled, WWI, type LabelFacts } from "./helpers";
 
 function expectReadable(found: readonly LabelFacts[]): void {
   expect(found.length).toBeGreaterThan(10);
@@ -83,15 +31,31 @@ for (const [name, file] of [
   });
 }
 
-test("2,000 tables: overview cluster labels are readable, not clipped and all different", async ({
+test("2,000 tables: schema container labels are readable, not clipped and all different", async ({
   page,
 }, testInfo) => {
   const snapshot = syntheticSnapshot({ tables: 2000, seed: 2000 });
-  const clusters = clusterTables(buildIndexes(snapshot)).clusters.length;
+  const schemas = foldSchemas(clusterTables(buildIndexes(snapshot))).schemas.length;
   await page.setViewportSize({ width: 1400, height: 900 });
   await page.goto(mapFile(testInfo.outputPath("overview.html"), JSON.stringify(snapshot)));
   await settled(page);
-  await expect(page.locator(".react-flow__node-cluster")).toHaveCount(clusters);
+  await expect(page.locator(".react-flow__node-schema")).toHaveCount(schemas);
+  expectReadable(await labels(page, "schema"));
+});
+
+test("2,000 tables: a large schema's cluster and small-group labels are readable", async ({
+  page,
+}, testInfo) => {
+  const snapshot = syntheticSnapshot({ tables: 2000, seed: 2000, shape: "sparse" });
+  const dbo = foldSchemas(clusterTables(buildIndexes(snapshot))).schemaById.get("schema:dbo");
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto(
+    mapFile(testInfo.outputPath("schema.html"), JSON.stringify(snapshot), "#drill=schema%3Adbo"),
+  );
+  await settled(page);
+  await expect(page.locator(".react-flow__node-cluster")).toHaveCount(
+    (dbo?.tiles.length ?? 0) + (dbo?.smallGroups.length ?? 0),
+  );
   expectReadable(await labels(page, "cluster"));
 });
 

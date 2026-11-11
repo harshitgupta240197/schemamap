@@ -98,3 +98,77 @@ export async function watchViolations(page: Page, into: string[] = []): Promise<
   });
   return into;
 }
+
+export interface LabelFacts {
+  /** What a person reads: the schema line (clusters) or count line (schemas), then the name. */
+  readonly text: string;
+  /** The name as drawn (compact lines joined by a space), and the whole name from its title. */
+  readonly name: string;
+  readonly full: string;
+  /** Rendered size of the text on screen, in px. */
+  readonly screenPx: number;
+  readonly clipped: boolean;
+}
+
+/**
+ * Facts about every label of `kind` that is drawn on the canvas right now: the name, plus a
+ * cluster's schema line or a schema container's count line.
+ */
+export async function labels(
+  page: Page,
+  kind: "table" | "cluster" | "schema",
+): Promise<LabelFacts[]> {
+  return page.evaluate((nodeKind) => {
+    const facts: {
+      text: string;
+      name: string;
+      full: string;
+      screenPx: number;
+      clipped: boolean;
+    }[] = [];
+    for (const node of document.querySelectorAll(`.react-flow__node-${nodeKind}`)) {
+      const name = node.querySelector<HTMLElement>(`.sm-${nodeKind}__name`);
+      if (name === null) {
+        continue;
+      }
+      const lines = [...name.querySelectorAll<HTMLElement>(".sm-label__line")];
+      const schema =
+        node.querySelector<HTMLElement>(".sm-cluster__schema") ??
+        node.querySelector<HTMLElement>(".sm-schema__count");
+      const viewport = document.querySelector(".react-flow__viewport");
+      const scale = new DOMMatrixReadOnly(
+        viewport === null ? "none" : getComputedStyle(viewport).transform,
+      ).a;
+      const parts = [schema, ...(lines.length > 0 ? lines : [name])].filter(
+        (part): part is HTMLElement => part !== null,
+      );
+      const sizes = parts.map((part) => parseFloat(getComputedStyle(part).fontSize) * scale);
+      const box = node.querySelector<HTMLElement>(`.sm-${nodeKind}`);
+      const clipped =
+        lines.some((line) => line.scrollWidth > name.clientWidth + 1) ||
+        (lines.length === 0 && name.scrollWidth > name.clientWidth + 1) ||
+        (box !== null &&
+          parts.some((part) => {
+            const inner = part.getBoundingClientRect();
+            const outer = box.getBoundingClientRect();
+            return (
+              inner.left < outer.left - 1 ||
+              inner.right > outer.right + 1 ||
+              inner.top < outer.top - 1 ||
+              inner.bottom > outer.bottom + 1
+            );
+          }));
+      facts.push({
+        text: parts.map((part) => part.textContent.trim()).join(" / "),
+        name:
+          lines.length > 0
+            ? lines.map((line) => line.textContent.trim()).join(" ")
+            : name.textContent.trim(),
+        full: name.title,
+        screenPx: Math.min(...sizes),
+        clipped,
+      });
+    }
+    return facts;
+  }, kind);
+}

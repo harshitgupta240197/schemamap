@@ -1,6 +1,7 @@
 import type { SnapshotIndexes } from "../snapshot/indexes";
 import type { SearchItem } from "../search/searchIndex";
 import type { Clustering } from "./clusters";
+import type { Folding } from "./schemaGroups";
 import type { ViewState } from "./viewState";
 
 /**
@@ -71,21 +72,28 @@ export function focusTargets(indexes: SnapshotIndexes, item: SearchItem): string
 }
 
 /**
- * Table ids shown for a view state, or `null` for every table. Focus wins over a cluster; a
- * cluster shows its own tables whatever the schema filter says (it lies in one schema anyway).
+ * Table ids shown for a view state, or `null` for every table. Focus wins over a place. A cluster,
+ * small group or drilled schema shows its own tables whatever the schema filter says (each lies
+ * in one schema anyway).
  */
 export function visibleTables(
   indexes: SnapshotIndexes,
   state: ViewState,
   clustering: Clustering | null = null,
+  folding: Folding | null = null,
 ): Set<string> | null {
   if (state.focus.length === 0 && state.cluster !== null) {
     return new Set(clustering?.byId.get(state.cluster)?.tableIds ?? []);
   }
-  if (state.focus.length === 0 && state.schemas.length === 0) {
+  if (state.focus.length === 0 && state.group !== null) {
+    return new Set(folding?.groups.get(state.group)?.tableIds ?? []);
+  }
+  if (state.focus.length === 0 && state.schemas.length === 0 && state.drill === null) {
     return null;
   }
-  const schemaIds = new Set(state.schemas);
+  const schemaIds = new Set(
+    state.focus.length === 0 && state.drill !== null ? [state.drill] : state.schemas,
+  );
   const inSchema = (id: string): boolean => {
     const entity = indexes.byId(id);
     return (

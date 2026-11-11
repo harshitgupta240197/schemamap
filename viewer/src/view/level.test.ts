@@ -6,17 +6,32 @@ import {
   allowedHops,
   backToCluster,
   backToRoot,
+  backToSchema,
   clampHops,
+  drillGroup,
   drillInto,
+  drillSchema,
   focusOn,
-  rootTableCount,
+  levelSchema,
+  levelSizes,
+  rootLevel,
   selectObject,
   viewLevel,
   withSchemas,
+  type LevelSizes,
+  type Places,
 } from "./level";
+import { foldSchemas } from "./schemaGroups";
 import { formatHash, makeViewState, parseHash } from "./viewState";
 
 const t = (qualified: string) => `object:${qualified}`;
+
+/** Sizes for `viewLevel`: `root` tables over `rootSchemas` schemas, `drill` in a drilled schema. */
+const sizes = (root: number, rootSchemas = 2, drill = 0): LevelSizes => ({
+  root,
+  rootSchemas,
+  drill,
+});
 
 /** `count` tables in schema `schema`, chained by keys: T0 < T1 < T2 ... */
 function chain(schema: string, count: number): { tables: TableSpec[]; links: LinkSpec[] } {
@@ -38,27 +53,28 @@ describe("viewLevel and the threshold", () => {
   const empty = makeViewState([], 1, []);
 
   it("shows the full map up to the limit and the overview above it", () => {
-    expect(viewLevel(empty, 200)).toBe("map");
-    expect(viewLevel(empty, 201)).toBe("overview");
-    expect(viewLevel(empty, 0)).toBe("map");
+    expect(viewLevel(empty, sizes(200))).toBe("map");
+    expect(viewLevel(empty, sizes(201))).toBe("overview");
+    expect(viewLevel(empty, sizes(0))).toBe("map");
   });
 
   it("puts focus before cluster before the root level", () => {
-    expect(viewLevel(makeViewState([], 1, [], null, "cluster:x"), 5000)).toBe("cluster");
-    expect(viewLevel(makeViewState(["object:a"], 1, [], null, "cluster:x"), 5000)).toBe("focus");
+    expect(viewLevel(makeViewState([], 1, [], null, "cluster:x"), sizes(5000))).toBe("cluster");
+    expect(viewLevel(makeViewState(["object:a"], 1, [], null, "cluster:x"), sizes(5000))).toBe(
+      "focus",
+    );
   });
 
   it("counts the root tables through the schema filter", () => {
     const a = chain("a", 150);
     const b = chain("b", 100);
     const indexes = indexesOf(makeSnapshot([...a.tables, ...b.tables], [...a.links, ...b.links]));
-    expect(rootTableCount(indexes, [])).toBe(250);
-    expect(rootTableCount(indexes, ["schema:a"])).toBe(150);
+    expect(levelSizes(indexes, empty).root).toBe(250);
+    expect(levelSizes(indexes, makeViewState([], 1, ["schema:a"])).root).toBe(150);
     // 250 tables open as the overview, but one schema of 150 fits the full map.
-    expect(viewLevel(empty, rootTableCount(indexes, []))).toBe("overview");
-    expect(
-      viewLevel(makeViewState([], 1, ["schema:a"]), rootTableCount(indexes, ["schema:a"])),
-    ).toBe("map");
+    expect(viewLevel(empty, levelSizes(indexes, empty))).toBe("overview");
+    const onlyA = makeViewState([], 1, ["schema:a"]);
+    expect(viewLevel(onlyA, levelSizes(indexes, onlyA))).toBe("map");
   });
 });
 
@@ -78,7 +94,7 @@ describe("drill-down and back", () => {
   it("goes back up through the breadcrumb, keeping the selection", () => {
     // The Focus button acts on the selected table, so it is selected before focusing.
     const deep = focusOn(drillInto(makeViewState([], 1, [], t("s.T005")), first), t("s.T005"));
-    expect(viewLevel(deep, 31)).toBe("focus");
+    expect(viewLevel(deep, sizes(31))).toBe("focus");
     expect(backToCluster(deep)).toEqual(makeViewState([], 1, [], t("s.T005"), first));
     expect(backToRoot(deep)).toEqual(makeViewState([], 1, [], t("s.T005")));
   });
@@ -113,37 +129,154 @@ describe("selectObject", () => {
     makeSnapshot([...big.tables, ["s", "Alone", ["Id"]]], big.links, [["s.V", ["s.T001"]]]),
   );
   const clustering = clusterTables(indexes, 10);
+  // One schema of 31 tables: in this world the root shows that schema's boxes.
+  const places: Places = { clustering, folding: foldSchemas(clustering), rootLevel: "schema" };
   const clusterOfT25 = clustering.clusterOf.get(t("s.T025")) ?? "";
   const clusterOfT001 = clustering.clusterOf.get(t("s.T001")) ?? "";
 
   it("from the overview, a table drills into its cluster and is selected", () => {
-    const next = selectObject(makeViewState([], 1, []), t("s.T025"), clustering, "overview");
+    const next = selectObject(makeViewState([], 1, []), t("s.T025"), places, "overview");
     expect(next).toEqual(makeViewState([], 1, [], t("s.T025"), clusterOfT25));
   });
 
   it("from a cluster, a table elsewhere moves to its cluster; one on screen only selects", () => {
     const inCluster = makeViewState([], 1, [], null, clusterOfT001);
-    expect(selectObject(inCluster, t("s.T025"), clustering, "cluster").cluster).toBe(clusterOfT25);
-    expect(selectObject(inCluster, t("s.T002"), clustering, "cluster")).toEqual(
+    expect(selectObject(inCluster, t("s.T025"), places, "cluster").cluster).toBe(clusterOfT25);
+    expect(selectObject(inCluster, t("s.T002"), places, "cluster")).toEqual(
       makeViewState([], 1, [], t("s.T002"), clusterOfT001),
     );
   });
 
   it("views and routines only select, at any level", () => {
     const overview = makeViewState([], 1, []);
-    expect(selectObject(overview, t("s.V"), clustering, "overview")).toEqual(
+    expect(selectObject(overview, t("s.V"), places, "overview")).toEqual(
       makeViewState([], 1, [], t("s.V")),
     );
   });
 
   it("on the full map and in focus, a table only selects", () => {
     const focus = makeViewState([t("s.T001")], 1, []);
-    expect(selectObject(focus, t("s.T025"), clustering, "focus")).toEqual(
+    expect(selectObject(focus, t("s.T025"), places, "focus")).toEqual(
       makeViewState([t("s.T001")], 1, [], t("s.T025")),
     );
-    expect(selectObject(makeViewState([], 1, []), t("s.T025"), clustering, "map")).toEqual(
+    expect(selectObject(makeViewState([], 1, []), t("s.T025"), places, "map")).toEqual(
       makeViewState([], 1, [], t("s.T025")),
     );
+  });
+});
+
+describe("schema overview levels", () => {
+  // Schema a: a 250-table chain (split in two clusters) and two pairs P and Q (small groups).
+  // Schema b: a 20-table chain. 274 tables in two schemas: the root is the schema overview.
+  const a = chain("a", 250);
+  const b = chain("b", 20);
+  const indexes = indexesOf(
+    makeSnapshot(
+      [
+        ...a.tables,
+        ...b.tables,
+        ["a", "P1", ["Id"]],
+        ["a", "P2", ["Id"]],
+        ["a", "Q1", ["Id"]],
+        ["a", "Q2", ["Id"]],
+      ],
+      [...a.links, ...b.links, ["a.P2", "a.P1"], ["a.Q2", "a.Q1"]],
+    ),
+  );
+  const clustering = clusterTables(indexes);
+  const folding = foldSchemas(clustering);
+  const group = folding.groupOf.get(t("a.P1")) ?? "";
+  const root = makeViewState([], 1, []);
+  const places: Places = { clustering, folding, rootLevel: rootLevel(indexes, root) };
+  const levelOf = (view: ReturnType<typeof makeViewState>) =>
+    viewLevel(view, levelSizes(indexes, view));
+
+  it("opens on the schema overview, and on one schema's boxes when only it is in view", () => {
+    expect(levelSizes(indexes, root)).toEqual({ root: 274, rootSchemas: 2, drill: 0 });
+    expect(levelOf(root)).toBe("overview");
+    expect(levelOf(makeViewState([], 1, ["schema:a"]))).toBe("schema");
+    expect(levelSchema(indexes, makeViewState([], 1, ["schema:a"]))).toBe("schema:a");
+    expect(levelSchema(indexes, root)).toBeNull();
+  });
+
+  it("drills into a schema: its boxes when it is large, its table map when it fits", () => {
+    expect(levelOf(drillSchema(root, "schema:a"))).toBe("schema");
+    const small = drillSchema(root, "schema:b");
+    expect(levelOf(small)).toBe("map");
+    expect(levelSchema(indexes, small)).toBe("schema:b");
+    expect(visibleTables(indexes, small, clustering, folding)?.size).toBe(20);
+  });
+
+  it("drills into a small group and shows its tables", () => {
+    expect(group).toMatch(/^group:/);
+    const view = drillGroup(drillSchema(root, "schema:a"), group);
+    expect(view).toEqual(makeViewState([], 1, [], null, null, null, group));
+    expect(levelOf(view)).toBe("cluster");
+    expect([...(visibleTables(indexes, view, clustering, folding) ?? [])].sort()).toEqual([
+      t("a.P1"),
+      t("a.P2"),
+      t("a.Q1"),
+      t("a.Q2"),
+    ]);
+  });
+
+  it("keeps the place through a focus and leads back to it, then to the schema and the root", () => {
+    const deep = focusOn(drillGroup(root, group), t("a.P1"));
+    expect(levelOf(deep)).toBe("focus");
+    expect(backToCluster(deep)).toEqual(drillGroup(root, group));
+    expect(backToSchema(deep, "schema:a")).toEqual(drillSchema(root, "schema:a"));
+    expect(backToRoot(deep)).toEqual(root);
+    expect(withSchemas(drillSchema(root, "schema:a"), ["schema:b"])).toEqual(
+      makeViewState([], 1, ["schema:b"]),
+    );
+  });
+
+  it("keeps one place: a cluster wins over a group, a group over a schema", () => {
+    const both = makeViewState([], 1, [], null, "cluster:x", "schema:a", group);
+    expect([both.cluster, both.group, both.drill]).toEqual(["cluster:x", null, null]);
+    const groupAndDrill = makeViewState([], 1, [], null, null, "schema:a", group);
+    expect([groupAndDrill.group, groupAndDrill.drill]).toEqual([group, null]);
+  });
+
+  it("a selection moves to the deepest view that shows the table", () => {
+    // A schema that fits one layout: its table map.
+    expect(selectObject(root, t("b.T005"), places, "overview")).toEqual(
+      makeViewState([], 1, [], t("b.T005"), null, "schema:b"),
+    );
+    // A large schema: the small group, or the cluster.
+    expect(selectObject(root, t("a.Q2"), places, "overview")).toEqual(
+      makeViewState([], 1, [], t("a.Q2"), null, null, group),
+    );
+    expect(selectObject(drillSchema(root, "schema:a"), t("a.T100"), places, "schema")).toEqual(
+      makeViewState([], 1, [], t("a.T100"), clustering.clusterOf.get(t("a.T100"))),
+    );
+  });
+
+  it("a selection already on screen only selects", () => {
+    const inGroup = drillGroup(root, group);
+    expect(selectObject(inGroup, t("a.Q1"), places, "cluster")).toEqual(
+      makeViewState([], 1, [], t("a.Q1"), null, null, group),
+    );
+    const schemaMap = drillSchema(root, "schema:b");
+    expect(selectObject(schemaMap, t("b.T001"), places, "map")).toEqual(
+      makeViewState([], 1, [], t("b.T001"), null, "schema:b"),
+    );
+    // From the schema map of b, a table of a moves.
+    expect(selectObject(schemaMap, t("a.P1"), places, "map").group).toBe(group);
+  });
+
+  it("round-trips group and drill through the hash", () => {
+    const groups = new Set(folding.groups.keys());
+    const clusters = new Set(clustering.byId.keys());
+    for (const view of [
+      makeViewState([], 1, [], t("a.P1"), null, null, group),
+      makeViewState([], 1, ["schema:a"], null, null, "schema:b"),
+      makeViewState([t("a.P1")], 2, [], null, null, null, group),
+    ]) {
+      expect(parseHash(formatHash(view), indexes, clusters, groups)).toEqual(view);
+    }
+    expect(formatHash(drillGroup(root, group))).toBe(`#group=${encodeURIComponent(group)}`);
+    expect(formatHash(drillSchema(root, "schema:b"))).toBe("#drill=schema%3Ab");
   });
 });
 
