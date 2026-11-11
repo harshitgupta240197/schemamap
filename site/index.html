@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; object-src 'none'"
+    />
+    <title>Schema Map: see how your SQL Server database connects</title>
+    <meta
+      name="description"
+      content="Point it at a database. In five minutes, see how everything connects. Schema Map reads only metadata, never row data, and draws an offline map of tables, relationships and dependencies."
+    />
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/join.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="wrap top">
+      <p class="brand">Schema Map</p>
+      <nav aria-label="Page">
+        <a href="#join">Join the waitlist</a>
+        <a href="https://github.com/harshitgupta240197/schemamap">GitHub</a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="wrap hero">
+        <h1>Point it at a database. In five minutes, see how everything connects.</h1>
+        <p class="lede">
+          Schema Map is a free, open-source tool for SQL Server. It draws a map of every table,
+          relationship and dependency, including the relationships nobody ever declared.
+        </p>
+        <p><a class="button" href="#join">Join the waitlist</a></p>
+        <figure>
+          <img
+            src="/assets/map.png"
+            width="1280"
+            height="800"
+            alt="The Schema Map viewer showing the AdventureWorks sample database as a map of 71 tables joined by relationship lines."
+          />
+          <figcaption>
+            The AdventureWorks sample database, 71 tables, drawn by Schema Map.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="wrap trust" aria-labelledby="trust-title">
+        <h2 id="trust-title">Reads metadata only. Never row data.</h2>
+        <p>
+          <strong>The map file cannot send anything anywhere.</strong> Schema Map connects with a
+          read-only login and reads only the system catalog: table, column, key and dependency
+          definitions. It does not read the rows in your tables. The map is one file that opens
+          offline in your browser, and its security policy blocks every network request.
+        </p>
+      </section>
+
+      <section class="wrap" aria-labelledby="see-title">
+        <h2 id="see-title">From one table to the whole estate</h2>
+        <div class="pair">
+          <figure>
+            <img
+              src="/assets/detail.png"
+              width="1280"
+              height="800"
+              loading="lazy"
+              alt="Detail panel for the Person.Person table listing its 13 columns with types, keys and indexes, next to the tables it connects to."
+            />
+            <figcaption>
+              Pick a table to see its columns, keys, indexes and everything it connects to.
+            </figcaption>
+          </figure>
+          <figure>
+            <img
+              src="/assets/overview.png"
+              width="1280"
+              height="800"
+              loading="lazy"
+              alt="Overview of a 2,000-table database: six schema boxes, each listing its largest groups of related tables."
+            />
+            <figcaption>
+              A 2,000-table database (synthetic) stays readable: one box per schema, drill in as
+              deep as you like.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="wrap" aria-labelledby="who-title">
+        <h2 id="who-title">Who it is for</h2>
+        <ul class="who">
+          <li>
+            <strong>DBAs</strong> who inherited a database with no documentation and need to know
+            what breaks if a table changes.
+          </li>
+          <li>
+            <strong>BI developers</strong> who need to find the right tables and the join paths
+            between them.
+          </li>
+          <li>
+            <strong>Data engineers</strong> who are about to migrate, refactor or document a SQL
+            Server estate.
+          </li>
+        </ul>
+      </section>
+
+      <section class="wrap pulse" aria-labelledby="pulse-title">
+        <h2 id="pulse-title">Pulse: performance insights, coming later</h2>
+        <p>
+          The map shows how a database is built. Pulse will show how it behaves, using the same
+          metadata-only approach. It is not ready yet. Joining the waitlist is the way to hear about
+          it.
+        </p>
+      </section>
+
+      <section class="wrap join" id="join" aria-labelledby="join-title">
+        <h2 id="join-title">Join the waitlist</h2>
+        <p>One email when Schema Map is ready. Nothing else.</p>
+        <form id="join-form" action="/api/join" method="post">
+          <div class="field">
+            <label for="email">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              required
+              maxlength="254"
+            />
+          </div>
+          <div class="field">
+            <label for="role">Your role</label>
+            <select id="role" name="role" required>
+              <option value="" selected disabled>Choose one</option>
+              <option>DBA</option>
+              <option>BI developer</option>
+              <option>Data engineer</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="check">
+            <input id="wants_call" name="wants_call" type="checkbox" />
+            <label for="wants_call">I'm happy to do a 20-minute call</label>
+          </div>
+          <div class="trap" aria-hidden="true">
+            <label for="website">Leave this field empty</label>
+            <input id="website" name="website" type="text" tabindex="-1" autocomplete="off" />
+          </div>
+          <button class="button" type="submit">Join the waitlist</button>
+          <p id="status" class="status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+    </main>
+
+    <footer class="wrap foot">
+      <h2>Privacy</h2>
+      <p>
+        This page sets no cookies, runs no analytics and loads nothing from other sites. If you
+        join, we store your email, your role and your answer about a call, and use them only to
+        contact you about Schema Map. Reply to any email from us, or open an issue on GitHub, and we
+        will delete them.
+      </p>
+      <p>
+        <a href="https://github.com/harshitgupta240197/schemamap">Schema Map on GitHub</a> · Open
+        source, Apache-2.0
+      </p>
+    </footer>
+  </body>
+</html>

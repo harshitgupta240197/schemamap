@@ -446,3 +446,15 @@ Choices: draft 2020-12 (`ajv/dist/2020`), strict mode, `allErrors` for useful me
 **Known limit.** A database with more than 40 schemas still gets one box per schema. Grouping schemas is not part of this decision.
 
 **Not added.** No dependency.
+
+## D-054 Landing page: static HTML and one function, not Next.js (2026-11-11)
+
+The landing page and waitlist (`site/`) are one static HTML page, one stylesheet, one small script and one Vercel function (`api/join`). No framework and no build step.
+
+**Why.** The page has to be trustworthy to people who care about what code runs: no trackers, no cookies, no third-party requests, a Content-Security-Policy of `default-src 'self'` with no inline script. A static page makes that easy to verify by reading it, and the tests prove it. Next.js would add a build, a runtime, hydration scripts and a dependency tree for a page with one form. The form posts normally without JavaScript; `join.js` only improves it.
+
+**Waitlist storage.** Supabase over its REST API with the public anon key. The table allows INSERT for `anon` and nothing else (`site/supabase.sql`), so a leaked key cannot read the list. A duplicate email and a honeypot hit both return the success message, so the endpoint never reveals who signed up. The function never logs the email or Supabase's response.
+
+**Dependencies (dev only, none ship to visitors).** `site/` uses the approved test stack: Vitest, Playwright, `@axe-core/playwright`, ESLint, Prettier, at the versions the viewer uses. `tools/site_shots.py` uses Pillow (pinned, run through `uv run` inline metadata) to reduce the committed screenshots to 256-colour PNGs; no PNG optimiser is installed on CI or developer machines.
+
+**Screenshots** are made by `viewer/site-shots/` (a separate Playwright config, run on purpose) from maps `schemamap view` produced, using the AdventureWorks golden snapshot and the synthetic generator only.

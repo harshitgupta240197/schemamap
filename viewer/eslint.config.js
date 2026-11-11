@@ -13,6 +13,7 @@ export default tseslint.config(
       "test-results",
       "node_modules",
       ".flow-maps",
+      ".site-shots",
       "screenshots",
     ],
   },

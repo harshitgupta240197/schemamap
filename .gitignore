@@ -49,3 +49,4 @@ viewer/screenshots/
 # Built viewer, packaged by tools/build_viewer.py (D-051)
 cli/src/schemamap/viewer_dist/
 viewer/.flow-maps/
+viewer/.site-shots/
