@@ -1,7 +1,7 @@
 // POST /api/join: add one person to the waitlist.
 //
 // Checks the email and role, drops honeypot hits without a trace, inserts into Supabase over its
-// REST API with the anon key (the table allows INSERT only, see supabase.sql), and answers the
+// REST API with the anon key (the table allows INSERT only, see supabase/migrations), and answers the
 // same way for a new and an already-known email so nobody can learn who has signed up.
 // It never logs the email, nor anything Supabase sends back (an error body can quote it).
 
@@ -100,6 +100,7 @@ function page(title, message, ok) {
 <main class="notice" id="main">
 <h1>${title}</h1>
 <p role="${ok ? "status" : "alert"}">${message}</p>
+<p>To have your details deleted, write to <a href="mailto:aukaaatsebahar@gmail.com">aukaaatsebahar@gmail.com</a>.</p>
 <p><a href="/${ok ? "" : "#join"}">${ok ? "Back to Schema Map" : "Back to the form"}</a></p>
 </main>
 </body>

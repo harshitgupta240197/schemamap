@@ -30,6 +30,7 @@ docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate repo
 - Viewer checks: `cd viewer && npm run lint && npm run typecheck && npm test && npm run build && npm run check:bundle`
 - Regenerate viewer types and the precompiled validator after changing `schema/snapshot.v1.json`: `cd viewer && npm run gen:types` (CI runs `npm run gen:check` and fails on drift)
 - Site checks: `cd site && npm run lint && npm test && npm run e2e` (needs `npx playwright install chromium`)
+- Site against real local Supabase (needs Docker and the Supabase CLI): `cd site && supabase start && npm run test:integration`; `npm run local:up` serves the site on it
 - Landing-page screenshots (needs the packaged viewer): `cd viewer && npm run site:shots && cd .. && uv run tools/site_shots.py`
 - Package the viewer for `schemamap view` (needs `npm ci` in `viewer/`; output is gitignored): `uv run tools/build_viewer.py`
 - Viewer end-to-end (needs the packaged viewer; the global setup makes the AdventureWorks and WWI maps with the real CLI; Firefox needs `npx playwright install firefox`): `cd viewer && npx playwright test`
