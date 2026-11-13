@@ -15,11 +15,18 @@ from schemamap.ui.server import LauncherServer
 runner = CliRunner()
 
 
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
 def test_ui_help_has_examples() -> None:
-    result = runner.invoke(app, ["ui", "--help"])
+    # Fixed width and no colour, as the other help tests do, so CI's terminal cannot wrap it.
+    result = runner.invoke(
+        app, ["ui", "--help"], env={"COLUMNS": "200", "TERM": "xterm", "NO_COLOR": "1"}
+    )
     assert result.exit_code == 0
-    assert "schemamap ui --no-open" in result.stdout
-    assert "127.0.0.1" in result.stdout
+    text = re.sub(r"\s+", " ", re.sub(r"[│╭╮╰╯─]", " ", ANSI.sub("", result.output)))
+    assert "schemamap ui --no-open" in text
+    assert "127.0.0.1" in text
 
 
 def test_a_missing_launcher_exits_1_and_names_the_build_command(
