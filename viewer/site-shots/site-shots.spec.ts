@@ -1,12 +1,10 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { test, type Page } from "@playwright/test";
-import { syntheticSnapshot } from "../src/testing/synthetic";
 import { AW, settled, viewWithCli } from "../e2e/helpers";
 
-// Three screenshots of the real viewer for the landing page, from maps the real CLI made
-// (`schemamap view`). Public data only: the AdventureWorks golden snapshot and the synthetic
-// generator. Raw PNGs go to .site-shots/; tools/site_shots.py optimises them into site/assets/.
+// Two light-mode screenshots of the real viewer for the landing page, from maps the real CLI made
+// (`schemamap view`). Public data only: the AdventureWorks golden snapshot. Raw PNGs go to .site-shots/; tools/site_shots.py optimises them into site/assets/.
 
 const RAW = path.resolve(".site-shots");
 const SIZE = { width: 1280, height: 800 };
@@ -35,14 +33,4 @@ test("detail panel", async ({ page }) => {
   await settled(page);
   await page.getByRole("complementary", { name: /Details: / }).waitFor();
   await page.screenshot({ path: path.join(RAW, "detail.png") });
-});
-
-test("2,000-table overview", async ({ page }) => {
-  const snapshotFile = path.join(RAW, "synthetic-2000.snapshot.json");
-  writeFileSync(
-    snapshotFile,
-    JSON.stringify(syntheticSnapshot({ tables: 2000, seed: 2000, shape: "sparse" })),
-  );
-  await open(page, viewWithCli(snapshotFile, path.join(RAW, "big.html")));
-  await page.screenshot({ path: path.join(RAW, "overview.png") });
 });
