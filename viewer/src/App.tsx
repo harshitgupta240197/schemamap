@@ -1,4 +1,4 @@
-import "./tokens.css";
+import "./shared/tokens.css";
 import "./app.css";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { DetailPanel } from "./detail/DetailPanel";

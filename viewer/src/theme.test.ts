@@ -3,8 +3,8 @@ import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { SCHEMA_PALETTE_SIZE } from "./snapshot/schemaColors";
 
-const css = readFileSync(path.resolve("src", "tokens.css"), "utf8");
-const [lightPart = "", darkPart = ""] = css.split("@media (prefers-color-scheme: dark)");
+const css = readFileSync(path.resolve("src", "shared", "tokens.css"), "utf8");
+const [lightPart = "", darkPart = ""] = css.split(':root[data-theme="dark"]');
 
 function tokens(block: string): Map<string, string> {
   const found = new Map<string, string>();

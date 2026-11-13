@@ -151,3 +151,7 @@ Minimum-width layering time by size (denser graphs, about 1.5 keys per table):
 | 400 | 5.6 s |
 
 The default layering takes 1.6 s at 800 tables but lays fan-outs out as tall strips. So minimum width is used up to the 200-table layout limit and the default beyond it.
+
+## Map file with the light theme and Inter (crumb U.1a)
+
+`dist/index.html` is 2,271.88 kB (690.10 kB gzipped) with the Inter latin variable font inlined as a `data:` font. The font file is 48 KB, about 64 KB as base64 in the page, against a limit of 350 KB, so Inter is kept (D-061).

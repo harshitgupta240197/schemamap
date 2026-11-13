@@ -128,7 +128,7 @@ for (const map of FLOW_MAPS) {
       expect(problems).toEqual([]);
     });
 
-    test("dark mode follows the system and changes the page", async ({ page }) => {
+    test("System theme follows the OS and changes the page", async ({ page }) => {
       const problems = await watch(page);
       await page.emulateMedia({ colorScheme: "light" });
       await page.goto(flowUrl(map, `#focus=object%3A${map.table}`));
@@ -137,7 +137,10 @@ for (const map of FLOW_MAPS) {
       const light = await background();
       await shot(page, map, "8-light");
 
+      // Light is the default, so the OS only matters once System is chosen.
       await page.emulateMedia({ colorScheme: "dark" });
+      expect(await background()).toBe(light);
+      await page.getByRole("radio", { name: "System" }).check();
       await expect.poll(background).not.toBe(light);
       await shot(page, map, "9-dark");
       await page.reload();

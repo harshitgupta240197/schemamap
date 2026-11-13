@@ -513,3 +513,15 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 **Why.** The browser-launch helper (`open`, `xdg-open`, `start`) receives the whole URL in its arguments, which other local users can read with `ps`, and the terminal and the browser's history database keep it too. With the token in the link, anyone who saw it held a working session until the server stopped. With a one-time code, a link seen later is worthless. The map route cannot carry a header because the map opens by ordinary navigation, so the browser's own cross-site signal is the next best guard, and costs one header check. A single-use ticket for maps was rejected: it would break reload and bookmarks.
 
 **Cost and residual.** One route and one round trip. A link opened after 60 seconds, or a second time (another browser profile, a closed tab), needs `schemamap ui` run again. For the first 60 seconds a local user who sees the link before the owner's browser redeems it could take the session first; the owner then sees "already used", so it is noisy but possible on a shared machine (UI.md threat model). **Not added:** no dependency.
+
+## D-061 Map light theme from the site, switchable, Inter inlined (2026-11-13)
+
+**Decision.**
+- The map's tokens now live in `viewer/src/shared/tokens.css`, the one file the launcher (U.4) will import. Light is the default and uses the landing page's palette (violet `#5B3FA0`, teal `#0E7C77`, ink, wash, line); radii are 6/8/12/16 px. Dark stays, retuned to a light-violet accent (`#B7A3F0`) that passes 4.5:1 on its surfaces.
+- The OS no longer decides. A Light / Dark / System radio group in the toolbar chooses; the choice is kept in `localStorage` under `schemamap-theme` (read and written inside try/catch; a missing, invalid or blocked value is Light). `<html data-theme>` carries the resolved theme, and "System" follows the OS live. No URL-hash key was added, so a shared link never carries a theme.
+- Inter (latin variable, 48 KB woff2, OFL licence beside it) is inlined as a `data:` font: the file grows by about 64 KB, far under the 350 KB limit. `font-src data:` already allowed it.
+- Compact labels are drawn at 10.02 px on screen, not 10, because a computed font size is rounded to four decimals and measured 9.99999 px at zoom 0.45 against the 10 px readability test.
+
+**Why.** The map should feel like the landing page and the launcher, and a tool opened beside a dark OS should not surprise the person. A remembered, explicit choice is easy to reason about.
+
+**Cost.** One shared module (`shared/theme.ts`) and a small component. A dark-OS user who wants dark picks it once. **Not added:** no dependency (Inter is the file already self-hosted for the site).

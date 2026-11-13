@@ -67,6 +67,27 @@ Harshit's decision (13 Nov 2026): most target users (BI developers, consultants,
   - [ ] All security tests pass; CLI checks green on all CI OSes; CI green on the last pushed commit (PROGRESS commit included)
 - Commit: `feat(ui): hardened local server for the launcher`
 
+### U.1a Map light theme matching the site
+- Model: Sonnet 5.5 · Effort: medium · Mode: normal
+- Session: /clear → /model sonnet → /effort medium
+- Depends on: U.1
+- Goal: the map looks like the landing page: light, calm, violet, and the same in the launcher later.
+- Build:
+  - Re-skin the viewer's light tokens (viewer/src/tokens.css) from site/style.css: violet #5B3FA0 accent (hover #432C7A), teal #0E7C77 secondary, ink #1E1B2E text, muted #4A4760, wash #FAF9FC canvas, line #ECEAF2 borders, white nodes and panels with soft shadows and 8–16 px radii like the site cards
+  - Light is the default regardless of OS; a Light / Dark / System switch in the toolbar (accessible radio group), remembered in localStorage wrapped in try/catch (falls back to Light); no new URL-hash key
+  - Dark theme kept and retuned so the violet accent passes contrast there too
+  - Schema colour palette re-checked against the new canvas: still colour-blind safe, ≥ 3:1 in both themes
+  - Inter: inline the self-hosted latin variable woff2 into the map file as a data: font only if it adds ≤ 350 KB; otherwise keep the system font stack. Record the choice and size in DECISIONS and PERFORMANCE.md
+  - Move these tokens to one shared file the launcher (U.4) will import
+- Tests:
+  - Existing theme, contrast, axe and readability tests all pass in both themes (none weakened; changed colour values updated with reasons)
+  - Playwright: a fresh map with OS set to dark still opens light; the switch changes theme and persists across reload; with localStorage throwing it opens light without errors; zero CSP violations
+  - check:bundle and the CSP tests still pass; map size recorded
+- Done when:
+  - [ ] All viewer checks + check:bundle green locally; CI green on the last pushed commit (PROGRESS commit included)
+  - [ ] Light screenshots of full map, panel and overview in CI artifacts for Harshit's review
+- Commit: `feat(viewer): light theme matching the site, with theme switch`
+
 ### U.2 Connection API
 - Model: Sonnet 5.5 · Effort: high · Mode: normal
 - Session: /clear → /model sonnet → /effort high
