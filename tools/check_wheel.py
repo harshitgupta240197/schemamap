@@ -5,7 +5,8 @@
 
 The wheel must contain schemamap/viewer_dist/index.html and manifest.json, and the manifest's
 sha256 and byte count must match the index.html in the wheel (D-051), and the page must carry
-exactly one Content-Security-Policy meta tag (D-052).
+exactly one Content-Security-Policy meta tag (D-052). It must also carry the launcher page for
+`schemamap ui` and a launcher.json whose sha256 matches it (D-059).
 """
 
 from __future__ import annotations
@@ -18,6 +19,8 @@ from pathlib import Path
 
 PAGE = "schemamap/viewer_dist/index.html"
 MANIFEST = "schemamap/viewer_dist/manifest.json"
+LAUNCHER = "schemamap/viewer_dist/launcher.html"
+LAUNCHER_MANIFEST = "schemamap/viewer_dist/launcher.json"
 CSP_MARKER = b'http-equiv="Content-Security-Policy"'
 
 
@@ -29,7 +32,7 @@ def check_wheel(wheel: Path) -> None:
     """Raise ``WheelError`` unless ``wheel`` holds the viewer and a manifest that matches it."""
     with zipfile.ZipFile(wheel) as archive:
         names = set(archive.namelist())
-        for required in (PAGE, MANIFEST):
+        for required in (PAGE, MANIFEST, LAUNCHER, LAUNCHER_MANIFEST):
             if required not in names:
                 raise WheelError(f"{wheel.name} does not contain {required}")
         page = archive.read(PAGE)
@@ -37,6 +40,17 @@ def check_wheel(wheel: Path) -> None:
             manifest = json.loads(archive.read(MANIFEST))
         except json.JSONDecodeError as error:
             raise WheelError(f"{MANIFEST} is not valid JSON: {error}") from error
+        launcher = archive.read(LAUNCHER)
+        try:
+            launcher_manifest = json.loads(archive.read(LAUNCHER_MANIFEST))
+        except json.JSONDecodeError as error:
+            raise WheelError(f"{LAUNCHER_MANIFEST} is not valid JSON: {error}") from error
+    launcher_digest = hashlib.sha256(launcher).hexdigest()
+    if (
+        not isinstance(launcher_manifest, dict)
+        or launcher_manifest.get("sha256") != launcher_digest
+    ):
+        raise WheelError(f"{LAUNCHER_MANIFEST} sha256 does not match {LAUNCHER}")
     digest = hashlib.sha256(page).hexdigest()
     if not isinstance(manifest, dict) or manifest.get("sha256") != digest:
         raise WheelError(f"{MANIFEST} sha256 does not match {PAGE} (file is {digest})")
@@ -56,7 +70,7 @@ def main(argv: list[str]) -> int:
     except (WheelError, OSError, zipfile.BadZipFile) as error:
         print(f"check_wheel: {error}", file=sys.stderr)
         return 1
-    print(f"{argv[1]}: viewer and manifest present, sha256 matches, one Content-Security-Policy")
+    print(f"{argv[1]}: viewer, launcher and manifests present, sha256s match, one policy")
     return 0
 
 

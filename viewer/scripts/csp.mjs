@@ -72,6 +72,13 @@ export function inlineScriptSources(html) {
   return [...new Set(executable.map((script) => scriptSource(script.textContent ?? "")))];
 }
 
+/** The sources of the inline `<style>` elements of `html`, in document order, without repeats. */
+export function inlineStyleSources(html) {
+  const document = new JSDOM(html).window.document;
+  const styles = [...document.querySelectorAll("style")];
+  return [...new Set(styles.map((style) => scriptSource(style.textContent ?? "")))];
+}
+
 /** The CSP meta elements of a document. */
 function policyMetas(document) {
   return [...document.querySelectorAll("meta[http-equiv]")].filter(

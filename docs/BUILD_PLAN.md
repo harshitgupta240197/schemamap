@@ -781,6 +781,151 @@ Branch: `phase-5-launch`.
 
 ---
 
+## Phase U: Schema Map UI (local launcher)
+
+Branch `phase-u-launcher`. Gate: U.7, then PR, merge commit, tag `v0.1.0-alpha.3`. Why, what the user gets and the launcher non-negotiables: `docs/plans/PHASE_U.md`; design: `docs/UI.md`.
+
+### U.0 Launcher design and walking skeleton
+- Model: Opus 5.5 · Effort: medium · Mode: plan mode first
+- Session: /clear → /model opus → /effort medium
+- Depends on: 0.12
+- Goal: a reviewed architecture and threat model for the local launcher, proven by a minimal end-to-end skeleton.
+- Build:
+  - Append this phase's crumbs from `docs/plans/PHASE_U.md` to `docs/BUILD_PLAN.md`
+  - `docs/UI.md`: architecture (server module, API, job model, where files go, how the launcher front end is built and packaged), the full HTTP API (routes, request and response shapes, error codes), and a threat model (DNS rebinding, CSRF, token leakage, other local users, malicious web pages, password exposure, path traversal in file paths, oversized requests) with the mitigation for each
+  - Decide the server stack and record it in DECISIONS: stdlib `http.server` + `ThreadingHTTPServer`, or Starlette + uvicorn. Prefer no new runtime dependency unless the design needs it; justify either way
+  - Decide where the launcher front end lives (recommended: a second entry in `viewer/`, built as its own single file and packaged next to the map viewer by `tools/build_viewer.py`)
+  - DECISIONS D-057: "Schema Map ships a local UI (`schemamap ui`) served from 127.0.0.1; the map file stays offline". It supersedes the "no server in v1" part of D-003; record why (target users expect a UI)
+  - Walking skeleton: `schemamap ui --no-open` starts on 127.0.0.1 with a random port, prints the launch URL, serves a placeholder page and `GET /api/health` behind the token check
+- Tests:
+  - Unit: server binds 127.0.0.1 only; wrong Host → 403; missing or wrong token → 401; right token → 200
+  - Playwright: open the launch URL, the page shows "Connected to Schema Map", and the token is gone from the address bar
+- Done when:
+  - [ ] `docs/UI.md` and D-057 written; Harshit reviews them in the Claude Project before U.1
+  - [ ] Skeleton tests green locally; CI green on the last pushed commit (PROGRESS commit included)
+- Commit: `docs(ui): launcher design, threat model and skeleton`
+
+### U.1 Local server core
+- Model: Sonnet 5.5 · Effort: high · Mode: normal
+- Session: /clear → /model sonnet → /effort high
+- Depends on: U.0
+- Goal: a hardened local server every later crumb builds on.
+- Build:
+  - `schemamap ui` options: `--port` (default random), `--no-open`, `--data-dir` (default per OS: `~/SchemaMap` on macOS/Linux, `%USERPROFILE%\SchemaMap` on Windows)
+  - Host and Origin checks, token check on every `/api/*` route, constant-time compare, request body limit (1 MB), JSON only, security headers (CSP from PHASE_U.md, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store` on API responses)
+  - Serves the packaged launcher page; clear error naming `tools/build_viewer.py` when it's missing (exit code per D-036)
+  - Shutdown: Ctrl+C, `POST /api/quit`, 30-minute idle timeout; prints where the data folder is
+  - Opens the default browser with the launch URL (file and http only, never a shell command)
+- Tests:
+  - Unit and HTTP tests: 0.0.0.0 never bound; DNS-rebinding Host (`evil.example:PORT`) → 403; `Origin: https://evil.example` → 403; no token, wrong token, token in query string instead of header → 401; body over 1 MB → 413; non-JSON → 415; every response carries the security headers; idle timeout shuts down (time mocked)
+  - CLI: `schemamap ui --help` has examples; exit codes per D-036
+- Done when:
+  - [ ] All security tests pass; CLI checks green on all CI OSes; CI green on the last pushed commit (PROGRESS commit included)
+- Commit: `feat(ui): hardened local server for the launcher`
+
+### U.2 Connection API
+- Model: Sonnet 5.5 · Effort: high · Mode: normal
+- Session: /clear → /model sonnet → /effort high
+- Depends on: U.1
+- Goal: test a connection and list databases from the UI, with credentials never kept.
+- Build:
+  - `POST /api/connection/test`: runs the `doctor` checks with the submitted settings; returns each check (pass, warn, fail), a plain-English message and fix; never echoes the password
+  - `POST /api/databases`: lists databases the login can open, via a new allowlisted query (`sys.databases` with `HAS_DBACCESS(name) = 1`, excluding system databases unless asked)
+  - Password handling: held only for the request, then dropped; never logged, put in errors, or written; the existing redaction rules apply to every response
+  - Recent connections: saved to `<data-dir>/connections.json` only when "remember" is set, holding server, port, database, auth mode and user only; `GET` and `DELETE` routes
+- Tests:
+  - Unit: every hostile password from Gate 1 never appears in any response body, log or saved file; connections.json never holds a password field (schema test); the new query passes the allowlist test
+  - Integration (lab): test connection green for `schemamap_reader`; wrong password → fail with the right fix; database list includes AdventureWorks2022 and WideWorldImporters
+- Done when:
+  - [ ] Redaction and allowlist tests pass; integration tests pass in CI; CI green on the last pushed commit (PROGRESS commit included)
+- Commit: `feat(ui): connection test and database list API`
+
+### U.3 Extract jobs and maps library
+- Model: Sonnet 5.5 · Effort: high · Mode: normal
+- Session: /clear → /model sonnet → /effort high
+- Depends on: U.2
+- Goal: run an extract from the UI with live progress and keep the resulting maps.
+- Build:
+  - `POST /api/jobs`: starts an extract in a background thread with the submitted settings (password used, then dropped); one job at a time; returns a job id
+  - `GET /api/jobs/<id>`: status and per-section progress (the extract pipeline reports progress through a callback, also used by the CLI's progress bar); `POST /api/jobs/<id>/cancel`
+  - On success: snapshot and map written to `<data-dir>/maps/` with the existing safe naming and atomic writes; the job returns a map id
+  - `GET /api/maps` (list with database, server, extraction time, table count, size), `GET /maps/<id>` serves the map HTML unchanged, `GET /api/maps/<id>/download`, `DELETE /api/maps/<id>`
+  - `POST /api/maps/import`: accepts an uploaded `.json`/`.json.gz` snapshot, validates it as `view` does, and makes a map
+  - Map ids are generated, never taken from user paths; no route accepts a file path
+- Tests:
+  - Unit: job lifecycle (start, progress, done, fail, cancel), one-at-a-time, path traversal attempts in ids → 404, imported snapshot with bad version → friendly error, the served map is byte-identical to `schemamap view` output for the same snapshot
+  - Integration (lab): extract AdventureWorks2022 via the API; the map lists 71 tables
+- Done when:
+  - [ ] Job, library and integration tests pass; CI green on the last pushed commit (PROGRESS commit included)
+- Commit: `feat(ui): extract jobs and maps library`
+
+### U.4 Launcher screens: connect, check, pick
+- Model: Sonnet 5.5 · Effort: medium · Mode: normal
+- Session: /clear → /model sonnet → /effort medium
+- Depends on: U.3, and the screen mockups approved in the Claude Project (saved as `docs/design/launcher.dc.html`)
+- Goal: a first-time user can connect and pick a database without reading docs.
+- Build:
+  - Launcher front end (React + TypeScript, built as its own single file, packaged by `tools/build_viewer.py`), matching `docs/design/launcher.dc.html`
+  - Connect screen: fields, auth modes (Windows shown only on Windows), password field with show/hide, "remember this connection" (never the password), recent connections list, advanced section
+  - Check results: each check with status, message and fix; Copy for the permission script
+  - Database picker with search; empty and error states; keyboard-only flow; light design with self-hosted Inter
+  - All server-returned text rendered as React text only; the no-raw-HTML lint rule applies
+- Tests:
+  - Vitest: form validation, auth-mode visibility, recent connections never show a password
+  - Playwright against a real `schemamap ui` with a stubbed API: full keyboard flow; axe zero serious/critical at 1280 and 375 px; no request leaves 127.0.0.1
+- Done when:
+  - [ ] Launcher checks green locally; CI green on the last pushed commit (PROGRESS commit included)
+- Commit: `feat(ui): connect, check and database picker screens`
+
+### U.5 Launcher screens: extract, map, recent maps
+- Model: Sonnet 5.5 · Effort: medium · Mode: normal
+- Session: /clear → /model sonnet → /effort medium
+- Depends on: U.4
+- Goal: from a picked database to an open map in one click, and back again later.
+- Build:
+  - Extract screen: per-section progress, elapsed time, Cancel, friendly failures with the fix
+  - Done screen: "Open map" (new tab, `/maps/<id>`), "Save map file", "Extract another database"
+  - Recent maps screen: list, open, re-run (asks for the password again), delete with confirmation, "Open a snapshot file"
+  - Quit button (calls `/api/quit`, shows "You can close this tab")
+- Tests:
+  - Playwright (CI integration job, real lab): connect as `schemamap_reader`, pick AdventureWorks2022, extract, open the map, reach layout status done; re-run from Recent maps; delete a map; import the WWI fixture snapshot; zero CSP violations on launcher and map
+  - axe zero serious/critical on every launcher state
+- Done when:
+  - [ ] End-to-end launcher flow passes in CI against the real lab; CI green on the last pushed commit (PROGRESS commit included)
+- Commit: `feat(ui): extract progress, map hand-off and recent maps`
+
+### U.6 Cross-platform and docs
+- Model: Sonnet 5.5 · Effort: high · Mode: normal
+- Session: /clear → /model sonnet → /effort high
+- Depends on: U.5
+- Goal: `schemamap ui` works the same on Windows, macOS and Linux, and a newcomer can follow the docs.
+- Build:
+  - CI: on all three OSes, start `schemamap ui --no-open`, hit `/api/health` with the token, quit cleanly; data folder created in the right place per OS
+  - Windows: Windows auth option shown and passed through; paths with spaces and non-ASCII user names
+  - README quickstart leads with `schemamap ui`; the CLI path follows; `docs/UI.md` user section with screenshots placeholder list
+- Tests:
+  - The CI jobs above; data-dir unit tests per OS
+- Done when:
+  - [ ] UI smoke job green on all three OSes; CI green on the last pushed commit (PROGRESS commit included)
+- Commit: `ci(ui): launcher on three operating systems and docs`
+
+### U.7 Launcher security and UX review
+- Model: Opus 5.5 · Effort: high · Mode: normal
+- Session: /clear → /model opus → /effort high
+- Depends on: U.6
+- Goal: prove the launcher is safe and pleasant before merging.
+- Build:
+  - Adversarial review against the U.0 threat model: DNS rebinding (real attempt with a hostile Host), CSRF from a page on another origin, token leakage (history, Referer, logs, process list), password in memory dumps of responses and logs, path traversal, oversized and malformed requests, two browsers at once
+  - First-run walkthrough on AdventureWorks2022 and SchemaMapSynth, timed from `schemamap ui` to map open
+  - Write `docs/gates/PHASEU.md`: results, findings, fixes made, open issues with severity, proposed crumbs; fix small issues here
+  - `gh pr create --fill` from phase-u-launcher to main, then `gh pr checks --watch`; do not merge
+- Done when:
+  - [ ] PHASEU.md written; PR open with all required checks green
+  - [ ] Harshit approves the merge (merge commit) and tags `v0.1.0-alpha.3`
+- Commit: `docs: phase U review`
+
+---
+
 ## Appendix A: seed entries for `docs/DECISIONS.md`
 
 - **D-001** Read-only and metadata-only in v1. The opt-in data-sampling inference signal from PLAN.md is deferred until after launch, so the "never reads row data" promise stays absolute.

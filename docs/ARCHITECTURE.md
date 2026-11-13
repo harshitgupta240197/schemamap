@@ -347,3 +347,4 @@ so it is easy to audit.
 * Snapshots and maps stay local. `--redact-server` removes host names only; definitions, object names and the database name remain, so review a snapshot before sharing it.
 * Hostile object names are handled by escaped IDs, text-only rendering and safe JSON inlining.
 * Definitions may contain literals (section 4); `--no-definitions` leaves them out.
+* `schemamap ui` serves a local launcher on 127.0.0.1 only, behind Host, Origin and token checks; its design and threat model are in `docs/UI.md` (D-057).

@@ -47,6 +47,8 @@ from schemamap.snapshot.io import (
     write_snapshot,
 )
 from schemamap.snapshot.models import Snapshot
+from schemamap.ui.assets import load_launcher
+from schemamap.ui.server import LauncherServer
 from schemamap.viewer import embed_snapshot, load_viewer
 
 EXIT_FAILURE = 1
@@ -362,3 +364,37 @@ def view(
             markup=False,
             soft_wrap=True,
         )
+
+
+@app.command(epilog=EXIT_CODES_EPILOG)
+def ui(
+    no_open: Annotated[
+        bool, typer.Option("--no-open", help="Start the launcher but do not open a browser.")
+    ] = False,
+    debug: DebugOption = False,
+) -> None:
+    """Start the Schema Map launcher on this computer and open it in your browser.
+
+    The launcher listens on 127.0.0.1 only, on a free port, and answers only the browser
+    that holds the link printed here. Press Ctrl+C to stop it.
+
+    \b
+    Examples:
+      schemamap ui
+      schemamap ui --no-open
+    """
+    console = Console(stderr=True, highlight=False)
+    with friendly_errors(console, what="UI", debug=debug):
+        server = LauncherServer(load_launcher())
+    # One plain line on stdout, never wrapped, so the link can be copied or read by a script.
+    typer.echo(f"Schema Map is running at {server.url}")
+    console.print("Keep this link private. Press Ctrl+C to stop.", markup=False)
+    if not no_open and not webbrowser.open(server.url):
+        console.print("Could not start a browser. Open the link above yourself.", markup=False)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+    console.print("Schema Map launcher stopped.", markup=False)

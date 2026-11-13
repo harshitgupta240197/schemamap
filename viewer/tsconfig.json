@@ -21,6 +21,7 @@
     "site-shots",
     "scripts/*.d.mts",
     "vite.config.ts",
+    "vite.launcher.config.ts",
     "playwright.config.ts",
     "playwright.site.config.ts",
     "eslint.config.js"

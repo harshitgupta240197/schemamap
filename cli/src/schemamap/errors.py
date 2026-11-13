@@ -71,5 +71,12 @@ class ViewerUnavailableError(SchemaMapError):
     """
 
 
+class LauncherUnavailableError(SchemaMapError):
+    """The packaged launcher page is missing, unreadable or does not match its manifest.
+
+    Like ViewerUnavailableError, the install is incomplete; the message names the build command.
+    """
+
+
 class EmbedError(SchemaMapError):
     """The viewer page has no data placeholder, or several, so a snapshot cannot be embedded."""
