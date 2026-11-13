@@ -48,7 +48,10 @@ from schemamap.snapshot.io import (
 )
 from schemamap.snapshot.models import Snapshot
 from schemamap.ui.assets import load_launcher
-from schemamap.ui.server import LauncherServer
+from schemamap.ui.browser import open_in_browser
+from schemamap.ui.datadir import default_data_dir, prepare_data_dir
+from schemamap.ui.security import LAUNCH_CODE_TTL_SECONDS
+from schemamap.ui.server import IDLE_TIMEOUT_SECONDS, LauncherServer
 from schemamap.viewer import embed_snapshot, load_viewer
 
 EXIT_FAILURE = 1
@@ -368,28 +371,63 @@ def view(
 
 @app.command(epilog=EXIT_CODES_EPILOG)
 def ui(
+    port: Annotated[
+        int,
+        typer.Option(
+            "--port",
+            min=0,
+            max=65535,
+            help="Port to listen on, on 127.0.0.1. 0 picks a free one.",
+        ),
+    ] = 0,
     no_open: Annotated[
         bool, typer.Option("--no-open", help="Start the launcher but do not open a browser.")
     ] = False,
+    data_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--data-dir",
+            help="Folder for saved maps and connections. Default: SchemaMap in your home folder.",
+        ),
+    ] = None,
     debug: DebugOption = False,
 ) -> None:
     """Start the Schema Map launcher on this computer and open it in your browser.
 
-    The launcher listens on 127.0.0.1 only, on a free port, and answers only the browser
-    that holds the link printed here. Press Ctrl+C to stop it.
+    The launcher listens on 127.0.0.1 only, and answers only the browser that opens the
+    link printed here. The link works once and expires after a minute. Press Ctrl+C to stop;
+    it also stops after 30 minutes without use.
 
     \b
     Examples:
       schemamap ui
       schemamap ui --no-open
+      schemamap ui --port 8765 --data-dir ~/Documents/SchemaMap
     """
     console = Console(stderr=True, highlight=False)
     with friendly_errors(console, what="UI", debug=debug):
-        server = LauncherServer(load_launcher())
+        launcher = load_launcher()
+        folder = prepare_data_dir(default_data_dir() if data_dir is None else data_dir)
+        try:
+            server = LauncherServer(launcher, data_dir=folder, port=port)
+        except OSError as exc:
+            console.print(
+                f"Cannot listen on 127.0.0.1 port {port}: {exc.strerror or exc}. "
+                "Choose another with --port, or leave it out for a free one.",
+                style="red",
+                markup=False,
+                soft_wrap=True,
+            )
+            raise typer.Exit(EXIT_FAILURE) from None
     # One plain line on stdout, never wrapped, so the link can be copied or read by a script.
     typer.echo(f"Schema Map is running at {server.url}")
-    console.print("Keep this link private. Press Ctrl+C to stop.", markup=False)
-    if not no_open and not webbrowser.open(server.url):
+    console.print(
+        f"The link works once and expires after {int(LAUNCH_CODE_TTL_SECONDS)} seconds. "
+        "Press Ctrl+C to stop.",
+        markup=False,
+    )
+    console.print(f"Data folder: {folder}", markup=False, soft_wrap=True)
+    if not no_open and not open_in_browser(server.url):
         console.print("Could not start a browser. Open the link above yourself.", markup=False)
     try:
         server.serve_forever()
@@ -397,4 +435,10 @@ def ui(
         pass
     finally:
         server.server_close()
-    console.print("Schema Map launcher stopped.", markup=False)
+    if server.stop_reason == "idle":
+        console.print(
+            f"Schema Map launcher stopped after {IDLE_TIMEOUT_SECONDS // 60} minutes without use.",
+            markup=False,
+        )
+    else:
+        console.print("Schema Map launcher stopped.", markup=False)

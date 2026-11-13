@@ -80,3 +80,7 @@ class LauncherUnavailableError(SchemaMapError):
 
 class EmbedError(SchemaMapError):
     """The viewer page has no data placeholder, or several, so a snapshot cannot be embedded."""
+
+
+class DataDirError(SchemaMapError):
+    """The launcher's data folder cannot be created or written to."""

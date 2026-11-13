@@ -503,3 +503,13 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 - The page carries no meta policy (the build refuses one), so there is a single source of truth.
 
 **Not added.** No dependency.
+
+## D-060 Launch link carries a one-time code, not the token; map tabs check Fetch Metadata (2026-11-13)
+
+**Decision (review of U.0, built in U.1).**
+- The launch link is `http://127.0.0.1:<port>/#c=<code>`. The code is 256 random bits, valid 60 seconds from server start, usable once. The page posts it to `POST /api/session` and receives the session token in the response body; it keeps the token in `sessionStorage`, removes the code from the address bar, and sends the token as a header. A used, expired or wrong code is `401`. A wrong guess does not use up the real code, so a stray request cannot burn it. This supersedes D-057's "a token in the URL fragment".
+- `/maps/<id>` stays on a random 128-bit id, still with the Host and Origin checks, and now also refuses a request whose `Sec-Fetch-Site` is anything but `same-origin` or `none` (absent is allowed): `403 forbidden_fetch_site`.
+
+**Why.** The browser-launch helper (`open`, `xdg-open`, `start`) receives the whole URL in its arguments, which other local users can read with `ps`, and the terminal and the browser's history database keep it too. With the token in the link, anyone who saw it held a working session until the server stopped. With a one-time code, a link seen later is worthless. The map route cannot carry a header because the map opens by ordinary navigation, so the browser's own cross-site signal is the next best guard, and costs one header check. A single-use ticket for maps was rejected: it would break reload and bookmarks.
+
+**Cost and residual.** One route and one round trip. A link opened after 60 seconds, or a second time (another browser profile, a closed tab), needs `schemamap ui` run again. For the first 60 seconds a local user who sees the link before the owner's browser redeems it could take the session first; the owner then sees "already used", so it is noisy but possible on a shared machine (UI.md threat model). **Not added:** no dependency.

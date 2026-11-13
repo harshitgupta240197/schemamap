@@ -2,52 +2,23 @@
 
 from __future__ import annotations
 
-import http.client
 import json
-import threading
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 from launcher_builders import PAGE, SCRIPT_SOURCE, write_launcher
+from ui_http import CODE, TOKEN, request, serving
 
 from schemamap.errors import LauncherUnavailableError
 from schemamap.ui.assets import Launcher, launcher_policy, load_launcher
 from schemamap.ui.server import LauncherServer
 
-TOKEN = "test-token-0123456789"
-
 
 @pytest.fixture
 def server(tmp_path: Path) -> Iterator[LauncherServer]:
-    running = LauncherServer(load_launcher(write_launcher(tmp_path)), token=TOKEN)
-    thread = threading.Thread(target=running.serve_forever, daemon=True)
-    thread.start()
-    yield running
-    running.shutdown()
-    running.server_close()
-    thread.join(timeout=5)
-
-
-def request(
-    server: LauncherServer,
-    path: str,
-    *,
-    method: str = "GET",
-    headers: dict[str, str] | None = None,
-) -> tuple[int, dict[str, str], bytes]:
-    connection = http.client.HTTPConnection("127.0.0.1", server.port, timeout=5)
-    try:
-        # skip_host so each test chooses the Host header, as an attacker's browser would.
-        connection.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
-        sent = {"Host": f"127.0.0.1:{server.port}"} | (headers or {})
-        for name, value in sent.items():
-            connection.putheader(name, value)
-        connection.endheaders()
-        response = connection.getresponse()
-        return response.status, dict(response.getheaders()), response.read()
-    finally:
-        connection.close()
+    with serving(tmp_path) as (running, _):
+        yield running
 
 
 def health(server: LauncherServer, **headers: str) -> tuple[int, dict[str, str], bytes]:
@@ -58,15 +29,20 @@ def test_server_binds_loopback_only_on_a_picked_port(server: LauncherServer) -> 
     host, port = server.server_address[:2]
     assert host == "127.0.0.1"
     assert port == server.port and port > 0
-    assert server.url == f"http://127.0.0.1:{port}/#t={TOKEN}"
+    # The launch link carries the one-time code, never the session token (D-060).
+    assert server.url == f"http://127.0.0.1:{port}/#c={CODE}"
+    assert TOKEN not in server.url
 
 
 def test_a_new_server_gets_a_long_random_token(tmp_path: Path) -> None:
     launcher = load_launcher(write_launcher(tmp_path))
-    first, second = LauncherServer(launcher), LauncherServer(launcher)
+    first = LauncherServer(launcher, data_dir=tmp_path)
+    second = LauncherServer(launcher, data_dir=tmp_path)
     try:
         assert first.token != second.token
         assert len(first.token) >= 40
+        assert first.launch_code.code != second.launch_code.code
+        assert first.launch_code.code != first.token
     finally:
         first.server_close()
         second.server_close()

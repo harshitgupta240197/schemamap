@@ -1,5 +1,5 @@
-import { healthMessage } from "./api";
-import { takeToken } from "./token";
+import { connectMessage } from "./api";
+import { startSession } from "./session";
 
 /** sessionStorage, or a store that keeps nothing when site data is blocked. */
 function sessionStore(): Pick<Storage, "getItem" | "setItem"> {
@@ -10,11 +10,12 @@ function sessionStore(): Pick<Storage, "getItem" | "setItem"> {
   }
 }
 
-const token = takeToken(window.location, sessionStore(), window.history);
 const status = document.getElementById("status");
 if (status !== null) {
-  void healthMessage(token).then((message) => {
-    // Text only: nothing from the server is ever parsed as HTML.
-    status.textContent = message;
-  });
+  void startSession(window.location, sessionStore(), window.history)
+    .then((session) => connectMessage(session))
+    .then((message) => {
+      // Text only: nothing from the server is ever parsed as HTML.
+      status.textContent = message;
+    });
 }
