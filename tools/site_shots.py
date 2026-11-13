@@ -18,7 +18,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "viewer" / ".site-shots"
 OUT = ROOT / "site" / "assets"
-NAMES = {"map.png": "map.png", "detail.png": "detail.png", "overview.png": "overview.png"}
+NAMES = {"map.png": "map.png", "detail.png": "detail.png"}
 
 
 def main() -> None:

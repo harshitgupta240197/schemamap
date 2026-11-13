@@ -28,10 +28,36 @@ test("loads the page with only same-origin requests", async ({ page }) => {
   await page.waitForLoadState("networkidle");
   expect(originsOf(urls)).toEqual(["http://127.0.0.1:4173"]);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Point it at a database. In five minutes, see how everything connects.",
+    "Point it at a database. See how everything connects.",
   );
   await expect(page.getByText("The map file cannot send anything anywhere.")).toBeVisible();
-  await expect(page.locator("img")).toHaveCount(3);
+  await expect(page.locator("img")).toHaveCount(2);
+});
+
+test("fonts are self-hosted: Inter and Caveat load from the site's own origin", async ({
+  page,
+}) => {
+  const urls = watchRequests(page);
+  await page.goto("/");
+  await page.locator(".label").first().scrollIntoViewIfNeeded();
+  const loaded = await page.evaluate(async () => {
+    await document.fonts.ready;
+    await Promise.all([
+      document.fonts.load("400 16px Inter"),
+      document.fonts.load("700 30px Caveat"),
+    ]);
+    return [...document.fonts]
+      .filter((face) => face.status === "loaded")
+      .map((face) => face.family.replaceAll('"', ""))
+      .sort();
+  });
+  expect(loaded).toEqual(expect.arrayContaining(["Caveat", "Inter"]));
+  const fontUrls = urls.filter((u) => u.endsWith(".woff2"));
+  expect(fontUrls.length).toBeGreaterThanOrEqual(2);
+  for (const u of fontUrls) {
+    expect(new URL(u).origin).toBe("http://127.0.0.1:4173");
+  }
+  expect(originsOf(urls)).toEqual(["http://127.0.0.1:4173"]);
 });
 
 test("sets no cookies and has no inline script", async ({ page, context }) => {
@@ -120,21 +146,36 @@ for (const width of [375, 1280]) {
   test.describe(`at ${width}px wide`, () => {
     test.use({ viewport: { width, height: 800 } });
 
-    for (const scheme of ["light", "dark"]) {
-      test(`no horizontal scroll and no serious axe issues, ${scheme}`, async ({ page }) => {
-        await page.emulateMedia({ colorScheme: scheme });
-        await page.goto("/");
-        const overflow = await page.evaluate(
-          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-        );
-        expect(overflow).toBeLessThanOrEqual(0);
-        const { violations } = await new AxeBuilder({ page }).analyze();
-        const blocking = violations
-          .filter((v) => ["serious", "critical"].includes(v.impact ?? ""))
-          .map((v) => ({ rule: v.id, nodes: v.nodes.slice(0, 3).map((n) => n.target.join(" ")) }));
-        expect(blocking).toEqual([]);
-      });
-    }
+    test("no horizontal scroll and no serious axe issues", async ({ page }) => {
+      await page.goto("/");
+      await page.evaluate(() => document.fonts.ready);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
+      const { violations } = await new AxeBuilder({ page }).analyze();
+      const blocking = violations
+        .filter((v) => ["serious", "critical"].includes(v.impact ?? ""))
+        .map((v) => ({ rule: v.id, nodes: v.nodes.slice(0, 3).map((n) => n.target.join(" ")) }));
+      expect(blocking).toEqual([]);
+    });
+
+    test("the marker highlight and the hand-written labels are visible", async ({ page }) => {
+      await page.goto("/");
+      const marker = page.locator(".marker svg");
+      await expect(marker).toBeVisible();
+      const box = await marker.boundingBox();
+      expect(box?.width ?? 0).toBeGreaterThan(40);
+      expect(box?.height ?? 0).toBeGreaterThan(8);
+      await expect(page.locator(".marker path")).toHaveCSS("fill", "rgb(255, 210, 94)");
+      const labels = page.locator(".label");
+      await expect(labels).toHaveCount(5);
+      for (const label of await labels.all()) {
+        await label.scrollIntoViewIfNeeded();
+        await expect(label).toBeVisible();
+        await expect(label).toHaveCSS("font-family", /Caveat/);
+      }
+    });
 
     test("the form is usable", async ({ page }) => {
       await page.route("**/api/join", (route) => route.fulfill({ json: OK }));

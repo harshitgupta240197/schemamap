@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Schema Map, landing page</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Caveat:wght@600;700&amp;display=swap">
+<style>
+body{margin:0;background:#ffffff}
+a{color:#5B3FA0}a:hover{color:#432c7a}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; color: #1E1B2E; background: #ffffff; width: 100%; min-height: 100vh">
+
+  <!-- Nav -->
+  <header style="border-bottom: 1px solid #EEECF3; background: #ffffff">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+      <a href="#top" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #1E1B2E">
+        <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="8" fill="#5B3FA0"></rect><rect x="7" y="8" width="8" height="6" rx="1.5" fill="#ffffff"></rect><rect x="17" y="18" width="8" height="6" rx="1.5" fill="#ffffff"></rect><rect x="17" y="8" width="8" height="6" rx="1.5" fill="#BFAEF0"></rect><path d="M15 11h2M21 14v4" stroke="#ffffff" stroke-width="1.6"></path></svg>
+        <span style="font-weight: 700; font-size: 19px; letter-spacing: -0.01em">Schema Map</span>
+      </a>
+      <nav aria-label="Main" style="display: flex; align-items: center; gap: 28px; flex-wrap: wrap">
+        <a href="#how" style="color: #4A4760; text-decoration: none; font-size: 15px; font-weight: 500">How it works</a>
+        <a href="#trust" style="color: #4A4760; text-decoration: none; font-size: 15px; font-weight: 500">Privacy</a>
+        <a href="#suite" style="color: #4A4760; text-decoration: none; font-size: 15px; font-weight: 500">Pulse</a>
+        <a href="https://github.com/harshitgupta240197/schemamap" style="color: #4A4760; text-decoration: none; font-size: 15px; font-weight: 500">GitHub</a>
+        <a href="#join" style="background: #5B3FA0; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; padding: 11px 18px; border-radius: 8px; min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center">Join the waitlist</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section id="top" style="max-width: 1200px; margin: 0 auto; padding: 88px 24px 40px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 24px">
+    <span style="display: inline-flex; align-items: center; gap: 8px; background: #F4F1FB; color: #4B3290; font-size: 14px; font-weight: 600; padding: 7px 14px; border-radius: 999px">Free · Open source · SQL Server</span>
+    <h1 style="margin: 0; font-size: clamp(40px, 6vw, 68px); line-height: 1.08; font-weight: 800; letter-spacing: -0.03em; max-width: 920px">Point it at a database. See how <span style="position: relative; display: inline-block; isolation: isolate">everything<svg viewBox="0 0 300 30" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: -3%; bottom: 0.02em; width: 106%; height: 0.42em; z-index: -1"><path d="M4 18 C 70 8, 150 6, 296 14 L 294 26 C 180 20, 90 22, 6 28 Z" fill="#FFD25E"></path></svg></span> connects.</h1>
+    <p style="margin: 0; font-size: 20px; line-height: 1.6; color: #4A4760; max-width: 720px">Schema Map draws an interactive map of every table, key and dependency in your SQL Server database, in about five minutes. Soon it will also find the relationships nobody ever declared.</p>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 8px">
+      <a href="#join" style="background: #5B3FA0; color: #ffffff; text-decoration: none; font-size: 17px; font-weight: 600; padding: 15px 26px; border-radius: 8px">Join the waitlist</a>
+      <a href="https://github.com/harshitgupta240197/schemamap" style="background: #F2F1F6; color: #1E1B2E; text-decoration: none; font-size: 17px; font-weight: 600; padding: 15px 26px; border-radius: 8px">View on GitHub</a>
+    </div>
+  </section>
+
+  <!-- Screenshot -->
+  <section aria-label="Product screenshot" style="max-width: 1200px; margin: 0 auto; padding: 24px 24px 96px; position: relative">
+    <div style="position: absolute; right: 40px; top: -26px; display: flex; align-items: flex-end; gap: 6px; font-family: Caveat, cursive; font-size: 28px; font-weight: 700; color: #0E7C77; transform: rotate(-4deg)">
+      <span>metadata only, never your rows</span>
+      <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true" style="margin-bottom: -18px"><path d="M6 4 C 30 6, 40 20, 34 40" fill="none" stroke="#0E7C77" stroke-width="2.6" stroke-linecap="round"></path><path d="M27 33 L34 41 L40 32" fill="none" stroke="#0E7C77" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    </div>
+    <figure style="margin: 0; border-radius: 16px; background: #F6F5FA; padding: 14px; border: 1px solid #ECEAF2; box-shadow: 0 30px 60px -30px rgba(40, 24, 90, 0.25)">
+      <div style="display: flex; gap: 7px; padding: 4px 6px 12px" aria-hidden="true">
+        <span style="width: 11px; height: 11px; border-radius: 50%; background: #E3E0EC"></span>
+        <span style="width: 11px; height: 11px; border-radius: 50%; background: #E3E0EC"></span>
+        <span style="width: 11px; height: 11px; border-radius: 50%; background: #E3E0EC"></span>
+      </div>
+      <img src="/_blob/a84c8f1b7905c31a39ce00247d6eeb9f" alt="Schema Map showing the AdventureWorks sample database: 71 tables and their foreign keys laid out as a map" style="display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid #ECEAF2; background: #ffffff">
+      <figcaption style="font-size: 14px; color: #5D5A72; padding: 12px 6px 2px">The AdventureWorks sample database, 71 tables, drawn by Schema Map.</figcaption>
+    </figure>
+  </section>
+
+  <!-- Features -->
+  <section id="how" style="background: #FAF9FC; border-top: 1px solid #EEECF3; border-bottom: 1px solid #EEECF3">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 48px">
+      <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px">
+        <span style="font-family: Caveat, cursive; font-size: 30px; font-weight: 700; color: #5B3FA0">how it works</span>
+        <h2 style="margin: 0; font-size: clamp(30px, 4vw, 44px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15">Three steps, no setup on the server</h2>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px">
+        <div style="background: #ffffff; border: 1px solid #ECEAF2; border-radius: 16px; padding: 32px; display: flex; flex-direction: column; gap: 14px">
+          <div style="width: 56px; height: 56px; border-radius: 14px; background: #F1ECFC; display: flex; align-items: center; justify-content: center">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5B3FA0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path></svg>
+          </div>
+          <span style="font-size: 14px; font-weight: 700; color: #5B3FA0">1. Connect</span>
+          <h3 style="margin: 0; font-size: 22px; font-weight: 700">Use a read-only login</h3>
+          <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #4A4760">Schema Map reads the system catalog only. It never needs SELECT on your tables and never writes anything.</p>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #ECEAF2; border-radius: 16px; padding: 32px; display: flex; flex-direction: column; gap: 14px">
+          <div style="width: 56px; height: 56px; border-radius: 14px; background: #E5F5F3; display: flex; align-items: center; justify-content: center">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0E7C77" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="10" width="7" height="5" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect><path d="M10 5.5h2a2 2 0 0 1 2 2v5M10 18.5h2a2 2 0 0 0 2-2v-4"></path></svg>
+          </div>
+          <span style="font-size: 14px; font-weight: 700; color: #0E7C77">2. Map</span>
+          <h3 style="margin: 0; font-size: 22px; font-weight: 700">Get one offline file</h3>
+          <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #4A4760">The map is a single HTML file. Open it in any browser, search for a table, and follow its keys in seconds.</p>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #ECEAF2; border-radius: 16px; padding: 32px; display: flex; flex-direction: column; gap: 14px">
+          <div style="width: 56px; height: 56px; border-radius: 14px; background: #FFF3DC; display: flex; align-items: center; justify-content: center">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9A5B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"></path><path d="M3 13l9 5 9-5"></path></svg>
+          </div>
+          <span style="font-size: 14px; font-weight: 700; color: #8A5100">3. Understand</span>
+          <h3 style="margin: 0; font-size: 22px; font-weight: 700">See what breaks</h3>
+          <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #4A4760">Pick any table to see its columns, keys, indexes, and every view or procedure that depends on it.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Detail split -->
+  <section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 56px">
+    <div style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+      <span style="font-family: Caveat, cursive; font-size: 30px; font-weight: 700; color: #0E7C77">from one table to the whole estate</span>
+      <h2 style="margin: 0; font-size: clamp(30px, 4vw, 42px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15">Every detail, one click away</h2>
+      <p style="margin: 0; font-size: 18px; line-height: 1.65; color: #4A4760">Focus on a table and its neighbours, then open the side panel for columns, types, keys and indexes. Large databases open as a calm overview, one box per schema, so 2,000 tables stay readable.</p>
+      <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 16px; color: #2D2A40">
+        <li style="display: flex; gap: 12px; align-items: flex-start"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E7C77" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 7"></path></svg><span>Search any table, column or view with <strong>/</strong></span></li>
+        <li style="display: flex; gap: 12px; align-items: flex-start"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E7C77" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 7"></path></svg><span>Works fully with the keyboard, in light and dark</span></li>
+        <li style="display: flex; gap: 12px; align-items: flex-start"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E7C77" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l4 4L19 7"></path></svg><span>Share a link straight to a table or a focus view</span></li>
+      </ul>
+    </div>
+    <figure style="flex: 1 1 520px; min-width: 0; margin: 0; background: #F4F1FB; border-radius: 20px; padding: 28px">
+      <img src="/_blob/9d3de1864d56101e0cde484e9258e93f" alt="The Person.Person table in focus with its neighbours, and the detail panel listing its columns, keys and indexes" style="display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid #E4DEF4; box-shadow: 0 20px 40px -24px rgba(40, 24, 90, 0.3)">
+    </figure>
+  </section>
+
+  <!-- Trust band -->
+  <section id="trust" style="background: #5B3FA0; color: #ffffff">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 88px 24px; display: flex; flex-direction: column; gap: 40px">
+      <div style="display: flex; flex-direction: column; gap: 12px; max-width: 760px">
+        <span style="font-family: Caveat, cursive; font-size: 30px; font-weight: 700; color: #FFD25E">built for cautious DBAs</span>
+        <h2 style="margin: 0; font-size: clamp(30px, 4vw, 44px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15">Reads metadata only. Never row data.</h2>
+        <p style="margin: 0; font-size: 18px; line-height: 1.65; color: #E6E0F7">The map file cannot send anything anywhere. Its security policy blocks every network request, so you can say yes without a security review.</p>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px">
+        <div style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 8px">
+          <h3 style="margin: 0; font-size: 18px; font-weight: 700">Read-only login</h3>
+          <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #E6E0F7">VIEW DEFINITION is enough. No writes, ever.</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 8px">
+          <h3 style="margin: 0; font-size: 18px; font-weight: 700">No row data</h3>
+          <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #E6E0F7">Only table, column, key and dependency definitions are read.</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 8px">
+          <h3 style="margin: 0; font-size: 18px; font-weight: 700">Stays on your machine</h3>
+          <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #E6E0F7">One offline file. Open source, so every line can be checked.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Who it is for -->
+  <section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 40px">
+    <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px">
+      <span style="font-family: Caveat, cursive; font-size: 30px; font-weight: 700; color: #5B3FA0">who it is for</span>
+      <h2 style="margin: 0; font-size: clamp(30px, 4vw, 44px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15">Anyone who inherited a database</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px">
+      <div style="background: #F1ECFC; border-radius: 16px; padding: 32px; display: flex; flex-direction: column; gap: 10px">
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700; color: #3E2A7A">DBAs</h3>
+        <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #3B3852">Inherited a database with no documentation and need to know what breaks if a table changes.</p>
+      </div>
+      <div style="background: #E5F5F3; border-radius: 16px; padding: 32px; display: flex; flex-direction: column; gap: 10px">
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700; color: #0A5E5A">BI developers</h3>
+        <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #3B3852">Need to find the right tables and the join paths between them, before writing the report.</p>
+      </div>
+      <div style="background: #FFF3DC; border-radius: 16px; padding: 32px; display: flex; flex-direction: column; gap: 10px">
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700; color: #7A4700">Data engineers</h3>
+        <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #3B3852">About to migrate, refactor or document a SQL Server estate and want a map first.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Suite -->
+  <section id="suite" style="background: #FAF9FC; border-top: 1px solid #EEECF3; border-bottom: 1px solid #EEECF3">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 40px">
+      <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px">
+        <span style="font-family: Caveat, cursive; font-size: 30px; font-weight: 700; color: #0E7C77">one suite, one app at a time</span>
+        <h2 style="margin: 0; font-size: clamp(30px, 4vw, 44px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15">Tools for every SQL Server database</h2>
+        <p style="margin: 0; font-size: 18px; line-height: 1.6; color: #4A4760; max-width: 640px">Map is the first. Each new app uses the same metadata-only approach.</p>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 24px">
+        <div style="width: 240px; background: #ffffff; border: 1px solid #ECEAF2; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center">
+          <div style="width: 72px; height: 72px; border-radius: 18px; background: #5B3FA0; display: flex; align-items: center; justify-content: center">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="10" width="7" height="5" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect><path d="M10 5.5h2a2 2 0 0 1 2 2v5M10 18.5h2a2 2 0 0 0 2-2v-4"></path></svg>
+          </div>
+          <h3 style="margin: 0; font-size: 20px; font-weight: 700">Map</h3>
+          <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #4A4760">How your database is built</p>
+          <span style="background: #E5F5F3; color: #0A5E5A; font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px">In alpha</span>
+        </div>
+        <div style="width: 240px; background: #ffffff; border: 1px solid #ECEAF2; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center">
+          <div style="width: 72px; height: 72px; border-radius: 18px; background: #0E7C77; display: flex; align-items: center; justify-content: center">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"></path></svg>
+          </div>
+          <h3 style="margin: 0; font-size: 20px; font-weight: 700">Pulse</h3>
+          <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #4A4760">How your database behaves</p>
+          <span style="background: #F2F1F6; color: #4A4760; font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px">Coming later</span>
+        </div>
+        <div style="width: 240px; background: transparent; border: 2px dashed #D9D5E5; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; box-sizing: border-box">
+          <div style="width: 72px; height: 72px; border-radius: 18px; background: #F2F1F6; display: flex; align-items: center; justify-content: center">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6B6880" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+          </div>
+          <h3 style="margin: 0; font-size: 20px; font-weight: 700; color: #4A4760">More to come</h3>
+          <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #5D5A72">Tell us what you need on a call</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Waitlist -->
+  <section id="join" style="max-width: 1200px; margin: 0 auto; padding: 96px 24px; display: flex; justify-content: center">
+    <div style="width: 100%; max-width: 620px; background: #ffffff; border: 1px solid #ECEAF2; border-radius: 20px; padding: 44px; box-sizing: border-box; box-shadow: 0 30px 60px -36px rgba(40, 24, 90, 0.3); display: flex; flex-direction: column; gap: 24px">
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <h2 style="margin: 0; font-size: 34px; font-weight: 800; letter-spacing: -0.02em">Join the waitlist</h2>
+        <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #4A4760">One email when Schema Map is ready. Nothing else.</p>
+      </div>
+      <form style="display: flex; flex-direction: column; gap: 18px">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <label for="email" style="font-size: 15px; font-weight: 600">Work email</label>
+          <input id="email" type="email" placeholder="you@company.com" style="font: inherit; font-size: 16px; padding: 13px 14px; border: 1px solid #CFCBDC; border-radius: 8px; min-height: 48px; box-sizing: border-box; background: #ffffff; color: #1E1B2E">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <label for="role" style="font-size: 15px; font-weight: 600">Your role</label>
+          <select id="role" style="font: inherit; font-size: 16px; padding: 12px 14px; border: 1px solid #CFCBDC; border-radius: 8px; min-height: 48px; box-sizing: border-box; background: #ffffff; color: #1E1B2E">
+            <option>Choose one</option>
+            <option>DBA</option>
+            <option>BI developer</option>
+            <option>Data engineer</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <label for="call" style="display: flex; gap: 12px; align-items: center; font-size: 16px; color: #2D2A40; min-height: 44px">
+          <input id="call" type="checkbox" style="width: 20px; height: 20px; accent-color: #5B3FA0; margin: 0">
+          <span>I'm happy to do a 20-minute call</span>
+        </label>
+        <button type="submit" style="font: inherit; font-size: 17px; font-weight: 600; background: #5B3FA0; color: #ffffff; border: 0; border-radius: 8px; padding: 15px 20px; min-height: 52px; cursor: pointer">Join the waitlist</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer style="border-top: 1px solid #EEECF3; background: #FAF9FC">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 48px 24px; display: flex; flex-wrap: wrap; gap: 32px; justify-content: space-between">
+      <div style="flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Privacy</h2>
+        <p style="margin: 0; font-size: 15px; line-height: 1.65; color: #4A4760">This page sets no cookies, runs no analytics and loads nothing from other sites. If you join, we store your email, your role and your answer about a call, and use them only to contact you about Schema Map. Reply to any email from us, or write to <a href="mailto:aukaaatsebahar@gmail.com">aukaaatsebahar@gmail.com</a>, and we will delete them.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; font-size: 15px; color: #4A4760">
+        <a href="https://github.com/harshitgupta240197/schemamap">Schema Map on GitHub</a>
+        <span>Open source, Apache-2.0</span>
+      </div>
+    </div>
+  </footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":5200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

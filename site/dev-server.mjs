@@ -13,6 +13,8 @@ const TYPES = {
   ".css": "text/css",
   ".js": "text/javascript",
   ".png": "image/png",
+  ".woff2": "font/woff2",
+  ".txt": "text/plain; charset=utf-8",
 };
 const PUBLIC = new Set(["index.html", "style.css", "join.js"]);
 
