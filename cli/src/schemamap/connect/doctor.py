@@ -7,7 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from schemamap.connect.config import ConnectionConfig
-from schemamap.connect.connection import connect
+from schemamap.connect.connection import connect, split_failure
 from schemamap.connect.driver import load_driver
 from schemamap.connect.executor import MetadataExecutor
 from schemamap.connect.permissions import (
@@ -49,12 +49,20 @@ class Status(str, enum.Enum):
 
 @dataclass(frozen=True)
 class Check:
-    """One line of the doctor report."""
+    """One line of the doctor report.
+
+    ``next_step`` is the whole hint as the terminal prints it. ``message``, ``fix`` and
+    ``fix_sql`` hold the same hint in parts for the launcher: what is wrong, what to do, and
+    the statement a DBA runs when there is one.
+    """
 
     name: str
     status: Status
     detail: str
     next_step: str | None = None
+    message: str | None = None
+    fix: str | None = None
+    fix_sql: str | None = None
 
 
 @dataclass(frozen=True)
@@ -112,13 +120,10 @@ def _permission_check(
 ) -> Check:
     if permission in held:
         return Check(name, Status.OK, "granted")
-    return Check(
-        name,
-        missing,
-        "missing",
-        f"{permission.value} is missing: {consequence} "
-        f"Ask a DBA to run {permission.grant_for(user)} {grant_note(user)}",
-    )
+    grant = permission.grant_for(user)
+    message = f"{permission.value} is missing: {consequence}"
+    fix = f"Ask a DBA to run {grant} {grant_note(user)}"
+    return Check(name, missing, "missing", f"{message} {fix}", message, fix, grant)
 
 
 def _query_store_check(conn: MetadataExecutor) -> Check:
@@ -148,9 +153,15 @@ def diagnose(config: ConnectionConfig) -> DoctorReport:
     try:
         load_driver()
     except DriverUnavailableError as exc:
+        problem = "The SQL Server driver could not be loaded."
         checks.append(
             Check(
-                "Driver", Status.FAIL, "not loaded", f"The SQL Server driver is not loaded: {exc}"
+                "Driver",
+                Status.FAIL,
+                "not loaded",
+                f"The SQL Server driver is not loaded: {exc}",
+                problem,
+                str(exc).removeprefix(problem).strip() or None,
             )
         )
         return DoctorReport(tuple(checks), connected=False)
@@ -159,7 +170,17 @@ def diagnose(config: ConnectionConfig) -> DoctorReport:
     try:
         conn = connect(config)
     except ConnectError as exc:
-        checks.append(Check("Connection", Status.FAIL, "failed", f"The connection failed: {exc}"))
+        message, fix = split_failure(str(exc))
+        checks.append(
+            Check(
+                "Connection",
+                Status.FAIL,
+                "failed",
+                f"The connection failed: {exc}",
+                message,
+                fix,
+            )
+        )
         return DoctorReport(tuple(checks), connected=False)
     checks.append(
         Check("Connection", Status.OK, f"{config.server},{config.port} ({config.auth.value})")

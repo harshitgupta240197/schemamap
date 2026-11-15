@@ -525,3 +525,15 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 **Why.** The map should feel like the landing page and the launcher, and a tool opened beside a dark OS should not surprise the person. A remembered, explicit choice is easy to reason about.
 
 **Cost.** One shared module (`shared/theme.ts`) and a small component. A dark-OS user who wants dark picks it once. **Not added:** no dependency (Inter is the file already self-hosted for the site).
+
+## D-062 Connection API: HAS_DBACCESS approved, remembered connections hold five settings (2026-11-15)
+
+**Decision (crumb U.2).**
+- **`HAS_DBACCESS` joins the approved functions.** The new query `databases.sql` lists `sys.databases` rows where `HAS_DBACCESS(name) = 1 AND state = 0`, with database ids 1 to 4 left out unless asked. `HAS_DBACCESS` takes a database name and returns 1 when the caller may open it, 0 when not, and NULL for an unknown name. It reads the caller's own access from the catalog, touches no object and no row, and returns a single flag. `sys.databases` was already approved (Query Store reads one of its columns). Without it the picker would show databases the login cannot open, or would have to try each one with a connection.
+- **The connection test answers `200` with the checks.** A failed login is a result, shown as a failed `Connection` check with its fix. `/api/databases` has nothing to show without a connection, so it answers `502 connect_failed` with the same message and fix. The doctor's `Check` gained `message`, `fix` and `fix_sql` beside the unchanged `next_step`, so the CLI output is byte-for-byte as before and the launcher gets the hint in parts.
+- **Remembered connections** are written only when the request says `remember` and the login opened. The file holds server, port, database, auth mode and user: no password, and also no certificate setting or timeout. The entry type has no password field; the loader copies those five values and drops anything else, so a password added by hand is gone on the next write. A JSON Schema with `additionalProperties: false` is kept in code and tested against the saved file. Entry ids are a SHA-256 prefix of the five settings, so a repeat is one entry; at most 20 are kept.
+- **The password lives for one request.** It goes from the request body into a `ConnectionConfig`, is used for the one connection, and nothing stores it. Every text sent back goes through `redact()` with the config's secrets (the password and the connection string) even though `describe_failure` already does; the extra pass costs nothing and covers a path that forgot. Request errors name a field, never a value, and an unknown field is refused without being named. An unexpected exception becomes `500 internal` with fixed wording.
+
+**Why.** The page must never be a new way to leak a login, and a person should not have to remember which databases a login can open.
+
+**Cost.** A short or common-word password gets that text masked wherever it appears in a message; the alternative is leaking it. Remembered connections lose the certificate checkbox, which the person ticks again. **Not added:** no dependency.

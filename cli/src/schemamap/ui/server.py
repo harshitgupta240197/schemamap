@@ -23,7 +23,15 @@ from typing import cast
 from urllib.parse import urlsplit
 
 from schemamap import __version__
+from schemamap.ui.api import (
+    ApiError,
+    list_databases,
+    parse_databases_request,
+    parse_test_request,
+    run_connection_test,
+)
 from schemamap.ui.assets import Launcher
+from schemamap.ui.connections import ConnectionStore
 from schemamap.ui.security import (
     LISTEN_HOST,
     TOKEN_HEADER,
@@ -55,21 +63,15 @@ _API_ROUTES: dict[str, tuple[str, ...]] = {
     "/api/health": ("GET", "HEAD"),
     "/api/quit": ("POST",),
     "/api/session": ("POST",),
+    "/api/connection/test": ("POST",),
+    "/api/databases": ("POST",),
+    "/api/connections": ("GET", "HEAD"),
 }
+_CONNECTION_PREFIX = "/api/connections/"
 _BODY_METHODS = frozenset({"POST", "PUT", "PATCH"})
 _SESSION_PATH = "/api/session"
 _MAP_PREFIX = "/maps/"
-_MAP_ID = re.compile(r"[0-9a-f]{32}")
-
-
-class _Refused(Exception):
-    """A request the handler answers with an error instead of routing it."""
-
-    def __init__(self, status: HTTPStatus, code: str, message: str) -> None:
-        super().__init__(code)
-        self.status = status
-        self.code = code
-        self.message = message
+_ID = re.compile(r"[0-9a-f]{32}")
 
 
 class LauncherServer(ThreadingHTTPServer):
@@ -96,6 +98,7 @@ class LauncherServer(ThreadingHTTPServer):
         self.launcher = launcher
         self.data_dir = data_dir
         self.token = token if token is not None else secrets.token_urlsafe(32)
+        self.connections = ConnectionStore(data_dir)
         self.launch_code = LaunchCode(clock=clock, code=code)
         self.stop_reason: str | None = None
         self._clock = clock
@@ -234,7 +237,7 @@ class LauncherHandler(BaseHTTPRequestHandler):
     def _read_map(self, map_id: str) -> bytes | None:
         # Only a 32-character lowercase hex id reaches the file system, so no path from the
         # request is ever joined: ``..``, separators and percent-escapes all fail the match.
-        if _MAP_ID.fullmatch(map_id) is None:
+        if _ID.fullmatch(map_id) is None:
             return None
         try:
             return (self._launcher_server.data_dir / "maps" / map_id / "map.html").read_bytes()
@@ -249,7 +252,8 @@ class LauncherHandler(BaseHTTPRequestHandler):
         ):
             self._error(HTTPStatus.UNAUTHORIZED, "unauthorized", "Missing or wrong token.")
             return
-        methods = _API_ROUTES.get(path)
+        connection_id = self._connection_id(path)
+        methods = ("DELETE",) if connection_id is not None else _API_ROUTES.get(path)
         if methods is None:
             self._error(HTTPStatus.NOT_FOUND, "not_found", "Not found.")
             return
@@ -260,16 +264,53 @@ class LauncherHandler(BaseHTTPRequestHandler):
         if method in _BODY_METHODS:
             try:
                 body = self._read_json_body()
-            except _Refused as refusal:
+            except ApiError as refusal:
                 # The body may be unread, so the connection must not be reused.
                 self.close_connection = True
                 self._error(refusal.status, refusal.code, refusal.message)
                 return
-        if path == "/api/health":
+        try:
+            self._route(path, connection_id, body)
+        except ApiError as refusal:
+            self._error(refusal.status, refusal.code, refusal.message, fix=refusal.fix)
+        except Exception:  # a bug: answer with fixed wording, never with the exception's text
+            self._error(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                "internal",
+                "Something went wrong inside Schema Map.",
+            )
+
+    @staticmethod
+    def _connection_id(path: str) -> str | None:
+        """The id in ``/api/connections/<id>``; a path with a malformed id is not a route."""
+        if not path.startswith(_CONNECTION_PREFIX):
+            return None
+        identifier = path.removeprefix(_CONNECTION_PREFIX)
+        return identifier if _ID.fullmatch(identifier) else None
+
+    def _route(self, path: str, connection_id: str | None, body: dict[str, object]) -> None:
+        server = self._launcher_server
+        if connection_id is not None:
+            if not server.connections.forget(connection_id):
+                raise ApiError(HTTPStatus.NOT_FOUND, "not_found", "Not found.")
+            self._json(HTTPStatus.OK, {"deleted": True})
+        elif path == "/api/health":
             self._json(HTTPStatus.OK, {"status": "ok", "version": __version__})
         elif path == "/api/quit":
             self._json(HTTPStatus.OK, {"status": "stopping"})
-            self._launcher_server.request_stop("quit")
+            server.request_stop("quit")
+        elif path == "/api/connections":
+            entries = [entry.to_json() for entry in server.connections.entries()]
+            self._json(HTTPStatus.OK, {"connections": entries})
+        elif path == "/api/connection/test":
+            config, remember = parse_test_request(body)
+            self._json(
+                HTTPStatus.OK,
+                run_connection_test(config, remember=remember, store=server.connections),
+            )
+        elif path == "/api/databases":
+            config, include_system = parse_databases_request(body)
+            self._json(HTTPStatus.OK, list_databases(config, include_system=include_system))
         else:
             self._session(body)
 
@@ -289,22 +330,22 @@ class LauncherHandler(BaseHTTPRequestHandler):
             )
 
     def _read_json_body(self) -> dict[str, object]:
-        """Read the request body as a JSON object. Raises _Refused with the error to send.
+        """Read the request body as a JSON object. Raises ApiError with the error to send.
 
         The size is judged from ``Content-Length`` before anything is read, so an oversized
         body is never buffered. Chunked bodies are refused because they hide their size.
         """
         declared = self.headers.get("Content-Length")
         if self.headers.get("Transfer-Encoding") is not None or declared is None:
-            raise _Refused(HTTPStatus.LENGTH_REQUIRED, "length_required", "Send a Content-Length.")
+            raise ApiError(HTTPStatus.LENGTH_REQUIRED, "length_required", "Send a Content-Length.")
         if not declared.isascii() or not declared.isdigit():
-            raise _Refused(HTTPStatus.BAD_REQUEST, "bad_request", "Bad Content-Length.")
+            raise ApiError(HTTPStatus.BAD_REQUEST, "bad_request", "Bad Content-Length.")
         length = int(declared)
         if length > MAX_BODY_BYTES:
-            raise _Refused(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "too_large", "Body too large.")
+            raise ApiError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "too_large", "Body too large.")
         content_type = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
         if content_type != "application/json":
-            raise _Refused(
+            raise ApiError(
                 HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
                 "unsupported_media_type",
                 "Send application/json.",
@@ -315,7 +356,7 @@ class LauncherHandler(BaseHTTPRequestHandler):
         except (ValueError, RecursionError):
             value = None
         if not isinstance(value, dict):
-            raise _Refused(HTTPStatus.BAD_REQUEST, "bad_request", "Send a JSON object.")
+            raise ApiError(HTTPStatus.BAD_REQUEST, "bad_request", "Send a JSON object.")
         return cast("dict[str, object]", value)
 
     def _method_not_allowed(self, methods: tuple[str, ...]) -> None:
@@ -331,9 +372,16 @@ class LauncherHandler(BaseHTTPRequestHandler):
         self._send(status, body, "application/json", _NOTHING_POLICY)
 
     def _error(
-        self, status: HTTPStatus, code: str, message: str, *, allow: str | None = None
+        self,
+        status: HTTPStatus,
+        code: str,
+        message: str,
+        *,
+        allow: str | None = None,
+        fix: str | None = None,
     ) -> None:
-        body = json.dumps({"error": {"code": code, "message": message}}, separators=(",", ":"))
+        error = {"code": code, "message": message} | ({} if fix is None else {"fix": fix})
+        body = json.dumps({"error": error}, separators=(",", ":"))
         self._send(status, body.encode("utf-8"), "application/json", _NOTHING_POLICY, allow=allow)
 
     def _send(

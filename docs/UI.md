@@ -21,6 +21,7 @@ schemamap.ui.server   ThreadingHTTPServer on 127.0.0.1:<random>, one thread per 
    ├─ assets.py       packaged launcher page + its Content-Security-Policy
    ├─ jobs.py         (U.3) one extract job at a time, in a worker thread
    ├─ library.py      (U.3) maps on disk: list, serve, download, delete, import
+   ├─ api.py          (U.2) connection routes as plain functions: parsing, test, database list
    └─ connections.py  (U.2) remembered connections, never a password
         │
         ▼
@@ -155,8 +156,9 @@ connection string or traceback.
 | 411 | `length_required` | Body without `Content-Length` (chunked bodies are refused) |
 | 413 | `too_large` | Body over 1 MB (over 100 MB for import) |
 | 415 | `unsupported_media_type` | Body not `application/json` (import: not `application/json` or `application/gzip`) |
-| 422 | `invalid` | Well-formed but unacceptable: bad snapshot version, unknown auth mode |
+| 422 | `invalid` | Well-formed but unacceptable: bad snapshot version, unknown auth mode, settings the connection refuses (a mode that needs a password given none) |
 | 500 | `internal` | Anything unexpected; generic message, details never sent |
+| 502 | `connect_failed` | `/api/databases` could not connect or log in (`message` and `fix` included) |
 
 ### Routes
 
@@ -185,26 +187,42 @@ A *connection* is the same set of settings the CLI takes:
 ```
 `password` is accepted on request bodies only. It never appears in any response.
 
-**`POST /api/connection/test`** (U.2) takes `{ "connection": {…} }` and runs the `doctor` checks.
+**`POST /api/connection/test`** (U.2) takes `{ "connection": {…}, "remember": false }` and runs
+the `doctor` checks with those settings.
 ```json
-{ "checks": [ { "name": "login", "status": "ok | warn | fail",
-                "message": "…", "fix": "…", "fix_sql": "GRANT VIEW DEFINITION …" } ] }
+{ "checks": [ { "name": "Connection", "status": "ok | warn | fail",
+                "message": "…", "fix": "…", "fix_sql": "GRANT VIEW DEFINITION TO [user];" } ],
+  "connected": true, "ok": true, "remembered": false }
 ```
+The answer is `200` whatever the checks say: a failed login is a failed `Connection` check, not an
+HTTP error. `message` says what is wrong (or what was found, for a passing check); `fix` says what
+to do and is `null` when nothing is needed; `fix_sql` is the statement a DBA runs, only on a missing
+permission. `connected` says the login opened, `ok` that no check failed. Every text passes through
+`redact()` with the submitted secrets before it is sent.
 
-**`POST /api/databases`** (U.2) takes `{ "connection": {…}, "include_system": false }`.
-It answers `{ "databases": [ { "name": "AdventureWorks2022" } ] }`, using the new allowlisted
-query over `sys.databases` with `HAS_DBACCESS(name) = 1`.
+**`POST /api/databases`** (U.2) takes `{ "connection": {…}, "include_system": false }`. The
+connection's `database` may be left out and defaults to `master`.
+It answers `{ "databases": [ { "name": "AdventureWorks2022" } ] }`, sorted by name without regard
+to case, using the allowlisted query `databases.sql` over `sys.databases` with
+`HAS_DBACCESS(name) = 1` and `state = 0` (online). Databases 1 to 4 (`master`, `tempdb`, `model`,
+`msdb`) are left out unless `include_system` is true. A login that cannot connect gets
+`502 connect_failed` with `message` and `fix`, in the same wording as the `Connection` check.
 
-**`GET /api/connections`** (U.2) lists remembered connections:
+**`GET /api/connections`** (U.2) lists remembered connections, most recently used first (at most 20):
 ```json
 { "connections": [ { "id": "<hex32>", "server": "…", "port": 1433, "database": "…",
                      "auth": "sql", "user": "…" } ] }
 ```
+`id` is the first 32 hex characters of a SHA-256 over the five settings, so the same connection
+remembered twice is one entry. `user` is `null` for modes that take none.
 
-**`DELETE /api/connections/<id>`** (U.2) returns `{ "deleted": true }`.
+**`DELETE /api/connections/<id>`** (U.2) returns `{ "deleted": true }`, or `404` for an unknown id.
 
-A connection is remembered when `POST /api/jobs` or `/api/connection/test` carries
-`"remember": true`.
+A connection is remembered when `POST /api/jobs` (U.3) or `/api/connection/test` carries
+`"remember": true` **and the login opened** (`connected` is true; a check that warns or fails after
+that does not stop it, because the settings are right and the fix is on the server). Only server,
+port, database, auth mode and user are saved. `trust_server_certificate` and the timeouts are not,
+so the page asks for them again.
 
 **`POST /api/jobs`** (U.3) takes `{ "connection": {…}, "remember": false }`.
 It answers `202` with `{ "job_id": "<hex32>" }`.

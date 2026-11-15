@@ -47,3 +47,7 @@ def test_query_params_defaults_to_none() -> None:
 def test_query_params_refuses_malformed_headers(header: str, message: str) -> None:
     with pytest.raises(QueryRefusedError, match=message):
         query_params(header + "SELECT 1 FROM sys.tables;")
+
+
+def test_the_databases_query_takes_only_include_system() -> None:
+    assert query_params(load_query(QueryName.DATABASES)) == ("include_system",)

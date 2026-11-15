@@ -275,3 +275,39 @@ def test_report_failed_ignores_warnings(monkeypatch: pytest.MonkeyPatch) -> None
     assert not diagnose(config()).failed
     patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: []})
     assert diagnose(config()).failed
+
+
+def test_a_missing_permission_carries_its_hint_in_parts(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: []})
+    check = checks_by_name(diagnose(config()))["VIEW DEFINITION"]
+    assert check.message is not None and check.message.startswith("VIEW DEFINITION is missing:")
+    assert check.fix is not None and check.fix.startswith("Ask a DBA to run GRANT")
+    assert check.fix_sql == "GRANT VIEW DEFINITION TO [reader_user];"
+    assert check.next_step == f"{check.message} {check.fix}"
+
+
+def test_a_failed_connection_splits_the_problem_from_the_fix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def refuse(_config: ConnectionConfig) -> None:
+        raise ConnectError(
+            "Login failed for database 'd'. Fix: Check the user name and password. "
+            "Driver said: bad login"
+        )
+
+    monkeypatch.setattr(doctor_module, "load_driver", lambda: object())
+    monkeypatch.setattr(doctor_module, "connect", refuse)
+    check = checks_by_name(diagnose(config()))["Connection"]
+    assert check.message == "Login failed for database 'd'. Driver said: bad login"
+    assert check.fix == "Check the user name and password."
+    assert check.next_step is not None and check.next_step.startswith("The connection failed: ")
+
+
+def test_a_missing_driver_splits_the_problem_from_the_fix(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail() -> object:
+        raise DriverUnavailableError("The SQL Server driver could not be loaded. Install X.")
+
+    monkeypatch.setattr(doctor_module, "load_driver", fail)
+    check = checks_by_name(diagnose(config()))["Driver"]
+    assert check.message == "The SQL Server driver could not be loaded."
+    assert check.fix == "Install X."

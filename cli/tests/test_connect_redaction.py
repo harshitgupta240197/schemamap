@@ -128,3 +128,20 @@ def test_successful_connect_sets_timeouts_and_runs_named_query(
     assert seen["autocommit"] is True
     assert seen["timeout"] == 15
     assert "ApplicationIntent={ReadOnly}" in seen["text"]
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        (
+            "Login failed. Fix: Check the password. Driver said: nope",
+            ("Login failed. Driver said: nope", "Check the password."),
+        ),
+        ("Login failed. Fix: Check the password.", ("Login failed.", "Check the password.")),
+        ("Something else entirely.", ("Something else entirely.", None)),
+    ],
+)
+def test_split_failure_separates_the_fix_and_keeps_the_driver_words(
+    text: str, expected: tuple[str, str | None]
+) -> None:
+    assert connection_module.split_failure(text) == expected

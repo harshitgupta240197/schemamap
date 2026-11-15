@@ -65,6 +65,7 @@ APPROVED_FUNCTIONS = frozenset(
         "DATABASEPROPERTYEX",
         "DB_ID",
         "DB_NAME",
+        "HAS_DBACCESS",
         "HAS_PERMS_BY_NAME",
         "INDEXPROPERTY",
         "OBJECT_DEFINITION",
