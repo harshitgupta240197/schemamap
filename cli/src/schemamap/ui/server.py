@@ -94,6 +94,14 @@ _ID_ROUTES: tuple[tuple[re.Pattern[str], str, tuple[str, ...]], ...] = tuple(
     )
 )
 _BODY_METHODS = frozenset({"POST", "PUT", "PATCH"})
+# Error codes for the refusals the standard library makes before routing (see send_error).
+_PROTOCOL_ERRORS = {
+    HTTPStatus.BAD_REQUEST: "bad_request",
+    HTTPStatus.REQUEST_URI_TOO_LONG: "uri_too_long",
+    HTTPStatus.REQUEST_HEADER_FIELDS_TOO_LARGE: "headers_too_large",
+    HTTPStatus.NOT_IMPLEMENTED: "not_implemented",
+    HTTPStatus.HTTP_VERSION_NOT_SUPPORTED: "version_not_supported",
+}
 _SESSION_PATH = "/api/session"
 _IMPORT_PATH = "/api/maps/import"
 _MAP_PREFIX = "/maps/"
@@ -200,6 +208,18 @@ class LauncherHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format: str, *args: object) -> None:
         """Log nothing: request lines and errors stay off the terminal and out of files."""
+
+    def send_error(self, code: int, message: str | None = None, explain: str | None = None) -> None:
+        """Answer the standard library's own refusals like every other error (U.7).
+
+        A malformed request line, an over-long line, too many headers, an unknown method or
+        an unsupported version is refused before ``_handle`` runs. The base class would answer
+        with an HTML page without the security headers; this answers with the JSON error, the
+        headers and fixed wording that never quotes the request.
+        """
+        self.close_connection = True
+        status = HTTPStatus(code)
+        self._error(status, _PROTOCOL_ERRORS.get(status, "bad_request"), f"{status.phrase}.")
 
     def do_GET(self) -> None:
         self._handle("GET")

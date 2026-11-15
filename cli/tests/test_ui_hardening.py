@@ -459,3 +459,51 @@ def test_other_methods_are_refused_without_cors_answers(tmp_path: Path, method: 
             assert status in (405, 404), (path, status)
             assert not any(name.lower().startswith("access-control-") for name in headers)
             assert b"token" not in body
+
+
+# -- refusals the standard library makes before routing (U.7) ---------------------------------
+
+
+def raw_exchange(server: LauncherServer, data: bytes) -> tuple[int, dict[str, str], bytes]:
+    """Send raw bytes and read the whole answer, for requests http.client will not send."""
+    with socket.create_connection(("127.0.0.1", server.port), timeout=5) as sock:
+        sock.sendall(data)
+        chunks = []
+        while chunk := sock.recv(65536):
+            chunks.append(chunk)
+    head, _, body = b"".join(chunks).partition(b"\r\n\r\n")
+    status_line, *lines = head.decode("latin-1").split("\r\n")
+    headers = dict(line.split(": ", 1) for line in lines)
+    return int(status_line.split()[1]), headers, body
+
+
+PROTOCOL_REFUSALS = [
+    (b"GARBAGE\r\n\r\n", 400, "bad_request"),
+    (b"GET /<script>alert(1)</script> HTTP/9.9\r\n\r\n", 505, "version_not_supported"),
+    (b"GET /" + b"a" * 70_000 + b" HTTP/1.1\r\n\r\n", 414, "uri_too_long"),
+    (
+        b"GET / HTTP/1.1\r\nHost: x\r\n"
+        + b"".join(b"X-%d: y\r\n" % i for i in range(120))
+        + b"\r\n",
+        431,
+        "headers_too_large",
+    ),
+    (b"BREW /<b>pot</b> HTTP/1.1\r\nHost: x\r\n\r\n", 501, "not_implemented"),
+]
+
+
+@pytest.mark.parametrize(("data", "status", "code"), PROTOCOL_REFUSALS)
+def test_the_standard_librarys_own_refusals_are_json_with_the_security_headers(
+    tmp_path: Path, data: bytes, status: int, code: str
+) -> None:
+    with serving(tmp_path) as (server, _):
+        answer_status, headers, body = raw_exchange(server, data)
+    assert answer_status == status
+    assert headers["Content-Type"] == "application/json"
+    assert error_code(body) == code
+    assert headers["X-Content-Type-Options"] == "nosniff"
+    assert headers["Referrer-Policy"] == "no-referrer"
+    assert headers["X-Frame-Options"] == "DENY"
+    assert headers["Content-Security-Policy"].startswith("default-src 'none'")
+    # Fixed wording: nothing from the request comes back.
+    assert b"script" not in body and b"pot" not in body and b"aaaa" not in body
