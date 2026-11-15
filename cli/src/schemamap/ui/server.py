@@ -527,6 +527,10 @@ class LauncherHandler(BaseHTTPRequestHandler):
         allow: str | None = None,
         disposition: str | None = None,
     ) -> None:
+        # Recorded before the answer goes out, so a client that has the answer has also restarted
+        # the idle timer (a test that moves the clock right after a response relies on it).
+        if status < HTTPStatus.BAD_REQUEST:
+            self._launcher_server.touch()
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
@@ -540,5 +544,3 @@ class LauncherHandler(BaseHTTPRequestHandler):
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)
-        if status < HTTPStatus.BAD_REQUEST:
-            self._launcher_server.touch()

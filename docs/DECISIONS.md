@@ -570,6 +570,8 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 - **The page checks against `master`** (the one database every login can open) because Connect has no database field; the database is chosen on the next step. Its first step shows what the login can do on `master`, and the picker lists where it can go.
 - **Not in U.4:** the header's "Recent maps" and "Quit" links and the Extract step (U.5). "Extract map" is shown disabled with a one-line note, so the picker is complete to look at without a button that does nothing.
 
+- **Idle timer restarts before the answer is sent.** `touch()` ran after the body was written, so a client (or a test moving a fake clock) could act before the activity was recorded; the macOS CI job caught it in `test_a_successful_request_restarts_the_idle_timer`. The test is unchanged; the server now records activity first.
+
 **Why.** First-time users should connect and pick a database without reading docs, with every server-offered choice coming from the server.
 
 **Cost.** One more route and one more CSP source (`data:` for fonts only). **Not added:** no dependency.
