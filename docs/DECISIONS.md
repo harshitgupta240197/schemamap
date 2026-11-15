@@ -610,6 +610,9 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 - Work happens on a branch `crumb/<id>` cut from the phase branch. At the end of the crumb a pull request goes into the phase branch with `Closes #<issue>` (`gh pr create`); the agent waits for `gh pr checks --watch` and then stops and prints the PR URL.
 - Harshit reviews the pull request on GitHub and merges it with a merge commit. The agent never merges it and does not begin the next crumb until told.
 - Gate pull requests from the phase branch into `main` stay as they were (`gh pr create --fill`, `gh pr checks --watch`, report, Harshit approves).
+- **Closing issues (update, 2026-11-15).** GitHub auto-closes an issue from `Closes #n` only when the pull request merges into the default branch. After a crumb PR merges into a phase branch, run `gh issue close <n> --comment "Merged in #<PR>"`.
+- **Polish after a gate (update, 2026-11-15).** Once a phase's gate has merged, polish crumbs branch from `main` as `crumb/<id>` and open their pull request straight into `main` with `Closes #…`, so the issues close on merge.
+- **Harnesses clean up after themselves (update, 2026-11-15).** Review and test harnesses stop every server, browser and background process they start, even when they fail.
 - CLAUDE.md's Git workflow and End of every crumb sections carry the same steps. The PROGRESS line is committed on the crumb branch, so it is part of the reviewed pull request.
 
 **Why.** Until now every crumb landed as direct commits on the phase branch, so the first time a human saw a change as a whole was the gate. A pull request per crumb gives a reviewable diff, a place for comments, CI results next to the change, and a link from the issue (what was asked) to the pull request (what was done). Merge commits keep each crumb visible as one unit in the history.
