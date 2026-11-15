@@ -416,3 +416,10 @@ def test_extract_help_describes_the_new_options() -> None:
 
 def test_definition_status_has_an_omitted_value() -> None:
     assert DefinitionStatus.OMITTED.value == "omitted"
+
+
+def test_the_progress_sections_are_the_ones_extraction_reports() -> None:
+    from schemamap.extract import PROGRESS_SECTIONS, SECTION_COUNT
+
+    assert SECTION_COUNT == len(PROGRESS_SECTIONS) == 8
+    assert len(set(PROGRESS_SECTIONS)) == SECTION_COUNT

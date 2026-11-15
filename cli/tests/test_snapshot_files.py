@@ -13,6 +13,7 @@ from schemamap.errors import SnapshotError
 from schemamap.snapshot.io import (
     default_output_path,
     dump_snapshot,
+    load_snapshot,
     read_snapshot,
     write_snapshot,
 )
@@ -173,3 +174,9 @@ def test_reading_a_corrupt_gzip_is_a_snapshot_error(tmp_path: Path) -> None:
     broken.write_bytes(b"\x1f\x8b" + b"not really gzip")
     with pytest.raises(SnapshotError, match="cannot read"):
         read_snapshot(broken)
+
+
+@pytest.mark.parametrize("data", [b"\xff\xfe\x00", b"[" * 100_000])
+def test_text_that_is_not_utf8_or_is_nested_too_deep_is_a_snapshot_error(data: bytes) -> None:
+    with pytest.raises(SnapshotError, match="not valid JSON"):
+        load_snapshot(data)

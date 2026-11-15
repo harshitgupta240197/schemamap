@@ -537,3 +537,18 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 **Why.** The page must never be a new way to leak a login, and a person should not have to remember which databases a login can open.
 
 **Cost.** A short or common-word password gets that text masked wherever it appears in a message; the alternative is leaking it. Remembered connections lose the certificate checkbox, which the person ticks again. **Not added:** no dependency.
+
+## D-063 Jobs and the maps library (2026-11-15)
+
+**Decision (crumb U.3).**
+- **One job at a time, in a daemon thread.** `JobManager` refuses a second start with `409 job_running`. Finished jobs stay in memory as status only. The job is also the `SectionObserver` the CLI's progress bar uses, so the extract pipeline has one progress callback, not two. `PROGRESS_SECTIONS` names the sections it reports; an integration test checks it against what `extract_database` runs.
+- **Cancel has two checks.** The observer raises between sections, and `MetadataExecutor.set_gate` runs a callback before every query, so a cancel lands between queries inside a section too. A query already sent is bounded by the query timeout.
+- **The password is dropped once connected.** `POST /api/jobs` hands the config to the worker in a one-slot box; the worker pops it, opens the connection (masking a failed login by value with `redact`), remembers the five settings if asked, and keeps only server and database. A test holds a weak reference and shows the config is collected while the extract is still running. Past that point there is no secret left to mask by value, so extract-phase messages are fixed wording and `describe_error` also masks `PWD=`/`Password=` fragments.
+- **Section counts arrive when the job ends.** `SectionObserver.finished` stays `(section, seconds, skipped)`: widening it would touch the CLI bar and its tests for a number the page shows only when done.
+- **Library on disk** as in UI.md: `maps/<id>/{snapshot.json.gz, map.html, meta.json}`. A map is built in `tmp/` and moved into place with one rename, and a delete moves the folder out first, so a list never shows a half map. Ids come from `secrets.token_hex(16)`; no function takes a path. `tmp/` is emptied when the server starts and when it closes.
+- **Import** streams the body to a server-named file, reads it through `read_upload` (gzip found by content, unpacked size capped at 512 MB so a small gzip cannot fill memory) and `load_snapshot`, the validation `view` uses, then makes a map. A refusal is `422 invalid` with that message, cut to 1,000 characters.
+- **Two fixes found by the new tests.** `redact` now masks known secrets before sweeping `PWD=` fragments: a password that itself contains `PWD=` was cut in two by the sweep and half of it survived. `ConnectionConfig.secrets()` now also holds the brace-quoted password. `load_snapshot` turned a non-UTF-8 or deeply nested file into an unhandled error; it now raises `SnapshotError` (so `view` exits 4 on it too).
+
+**Why.** The page needs live progress, a safe cancel and a library it can list, serve and delete, with no route that can name a file and no way for a login to end up on disk.
+
+**Cost.** A cancel waits for the query in flight (bounded by the query timeout). A password lives in process memory until garbage collected, as UI.md says. **Not added:** no dependency.

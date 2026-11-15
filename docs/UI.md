@@ -72,14 +72,18 @@ profile, needs a new link: restart `schemamap ui`.
 - One job at a time; a second `POST /api/jobs` gets `409 job_running`.
 - A job runs `extract_snapshot` in a worker thread. The extract pipeline reports progress through
   a callback (the CLI's progress bar uses the same one). The job records per-section state:
-  `pending | running | done | skipped | failed`, plus counts.
+  `pending | running | done | skipped | failed`. A section's count (items read) is filled in when
+  the job ends in `done`; while it runs the page shows which section is being read.
 - Job states: `running → done | failed | cancelled`. Cancel is cooperative: it is checked between
-  sections and between queries, and the query timeout bounds the wait for the query in flight.
+  sections and before every query (the executor's gate), and the query timeout bounds the wait for
+  the query in flight. The state stays `running` until the job reaches its next check.
 - **Password lifetime:** the request body is parsed into a connection config; the password is
   used to open the connection and then the job drops its reference. Python cannot scrub memory,
   so "dropped" means no reference is kept and nothing writes it anywhere. It is never logged,
-  never put in an error (the existing `redact()` applies to every message), never echoed in a
-  response, and never on any command line.
+  never put in an error (a failed login is masked by value with `redact()` while the config is
+  still held; after that the job keeps no secret, so extract-phase messages are fixed wording and
+  still have `PWD=`/`Password=` fragments masked), never echoed in a response, and never on any
+  command line.
 - Finished jobs are kept in memory for the life of the server (status only, no credentials).
 
 ### Where files go
@@ -236,7 +240,9 @@ It answers `202` with `{ "job_id": "<hex32>" }`.
 ```
 The client polls about every 500 ms. There is no SSE or websocket.
 
-**`POST /api/jobs/<id>/cancel`** (U.3) returns `{ "state": "cancelling" }`.
+**`POST /api/jobs/<id>/cancel`** (U.3) returns `{ "state": "cancelling" }`. For a job that already
+ended it returns that job's final state (`done`, `failed` or `cancelled`) and changes nothing. Like
+every `POST`, it takes a JSON body: send `{}`.
 
 **`GET /api/maps`** (U.3)
 ```json
@@ -251,8 +257,9 @@ The client polls about every 500 ms. There is no SSE or websocket.
 
 **`DELETE /api/maps/<id>`** (U.3) returns `{ "deleted": true }`.
 
-**`POST /api/maps/import`** (U.3) takes a raw `.json` or `.json.gz` body, up to 100 MB, streamed
-to `tmp/`. It answers `{ "map_id": "…" }`, or `422 invalid` with the same friendly message
+**`POST /api/maps/import`** (U.3) takes a raw `.json` or `.json.gz` body (`Content-Type:
+application/json` or `application/gzip`; the file is recognised by its content), up to 100 MB,
+streamed to a server-named file in `tmp/`. A gzip file may unpack to at most 512 MB. It answers `{ "map_id": "…" }`, or `422 invalid` with the same friendly message
 `view` gives.
 
 ### Why `/maps/<id>` has no token

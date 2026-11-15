@@ -84,3 +84,11 @@ class EmbedError(SchemaMapError):
 
 class DataDirError(SchemaMapError):
     """The launcher's data folder cannot be created or written to."""
+
+
+class JobRunningError(SchemaMapError):
+    """An extract job is already running; the launcher runs one at a time."""
+
+
+class JobCancelledError(SchemaMapError):
+    """Raised inside an extract job when the user cancelled it. It stops the work, nothing more."""

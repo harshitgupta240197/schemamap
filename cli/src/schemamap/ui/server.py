@@ -23,15 +23,19 @@ from typing import cast
 from urllib.parse import urlsplit
 
 from schemamap import __version__
+from schemamap.errors import JobRunningError, SchemaMapError, SnapshotError
 from schemamap.ui.api import (
     ApiError,
     list_databases,
     parse_databases_request,
     parse_test_request,
     run_connection_test,
+    snapshot_refusal,
 )
 from schemamap.ui.assets import Launcher
 from schemamap.ui.connections import ConnectionStore
+from schemamap.ui.jobs import JobManager, describe_error
+from schemamap.ui.library import MapLibrary, read_upload
 from schemamap.ui.security import (
     LISTEN_HOST,
     TOKEN_HEADER,
@@ -44,6 +48,9 @@ from schemamap.ui.security import (
 
 REQUEST_TIMEOUT_SECONDS = 10
 MAX_BODY_BYTES = 1024 * 1024
+MAX_IMPORT_BYTES = 100 * 1024 * 1024
+_CHUNK_BYTES = 64 * 1024
+_IMPORT_TYPES = frozenset({"application/json", "application/gzip"})
 IDLE_TIMEOUT_SECONDS = 30 * 60
 
 # Sent on every response. Pages other than the launcher (JSON, errors) get a policy that
@@ -58,7 +65,8 @@ _NOTHING_POLICY = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; 
 # A map keeps its own meta policy (connect-src 'none'); only the framing rule needs a header.
 _MAP_POLICY = "frame-ancestors 'none'"
 
-# Methods each API route answers. A route's methods that carry a body need a JSON body.
+# Methods each API route answers. A route's methods that carry a body need a JSON body, except
+# the import route, whose body is the snapshot file itself.
 _API_ROUTES: dict[str, tuple[str, ...]] = {
     "/api/health": ("GET", "HEAD"),
     "/api/quit": ("POST",),
@@ -66,12 +74,27 @@ _API_ROUTES: dict[str, tuple[str, ...]] = {
     "/api/connection/test": ("POST",),
     "/api/databases": ("POST",),
     "/api/connections": ("GET", "HEAD"),
+    "/api/jobs": ("POST",),
+    "/api/maps": ("GET", "HEAD"),
+    "/api/maps/import": ("POST",),
 }
-_CONNECTION_PREFIX = "/api/connections/"
+# Routes with an id in the path: a pattern per route. An id is exactly 32 lowercase hex
+# characters, so a path with anything else in that place is not a route at all.
+_ID = r"(?P<id>[0-9a-f]{32})"
+_ID_ROUTES: tuple[tuple[re.Pattern[str], str, tuple[str, ...]], ...] = tuple(
+    (re.compile(pattern), name, methods)
+    for pattern, name, methods in (
+        (f"/api/connections/{_ID}", "connection", ("DELETE",)),
+        (f"/api/jobs/{_ID}", "job", ("GET", "HEAD")),
+        (f"/api/jobs/{_ID}/cancel", "job_cancel", ("POST",)),
+        (f"/api/maps/{_ID}", "map", ("DELETE",)),
+        (f"/api/maps/{_ID}/download", "map_download", ("GET", "HEAD")),
+    )
+)
 _BODY_METHODS = frozenset({"POST", "PUT", "PATCH"})
 _SESSION_PATH = "/api/session"
+_IMPORT_PATH = "/api/maps/import"
 _MAP_PREFIX = "/maps/"
-_ID = re.compile(r"[0-9a-f]{32}")
 
 
 class LauncherServer(ThreadingHTTPServer):
@@ -99,6 +122,9 @@ class LauncherServer(ThreadingHTTPServer):
         self.data_dir = data_dir
         self.token = token if token is not None else secrets.token_urlsafe(32)
         self.connections = ConnectionStore(data_dir)
+        self.library = MapLibrary(data_dir)
+        self.library.clear_tmp()
+        self.jobs = JobManager(self.library, self.connections)
         self.launch_code = LaunchCode(clock=clock, code=code)
         self.stop_reason: str | None = None
         self._clock = clock
@@ -113,6 +139,12 @@ class LauncherServer(ThreadingHTTPServer):
         host, port = self.server_address[:2]
         self.server_name = str(host)
         self.server_port = int(port)
+
+    def server_close(self) -> None:
+        """Stop a running job, empty ``tmp/`` of uploads and half-written maps, close the socket."""
+        self.jobs.shutdown()
+        self.library.clear_tmp()
+        super().server_close()
 
     def handle_error(self, request: object, client_address: object) -> None:
         """Drop handler errors silently: a traceback on stderr could quote request data."""
@@ -228,21 +260,11 @@ class LauncherHandler(BaseHTTPRequestHandler):
                 HTTPStatus.FORBIDDEN, "forbidden_fetch_site", "This request is not allowed."
             )
             return
-        page = self._read_map(map_id)
+        page = self._launcher_server.library.read_map(map_id)
         if page is None:
             self._error(HTTPStatus.NOT_FOUND, "not_found", "Not found.")
             return
         self._send(HTTPStatus.OK, page, "text/html; charset=utf-8", _MAP_POLICY)
-
-    def _read_map(self, map_id: str) -> bytes | None:
-        # Only a 32-character lowercase hex id reaches the file system, so no path from the
-        # request is ever joined: ``..``, separators and percent-escapes all fail the match.
-        if _ID.fullmatch(map_id) is None:
-            return None
-        try:
-            return (self._launcher_server.data_dir / "maps" / map_id / "map.html").read_bytes()
-        except OSError:
-            return None
 
     def _api(self, method: str, path: str) -> None:
         # A token in the query string is ignored on purpose: only the header counts. The
@@ -252,8 +274,7 @@ class LauncherHandler(BaseHTTPRequestHandler):
         ):
             self._error(HTTPStatus.UNAUTHORIZED, "unauthorized", "Missing or wrong token.")
             return
-        connection_id = self._connection_id(path)
-        methods = ("DELETE",) if connection_id is not None else _API_ROUTES.get(path)
+        route, identifier, methods = self._match(path)
         if methods is None:
             self._error(HTTPStatus.NOT_FOUND, "not_found", "Not found.")
             return
@@ -261,7 +282,7 @@ class LauncherHandler(BaseHTTPRequestHandler):
             self._method_not_allowed(methods)
             return
         body: dict[str, object] = {}
-        if method in _BODY_METHODS:
+        if method in _BODY_METHODS and route != _IMPORT_PATH:
             try:
                 body = self._read_json_body()
             except ApiError as refusal:
@@ -270,7 +291,7 @@ class LauncherHandler(BaseHTTPRequestHandler):
                 self._error(refusal.status, refusal.code, refusal.message)
                 return
         try:
-            self._route(path, connection_id, body)
+            self._route(route, identifier, body)
         except ApiError as refusal:
             self._error(refusal.status, refusal.code, refusal.message, fix=refusal.fix)
         except Exception:  # a bug: answer with fixed wording, never with the exception's text
@@ -281,38 +302,141 @@ class LauncherHandler(BaseHTTPRequestHandler):
             )
 
     @staticmethod
-    def _connection_id(path: str) -> str | None:
-        """The id in ``/api/connections/<id>``; a path with a malformed id is not a route."""
-        if not path.startswith(_CONNECTION_PREFIX):
-            return None
-        identifier = path.removeprefix(_CONNECTION_PREFIX)
-        return identifier if _ID.fullmatch(identifier) else None
+    def _match(path: str) -> tuple[str, str | None, tuple[str, ...] | None]:
+        """The route name, the id in the path (if any) and the methods the route answers.
 
-    def _route(self, path: str, connection_id: str | None, body: dict[str, object]) -> None:
+        The methods are None for a path that is no route, including one with a malformed id.
+        """
+        fixed = _API_ROUTES.get(path)
+        if fixed is not None:
+            return path, None, fixed
+        for pattern, name, methods in _ID_ROUTES:
+            found = pattern.fullmatch(path)
+            if found is not None:
+                return name, found.group("id"), methods
+        return path, None, None
+
+    def _route(self, route: str, identifier: str | None, body: dict[str, object]) -> None:
         server = self._launcher_server
-        if connection_id is not None:
-            if not server.connections.forget(connection_id):
+        if route == "connection":
+            if identifier is None or not server.connections.forget(identifier):
                 raise ApiError(HTTPStatus.NOT_FOUND, "not_found", "Not found.")
             self._json(HTTPStatus.OK, {"deleted": True})
-        elif path == "/api/health":
+        elif route in ("job", "job_cancel", "map", "map_download"):
+            self._route_with_id(route, identifier or "")
+        elif route == "/api/health":
             self._json(HTTPStatus.OK, {"status": "ok", "version": __version__})
-        elif path == "/api/quit":
+        elif route == "/api/quit":
             self._json(HTTPStatus.OK, {"status": "stopping"})
             server.request_stop("quit")
-        elif path == "/api/connections":
+        elif route == "/api/connections":
             entries = [entry.to_json() for entry in server.connections.entries()]
             self._json(HTTPStatus.OK, {"connections": entries})
-        elif path == "/api/connection/test":
+        elif route == "/api/connection/test":
             config, remember = parse_test_request(body)
             self._json(
                 HTTPStatus.OK,
                 run_connection_test(config, remember=remember, store=server.connections),
             )
-        elif path == "/api/databases":
+        elif route == "/api/databases":
             config, include_system = parse_databases_request(body)
             self._json(HTTPStatus.OK, list_databases(config, include_system=include_system))
+        elif route == "/api/jobs":
+            config, remember = parse_test_request(body)
+            try:
+                job_id = server.jobs.start(config, remember=remember)
+            except JobRunningError:
+                raise ApiError(
+                    HTTPStatus.CONFLICT,
+                    "job_running",
+                    "An extract is already running.",
+                    "Wait for it to finish, or cancel it, then try again.",
+                ) from None
+            self._json(HTTPStatus.ACCEPTED, {"job_id": job_id})
+        elif route == "/api/maps":
+            maps = [entry.to_json() for entry in server.library.entries()]
+            self._json(HTTPStatus.OK, {"maps": maps})
+        elif route == _IMPORT_PATH:
+            self._import_map()
         else:
             self._session(body)
+
+    def _route_with_id(self, route: str, identifier: str) -> None:
+        """The job and map routes: the id is looked up, never joined into a path."""
+        server = self._launcher_server
+        not_found = ApiError(HTTPStatus.NOT_FOUND, "not_found", "Not found.")
+        if route == "job":
+            status = server.jobs.status(identifier)
+            if status is None:
+                raise not_found
+            self._json(HTTPStatus.OK, status)
+        elif route == "job_cancel":
+            state = server.jobs.cancel(identifier)
+            if state is None:
+                raise not_found
+            self._json(HTTPStatus.OK, {"state": state})
+        elif route == "map":
+            if not server.library.delete(identifier):
+                raise not_found
+            self._json(HTTPStatus.OK, {"deleted": True})
+        else:
+            page = server.library.read_map(identifier)
+            if page is None:
+                raise not_found
+            name = server.library.download_name(identifier)
+            self._send(
+                HTTPStatus.OK,
+                page,
+                "text/html; charset=utf-8",
+                _NOTHING_POLICY,
+                disposition=f'attachment; filename="{name}"',
+            )
+
+    def _import_map(self) -> None:
+        """``POST /api/maps/import``: the body is a snapshot file, streamed to ``tmp/``.
+
+        The file gets a name the server chose. Its content is validated as ``view`` validates
+        it, and only then is a map made. A refusal before the body is read closes the connection.
+        """
+        server = self._launcher_server
+        try:
+            length = self._declared_length(MAX_IMPORT_BYTES)
+            kind = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            if kind not in _IMPORT_TYPES:
+                raise ApiError(
+                    HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                    "unsupported_media_type",
+                    "Send application/json or application/gzip.",
+                )
+            upload = server.library.new_upload_path()
+            try:
+                self._stream_body(upload, length)
+                snapshot = read_upload(upload)
+                map_id = server.library.add(snapshot)
+            except SnapshotError as exc:
+                raise snapshot_refusal(exc) from None
+            except (SchemaMapError, OSError) as exc:
+                failure = describe_error(exc)
+                raise ApiError(
+                    HTTPStatus.INTERNAL_SERVER_ERROR, failure.code, failure.message, failure.fix
+                ) from None
+            finally:
+                upload.unlink(missing_ok=True)
+        except ApiError:
+            self.close_connection = True
+            raise
+        self._json(HTTPStatus.OK, {"map_id": map_id})
+
+    def _stream_body(self, destination: Path, length: int) -> None:
+        """Copy exactly ``length`` body bytes to ``destination`` in chunks, never all in memory."""
+        remaining = length
+        with destination.open("wb") as out:
+            while remaining > 0:
+                chunk = self.rfile.read(min(_CHUNK_BYTES, remaining))
+                if not chunk:
+                    raise ApiError(HTTPStatus.BAD_REQUEST, "bad_request", "The body ended early.")
+                out.write(chunk)
+                remaining -= len(chunk)
 
     def _session(self, body: dict[str, object]) -> None:
         """Trade the one-time launch code for the session token."""
@@ -335,14 +459,7 @@ class LauncherHandler(BaseHTTPRequestHandler):
         The size is judged from ``Content-Length`` before anything is read, so an oversized
         body is never buffered. Chunked bodies are refused because they hide their size.
         """
-        declared = self.headers.get("Content-Length")
-        if self.headers.get("Transfer-Encoding") is not None or declared is None:
-            raise ApiError(HTTPStatus.LENGTH_REQUIRED, "length_required", "Send a Content-Length.")
-        if not declared.isascii() or not declared.isdigit():
-            raise ApiError(HTTPStatus.BAD_REQUEST, "bad_request", "Bad Content-Length.")
-        length = int(declared)
-        if length > MAX_BODY_BYTES:
-            raise ApiError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "too_large", "Body too large.")
+        length = self._declared_length(MAX_BODY_BYTES)
         content_type = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
         if content_type != "application/json":
             raise ApiError(
@@ -358,6 +475,18 @@ class LauncherHandler(BaseHTTPRequestHandler):
         if not isinstance(value, dict):
             raise ApiError(HTTPStatus.BAD_REQUEST, "bad_request", "Send a JSON object.")
         return cast("dict[str, object]", value)
+
+    def _declared_length(self, limit: int) -> int:
+        """The body size from ``Content-Length``, at most ``limit``. Raises ApiError otherwise."""
+        declared = self.headers.get("Content-Length")
+        if self.headers.get("Transfer-Encoding") is not None or declared is None:
+            raise ApiError(HTTPStatus.LENGTH_REQUIRED, "length_required", "Send a Content-Length.")
+        if not declared.isascii() or not declared.isdigit():
+            raise ApiError(HTTPStatus.BAD_REQUEST, "bad_request", "Bad Content-Length.")
+        length = int(declared)
+        if length > limit:
+            raise ApiError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "too_large", "Body too large.")
+        return length
 
     def _method_not_allowed(self, methods: tuple[str, ...]) -> None:
         self._error(
@@ -392,6 +521,7 @@ class LauncherHandler(BaseHTTPRequestHandler):
         policy: str,
         *,
         allow: str | None = None,
+        disposition: str | None = None,
     ) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
@@ -401,6 +531,8 @@ class LauncherHandler(BaseHTTPRequestHandler):
             self.send_header(name, value)
         if allow is not None:
             self.send_header("Allow", allow)
+        if disposition is not None:
+            self.send_header("Content-Disposition", disposition)
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)

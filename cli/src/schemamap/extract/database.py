@@ -68,7 +68,19 @@ class DatabaseExtraction:
     warnings: tuple[ExtractionWarning, ...]
 
 
-SECTION_COUNT = 8
+PROGRESS_SECTIONS: tuple[Section, ...] = (
+    Section.SCHEMAS,
+    Section.TABLES,
+    Section.VIEWS,
+    Section.ROUTINES,
+    Section.SYNONYMS,
+    Section.RELATIONSHIPS,
+    Section.DEPENDENCIES,
+    Section.ROW_COUNTS,
+)
+"""The sections extract_database runs, in order, for progress displays."""
+
+SECTION_COUNT = len(PROGRESS_SECTIONS)
 """How many sections extract_database runs, for progress totals."""
 
 

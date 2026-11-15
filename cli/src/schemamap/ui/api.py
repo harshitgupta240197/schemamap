@@ -21,13 +21,14 @@ from schemamap.connect import (
     redact,
 )
 from schemamap.connect.connection import split_failure
-from schemamap.errors import ConnectError
+from schemamap.errors import ConnectError, SnapshotError
 from schemamap.queries import QueryName
 from schemamap.ui.connections import ConnectionStore
 
 DEFAULT_DATABASE = "master"
 MAX_TEXT = 256
 MAX_PASSWORD = 1024
+MAX_REFUSAL_CHARS = 1000
 MAX_TIMEOUT_SECONDS = 300
 
 _CONNECTION_FIELDS = frozenset(
@@ -157,6 +158,17 @@ def parse_databases_request(body: dict[str, object]) -> tuple[ConnectionConfig, 
     _only(body, frozenset({"connection", "include_system"}))
     config = parse_connection(body.get("connection"), default_database=DEFAULT_DATABASE)
     return config, _flag(body, "include_system")
+
+
+def snapshot_refusal(error: SnapshotError) -> ApiError:
+    """The 422 for an uploaded snapshot that cannot be used: the message `view` would print.
+
+    A long validator report is cut, so a bad file cannot make a huge answer.
+    """
+    message = str(error)
+    if len(message) > MAX_REFUSAL_CHARS:
+        message = message[:MAX_REFUSAL_CHARS].rstrip() + " …"
+    return ApiError(HTTPStatus.UNPROCESSABLE_ENTITY, "invalid", message)
 
 
 def _scrub(text: str | None, config: ConnectionConfig) -> str | None:

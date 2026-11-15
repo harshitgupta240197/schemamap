@@ -6,7 +6,7 @@ allowlist again just before it runs, and values are bound as parameters, never f
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from schemamap.errors import (
@@ -28,6 +28,14 @@ class MetadataExecutor:
 
     def __init__(self, driver_connection: Any) -> None:
         self._driver_connection = driver_connection
+        self._gate: Callable[[], None] | None = None
+
+    def set_gate(self, gate: Callable[[], None] | None) -> None:
+        """Call ``gate`` before every query; whatever it raises stops the query from being sent.
+
+        The launcher uses it so cancelling a job takes effect between queries.
+        """
+        self._gate = gate
 
     def run(self, query: QueryName, params: Params | None = None) -> list[Row]:
         """Run the named query with ``params`` bound and return every row as a tuple.
@@ -39,6 +47,8 @@ class MetadataExecutor:
             raise QueryRefusedError(
                 "The executor runs only named queries from queries/, never SQL text."
             )
+        if self._gate is not None:
+            self._gate()
         sql = load_query(query)
         check_query(sql)
         values = bind_params(query_params(sql), params or {})

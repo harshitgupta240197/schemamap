@@ -96,3 +96,10 @@ def test_password_never_in_repr_or_str() -> None:
 def test_config_is_immutable() -> None:
     with pytest.raises(AttributeError):
         make().password = "x"  # type: ignore[misc]
+
+
+def test_secrets_include_the_brace_quoted_password() -> None:
+    config = ConnectionConfig(server="h", database="d", user="u", password="a}b;PWD={c")
+    assert "a}b;PWD={c" in config.secrets()
+    assert "{a}}b;PWD={c}" in config.secrets()
+    assert config.connection_string() in config.secrets()

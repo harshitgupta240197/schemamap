@@ -73,6 +73,13 @@ def test_redact_masks_longest_first_and_ignores_empty() -> None:
     assert redact("abc abcdef", ["abc", "abcdef", ""]) == "*** ***"
 
 
+def test_redact_masks_a_password_that_contains_a_pwd_keyword_whole() -> None:
+    password = "S3cret};PWD={pw}"
+    for echoed in (password, "PWD=" + password, "x {S3cret}};PWD={{pw}}} y"):
+        text = redact(f"Driver said: {echoed}", [password, "{S3cret}};PWD={{pw}}}"])
+        assert "S3cret" not in text
+
+
 def test_redact_masks_pwd_fragments_even_for_unknown_passwords() -> None:
     assert redact("x PWD={other;}}pw};Database=d", []) == "x ***;Database=d"
     assert redact("password = hunter2 end", []) == "*** end"

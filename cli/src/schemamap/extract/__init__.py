@@ -13,7 +13,12 @@ from schemamap.extract.code import (
     extract_synonyms,
     extract_views,
 )
-from schemamap.extract.database import SECTION_COUNT, DatabaseExtraction, extract_database
+from schemamap.extract.database import (
+    PROGRESS_SECTIONS,
+    SECTION_COUNT,
+    DatabaseExtraction,
+    extract_database,
+)
 from schemamap.extract.filters import SchemaFilter, apply_schema_filter, omit_definitions
 from schemamap.extract.relationships import build_relationships, extract_relationships
 from schemamap.extract.row_counts import build_row_counts, extract_row_counts
@@ -29,6 +34,7 @@ from schemamap.extract.visibility import (
 
 __all__ = [
     "PARTIAL_VISIBILITY_CODE",
+    "PROGRESS_SECTIONS",
     "SECTION_COUNT",
     "DatabaseExtraction",
     "Requirement",
