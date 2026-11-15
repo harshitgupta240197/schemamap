@@ -883,31 +883,36 @@ Branch `phase-u-launcher`. Gate: U.7, then PR, merge commit, tag `v0.1.0-alpha.3
 ### U.4 Launcher screens: connect, check, pick
 - Model: Sonnet 5.5 · Effort: medium · Mode: normal
 - Session: /clear → /model sonnet → /effort medium
-- Depends on: U.3, and the screen mockups approved in the Claude Project (saved as `docs/design/launcher.dc.html`)
+- Depends on: U.3; approved mockups in docs/design/launcher/ (D-064)
 - Goal: a first-time user can connect and pick a database without reading docs.
 - Build:
-  - Launcher front end (React + TypeScript, built as its own single file, packaged by `tools/build_viewer.py`), matching `docs/design/launcher.dc.html`
-  - Connect screen: fields, auth modes (Windows shown only on Windows), password field with show/hide, "remember this connection" (never the password), recent connections list, advanced section
-  - Check results: each check with status, message and fix; Copy for the permission script
-  - Database picker with search; empty and error states; keyboard-only flow; light design with self-hosted Inter
-  - All server-returned text rendered as React text only; the no-raw-HTML lint rule applies
+  - Commit docs/design/launcher/ as copied in (references only, not shipped); add D-064 to DECISIONS (text below)
+  - Launcher front end (React + TypeScript, single file, packaged by tools/build_viewer.py) matching frames Main, Check, Pick, Pick-Empty, Pick-Error and their Mobile-* versions
+  - Connect: sign-in as three radio buttons (SQL Server login / Windows / Microsoft Entra ID) plus an Entra method select; Windows and the Entra list come from the server, not hard-coded. If no route returns them, add GET /api/capabilities {os, auth_modes}
+  - Password show/hide with aria-pressed; "Trust server certificate" unticked by default, warning note when ticked; "Remember this connection" (never the password); recent connections with Use and Forget; Advanced collapsed (timeouts)
+  - Check results ordered fail, warn, pass; permission script from fix_sql with Copy; "Check again", "Choose a database anyway", "Edit connection"
+  - Picker: search, "Show system databases", radio list, no-results, empty and error states
+  - Self-hosted Inter only, real mark from site/; none of the README's mockup-only items
+  - All server text rendered as React text; no-raw-HTML lint applies
 - Tests:
-  - Vitest: form validation, auth-mode visibility, recent connections never show a password
-  - Playwright against a real `schemamap ui` with a stubbed API: full keyboard flow; axe zero serious/critical at 1280 and 375 px; no request leaves 127.0.0.1
+  - Vitest: form validation; Windows hidden when os is not windows; Entra list matches the API; trust defaults off; recent connections never show a password
+  - Playwright with a stubbed API: full keyboard flow; axe zero serious/critical at 1280 and 375 px; no request leaves 127.0.0.1 (no fonts.googleapis.com); screenshots of each screen at both widths saved as CI artifacts
 - Done when:
+  - [ ] Screenshots match the mockups (Harshit spot-checks)
   - [ ] Launcher checks green locally; CI green on the last pushed commit (PROGRESS commit included)
 - Commit: `feat(ui): connect, check and database picker screens`
 
 ### U.5 Launcher screens: extract, map, recent maps
 - Model: Sonnet 5.5 · Effort: medium · Mode: normal
 - Session: /clear → /model sonnet → /effort medium
-- Depends on: U.4
+- Depends on: U.4; frames Extract, Extract-Failed, Done, Recent, Recent-Delete, Recent-Rerun, Quit and their Mobile-* versions in docs/design/launcher/
 - Goal: from a picked database to an open map in one click, and back again later.
 - Build:
   - Extract screen: per-section progress, elapsed time, Cancel, friendly failures with the fix
   - Done screen: "Open map" (new tab, `/maps/<id>`), "Save map file", "Extract another database"
   - Recent maps screen: list, open, re-run (asks for the password again), delete with confirmation, "Open a snapshot file"
   - Quit button (calls `/api/quit`, shows "You can close this tab")
+  - Extract rows show status (and duration if the API gives it); per-section counts appear only after the job ends (U.3 choice, D-063)
 - Tests:
   - Playwright (CI integration job, real lab): connect as `schemamap_reader`, pick AdventureWorks2022, extract, open the map, reach layout status done; re-run from Recent maps; delete a map; import the WWI fixture snapshot; zero CSP violations on launcher and map
   - axe zero serious/critical on every launcher state

@@ -552,3 +552,24 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 **Why.** The page needs live progress, a safe cancel and a library it can list, serve and delete, with no route that can name a file and no way for a login to end up on disk.
 
 **Cost.** A cancel waits for the query in flight (bounded by the query timeout). A password lives in process memory until garbage collected, as UI.md says. **Not added:** no dependency.
+
+## D-064 Launcher design approved (2026-11-15)
+
+**Decision.** The 18 frames in `docs/design/launcher/` are the reference for U.4 and U.5.
+
+**Why.** Harshit reviewed them in the Claude Project. One folder of frames replaces the single `launcher.dc.html` named in the plan, because a canvas can't fit 18 frames in one file.
+
+**Alternatives.** One combined file (not possible); screenshots only (lose the interaction states).
+
+## D-065 Launcher screens: capabilities route, fonts as data URIs, one-line permission script (2026-11-15)
+
+**Decision (crumb U.4).**
+- **`GET /api/capabilities`** returns `{os, auth_modes}` behind the token and Host checks. No existing route said which sign-in modes this machine offers, and the page must not hard-code them. Windows is listed only on Windows; the Entra methods are the four the connection settings accept. The mockup's "Service principal" and "Managed identity" are not offered because `AuthMode` has no such mode.
+- **The launcher policy gains `font-src 'self' data:`.** The single-file build inlines Inter as a data URI, and `default-src 'self'` blocks that. The map has allowed `font-src data:` since D-052; no network origin is added.
+- **The "no databases" script is a text template in the page** (`permissionScript.ts`), not a query. It is shown to a DBA and copied; nothing sends or runs it, so the "all SQL in `queries/`" rule, which covers statements the tool executes, is not involved. The checks' own scripts still come from the server's `fix_sql`.
+- **The page checks against `master`** (the one database every login can open) because Connect has no database field; the database is chosen on the next step. Its first step shows what the login can do on `master`, and the picker lists where it can go.
+- **Not in U.4:** the header's "Recent maps" and "Quit" links and the Extract step (U.5). "Extract map" is shown disabled with a one-line note, so the picker is complete to look at without a button that does nothing.
+
+**Why.** First-time users should connect and pick a database without reading docs, with every server-offered choice coming from the server.
+
+**Cost.** One more route and one more CSP source (`data:` for fonts only). **Not added:** no dependency.

@@ -147,7 +147,7 @@ def test_launcher_policy_matches_the_design() -> None:
     policy = launcher_policy([SCRIPT_SOURCE], [])
     assert policy == (
         f"default-src 'self'; script-src {SCRIPT_SOURCE}; style-src 'self'; "
-        "connect-src 'self'; frame-ancestors 'none'; form-action 'self'; "
+        "font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; "
         "base-uri 'none'; object-src 'none'"
     )
     assert "unsafe" not in policy

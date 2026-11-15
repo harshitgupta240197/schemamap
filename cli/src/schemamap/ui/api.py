@@ -10,6 +10,7 @@ before it leaves.
 
 from __future__ import annotations
 
+import sys
 from http import HTTPStatus
 
 from schemamap.connect import (
@@ -224,3 +225,35 @@ def list_databases(config: ConnectionConfig, *, include_system: bool) -> dict[st
         ) from None
     names = sorted({str(row[0]) for row in rows}, key=lambda name: (name.casefold(), name))
     return {"databases": [{"name": name} for name in names]}
+
+
+_MODE_LABELS: dict[AuthMode, tuple[str, str]] = {
+    AuthMode.SQL: ("sql", "SQL Server login"),
+    AuthMode.WINDOWS: ("windows", "Windows"),
+    AuthMode.ENTRA_PASSWORD: ("entra", "Password"),
+    AuthMode.ENTRA_INTERACTIVE: ("entra", "Interactive (opens a Microsoft sign-in page)"),
+    AuthMode.ENTRA_DEFAULT: ("entra", "Default (environment, managed identity or signed-in tools)"),
+    AuthMode.ENTRA_INTEGRATED: ("entra", "Integrated (your signed-in account)"),
+}
+_OS_NAMES = {"win32": "windows", "darwin": "macos"}
+
+
+def capabilities(platform: str = sys.platform) -> dict[str, object]:
+    """``GET /api/capabilities``: the OS and the sign-in modes this machine can offer.
+
+    Windows sign-in is listed only on Windows. The page builds its sign-in choices from this
+    list, so it never offers a mode the server would refuse.
+    """
+    on_windows = platform == "win32"
+    modes = [
+        {
+            "id": mode.value,
+            "group": _MODE_LABELS[mode][0],
+            "label": _MODE_LABELS[mode][1],
+            "needs_user": mode.needs_user,
+            "needs_password": mode.needs_password,
+        }
+        for mode in AuthMode
+        if on_windows or mode is not AuthMode.WINDOWS
+    ]
+    return {"os": _OS_NAMES.get(platform, "linux"), "auth_modes": modes}

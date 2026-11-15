@@ -564,3 +564,45 @@ def test_the_server_keeps_no_reference_to_the_password(
     post(server, "/api/connection/test", {"connection": connection(secret), "remember": True})
     for name, value in vars(server).items():
         assert secret not in repr(value), name
+
+
+# -- capabilities -----------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("platform", "name", "windows"),
+    [("win32", "windows", True), ("darwin", "macos", False), ("linux", "linux", False)],
+)
+def test_capabilities_name_the_os_and_offer_windows_only_on_windows(
+    platform: str, name: str, windows: bool
+) -> None:
+    answer = api_module.capabilities(platform)
+    assert answer["os"] == name
+    modes = answer["auth_modes"]
+    assert isinstance(modes, list)
+    ids = [mode["id"] for mode in modes]
+    assert ("windows" in ids) is windows
+    assert ids[0] == "sql"
+    assert {i for i in ids if i.startswith("entra-")} == {
+        "entra-password",
+        "entra-interactive",
+        "entra-default",
+        "entra-integrated",
+    }
+    by_id = {mode["id"]: mode for mode in modes}
+    assert by_id["sql"]["needs_user"] is True and by_id["sql"]["needs_password"] is True
+    assert by_id["entra-interactive"]["needs_password"] is False
+    assert by_id["entra-integrated"]["needs_user"] is False
+    for mode in modes:
+        assert isinstance(mode["label"], str) and mode["label"]
+        assert mode["group"] in ("sql", "windows", "entra")
+
+
+def test_capabilities_route_needs_the_token_and_answers_json(tmp_path: Path) -> None:
+    with serving(tmp_path) as (server, _):
+        assert request(server, "/api/capabilities")[0] == 401
+        status, _, body = request(server, "/api/capabilities", headers=AUTH)
+        assert status == 200
+        answer = json.loads(body)
+        assert set(answer) == {"os", "auth_modes"}
+        assert request(server, "/api/capabilities", method="POST", headers=AUTH)[0] == 405

@@ -120,8 +120,8 @@ a filesystem path.
   `launcher.json` (bytes, sha256, `script_sources`, `style_sources`). `tools/check_wheel.py`
   requires both, with a matching sha256. `schemamap ui` refuses a launcher that does not match
   its manifest and names `tools/build_viewer.py` (exit 1, like `view`).
-- Fonts (U.4): self-hosted Inter, as on the landing page, served from the launcher's own origin
-  or inlined; never a third-party origin.
+- Fonts (U.4): self-hosted Inter, as on the landing page, inlined into the page as a data URI
+  (the policy allows `font-src 'self' data:`, D-065); never a third-party origin.
 
 ## 2. HTTP API
 
@@ -178,6 +178,16 @@ Unless marked, every route needs the token header. Request bodies are JSON with 
 ```json
 { "status": "ok", "version": "0.0.1" }
 ```
+
+**`GET /api/capabilities`** (U.4) tells the page what this machine can offer, so it never lists a
+sign-in mode the server would refuse.
+```json
+{ "os": "windows | macos | linux",
+  "auth_modes": [ { "id": "sql", "group": "sql | windows | entra", "label": "SQL Server login",
+                    "needs_user": true, "needs_password": true } ] }
+```
+`auth_modes` follows the connection `auth` values; `windows` is listed only when `os` is `windows`.
+The page shows the `entra` group as one choice plus a method list built from these entries.
 
 **`POST /api/quit`** (U.1) stops the server after the response.
 Returns `{ "status": "stopping" }`.

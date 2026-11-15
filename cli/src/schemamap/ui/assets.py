@@ -44,6 +44,7 @@ def launcher_policy(script_sources: list[str], style_sources: list[str]) -> str:
             "default-src 'self'",
             "script-src " + " ".join(script_sources),
             "style-src " + " ".join(["'self'", *style_sources]),
+            "font-src 'self' data:",
             "connect-src 'self'",
             "frame-ancestors 'none'",
             "form-action 'self'",

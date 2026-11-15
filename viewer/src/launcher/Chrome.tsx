@@ -1,0 +1,196 @@
+import { useEffect, useRef, useState, type ReactNode } from "react";
+
+/** Line icons (24 px grid). Decorative: the words next to them carry the meaning. */
+const PATHS = {
+  check: "M20 6 9 17l-5-5",
+  "check-circle": "M22 11.1V12a10 10 0 1 1-5.9-9.1M22 4 12 14l-3-3",
+  "x-circle": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM15 9l-6 6M9 9l6 6",
+  warn: "M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01",
+  info: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16v-4M12 8h.01",
+  lock: "M6 11h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2zM8 11V7a4 4 0 0 1 8 0v4",
+  eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
+  "eye-off":
+    "M3 3l18 18M10.6 6.1A9.8 9.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 7.6A16.6 16.6 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 4.4-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2",
+  copy: "M9 9h11v11H9zM5 15V5a1 1 0 0 1 1-1h10",
+  search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3",
+  chevron: "m9 18 6-6-6-6",
+  database:
+    "M12 8c4.4 0 8-1.3 8-3s-3.6-3-8-3-8 1.3-8 3 3.6 3 8 3zM4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3",
+  shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+  monitor: "M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 21h8M12 17v4",
+  refresh: "M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5",
+  back: "M19 12H5M12 19l-7-7 7-7",
+  x: "M18 6 6 18M6 6l12 12",
+} as const;
+
+export type IconName = keyof typeof PATHS;
+
+export function Icon({ name, size = 18 }: { readonly name: IconName; readonly size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d={PATHS[name]} />
+    </svg>
+  );
+}
+
+/** The mark from the landing page (site/index.html). */
+function Mark() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+      <rect x="1" y="1" width="30" height="30" rx="8" fill="#5B3FA0" />
+      <rect x="7" y="8" width="8" height="6" rx="1.5" fill="#ffffff" />
+      <rect x="17" y="18" width="8" height="6" rx="1.5" fill="#ffffff" />
+      <rect x="17" y="8" width="8" height="6" rx="1.5" fill="#BFAEF0" />
+      <path d="M15 11h2M21 14v4" stroke="#ffffff" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+export function Header() {
+  return (
+    <header className="lc-header">
+      <div className="lc-brand">
+        <Mark />
+        <span className="lc-brand__name">Schema Map</span>
+        <span className="lc-pill">
+          <span className="lc-pill__dot" aria-hidden="true" />
+          <span className="lc-pill__long">Running on this computer · 127.0.0.1</span>
+          <span className="lc-pill__short">This computer only</span>
+        </span>
+      </div>
+    </header>
+  );
+}
+
+export const STEPS = ["Connect", "Check", "Choose database", "Extract", "Open map"] as const;
+
+/** Five steps: a numbered list on a wide screen, "Step n of 5" with bars on a narrow one. */
+export function Stepper({ current }: { readonly current: 1 | 2 | 3 }) {
+  return (
+    <nav aria-label="Progress" className="lc-steps">
+      <ol className="lc-steps__list">
+        {STEPS.map((name, index) => {
+          const number = index + 1;
+          const done = number < current;
+          const here = number === current;
+          return (
+            <li
+              key={name}
+              className={`lc-step${here ? " lc-step--here" : ""}${done ? " lc-step--done" : ""}`}
+              aria-current={here ? "step" : undefined}
+            >
+              <span className="lc-step__badge" aria-hidden="true">
+                {done ? <Icon name="check" size={14} /> : number}
+              </span>
+              <span>
+                {name}
+                {done ? <span className="lc-sr"> (done)</span> : null}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      <div className="lc-steps__compact" aria-hidden="true">
+        <p className="lc-steps__text">
+          Step {current} of 5 · {STEPS[current - 1]}
+        </p>
+        <div className="lc-steps__bars">
+          {STEPS.map((name, index) => (
+            <span key={name} className={index < current ? "lc-bar lc-bar--on" : "lc-bar"} />
+          ))}
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+export function Footer() {
+  return (
+    <footer className="lc-footer">
+      <Icon name="lock" size={15} />
+      <span>Runs only on this computer at 127.0.0.1. Nothing is sent anywhere.</span>
+    </footer>
+  );
+}
+
+/** A page heading that takes focus when the screen changes, so a keyboard or screen reader follows. */
+export function ScreenHeading({
+  children,
+  focus,
+}: {
+  readonly children: ReactNode;
+  readonly focus: boolean;
+}) {
+  const ref = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (focus) ref.current?.focus();
+  }, [focus]);
+  return (
+    <h1 ref={ref} tabIndex={-1} className="lc-h1">
+      {children}
+    </h1>
+  );
+}
+
+/** A SQL script for a DBA, with a Copy button that says "Copied" and announces it. */
+export function ScriptBlock({
+  script,
+  title,
+}: {
+  readonly script: string;
+  readonly title: string;
+}) {
+  const [message, setMessage] = useState<"" | "copied" | "failed">("");
+  const copy = () => {
+    const write = (): Promise<void> => {
+      try {
+        return navigator.clipboard.writeText(script);
+      } catch {
+        return Promise.reject(new Error("no clipboard"));
+      }
+    };
+    write().then(
+      () => {
+        setMessage("copied");
+      },
+      () => {
+        setMessage("failed");
+      },
+    );
+  };
+  return (
+    <div className="lc-script">
+      <div className="lc-script__bar">
+        <span className="lc-script__title">{title}</span>
+        <button type="button" className="lc-btn lc-btn--secondary lc-btn--small" onClick={copy}>
+          <Icon name={message === "copied" ? "check" : "copy"} size={16} />
+          <span>{message === "copied" ? "Copied" : "Copy script"}</span>
+        </button>
+      </div>
+      <pre className="lc-script__code" role="region" tabIndex={0} aria-label={title}>
+        <code>{script}</code>
+      </pre>
+      <span className="lc-sr" role="status" aria-live="polite">
+        {message === "copied"
+          ? "Script copied to the clipboard"
+          : message === "failed"
+            ? "Could not copy. Select the script and copy it by hand."
+            : ""}
+      </span>
+      {message === "failed" ? (
+        <p className="lc-hint">Could not copy. Select the script above and copy it by hand.</p>
+      ) : null}
+    </div>
+  );
+}

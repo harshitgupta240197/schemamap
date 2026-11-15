@@ -26,6 +26,7 @@ from schemamap import __version__
 from schemamap.errors import JobRunningError, SchemaMapError, SnapshotError
 from schemamap.ui.api import (
     ApiError,
+    capabilities,
     list_databases,
     parse_databases_request,
     parse_test_request,
@@ -69,6 +70,7 @@ _MAP_POLICY = "frame-ancestors 'none'"
 # the import route, whose body is the snapshot file itself.
 _API_ROUTES: dict[str, tuple[str, ...]] = {
     "/api/health": ("GET", "HEAD"),
+    "/api/capabilities": ("GET", "HEAD"),
     "/api/quit": ("POST",),
     "/api/session": ("POST",),
     "/api/connection/test": ("POST",),
@@ -326,6 +328,8 @@ class LauncherHandler(BaseHTTPRequestHandler):
             self._route_with_id(route, identifier or "")
         elif route == "/api/health":
             self._json(HTTPStatus.OK, {"status": "ok", "version": __version__})
+        elif route == "/api/capabilities":
+            self._json(HTTPStatus.OK, capabilities())
         elif route == "/api/quit":
             self._json(HTTPStatus.OK, {"status": "stopping"})
             server.request_stop("quit")
