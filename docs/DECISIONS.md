@@ -615,3 +615,15 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 **Why.** Until now every crumb landed as direct commits on the phase branch, so the first time a human saw a change as a whole was the gate. A pull request per crumb gives a reviewable diff, a place for comments, CI results next to the change, and a link from the issue (what was asked) to the pull request (what was done). Merge commits keep each crumb visible as one unit in the history.
 
 **Cost.** One issue, one branch and one review wait per crumb; work stops at the pull request until it is merged. Crumbs that depend on an unmerged one must wait or be cut from its branch deliberately. **Not added:** no dependency.
+
+## D-069 Launcher review fixes: an orderly stop on any signal, the standard library's refusals as JSON (2026-11-15)
+
+**Decision (crumb U.7, `docs/gates/PHASEU.md`).**
+- **Signals ask the launcher to stop; they no longer raise.** While `schemamap ui` serves, SIGINT and SIGTERM call `request_stop("interrupt")`, as `POST /api/quit` does. Before, Ctrl+C raised `KeyboardInterrupt`, and a second one (pressed twice, or the copy `uv run`/`uvx` forwards to the child) raised again inside `server_close` while it waited for the job. The interpreter then exited while the job's thread was inside the SQL Server driver, and the driver's exit hook closed the connection under the query: a segmentation fault (exit 139 or -11), with `tmp/` not emptied. Reproduced 4 of 4 times on SchemaMapSynth; 0 of 5 after the fix.
+- **A job that outlives the 5-second wait ends the process with `os._exit(0)`,** after `tmp/` is emptied and the stop is reported. Cancelling waits for the query in flight (up to the query timeout), so a slow query could still race the driver's exit hook on a single Ctrl+C or Quit. `JobManager.busy` says whether the worker is still running.
+- **The standard library's own refusals are JSON with the security headers.** A malformed request line (400), an over-long line (414), too many headers (431), an unknown method (501) or HTTP version (505) was answered by `BaseHTTPRequestHandler.send_error` with an HTML page and none of the security headers. The handler now overrides `send_error` with the usual JSON error and fixed wording. The old page escaped what it quoted, so this was hardening, not an exploitable hole.
+- **The Quit screen says "Stopped"** in the header pill, not "Running on this computer".
+
+**Why.** A crash can write a core dump (on by default with systemd-coredump on many Linux systems), which would put process memory, including a password Python could not wipe, on disk. That turns a documented in-memory residual into a file. The other changes keep every response under the same rules and stop the page contradicting itself.
+
+**Cost.** `os._exit` skips `atexit` handlers when a job is still running; nothing of Schema Map's own relies on them, and the driver's handler is exactly what must not run then. A late write in `tmp/` is cleared at the next start (#13). **Not added:** no dependency.
