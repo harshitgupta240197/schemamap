@@ -158,7 +158,7 @@ async function toCheck(page: Page): Promise<void> {
 async function toPick(page: Page, stub: Stub = {}): Promise<void> {
   await open(page, stub);
   await toCheck(page);
-  await page.getByRole("button", { name: "Choose a database anyway" }).click();
+  await page.getByRole("button", { name: "Choose a database", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Choose a database" })).toBeVisible();
 }
 
@@ -206,7 +206,7 @@ test("a keyboard alone gets from Connect through Check to a chosen database", as
   await expect(
     page.getByText("Database permissions are checked when you choose a database."),
   ).toBeVisible();
-  await tabTo(page, page.getByRole("button", { name: "Choose a database anyway" }));
+  await tabTo(page, page.getByRole("button", { name: "Choose a database", exact: true }));
   await page.keyboard.press("Enter");
 
   await expect(page.getByRole("heading", { name: "Choose a database" })).toBeFocused();
@@ -323,7 +323,7 @@ test("the password is in no storage, URL or cookie on the way to Pick", async ({
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Test connection" }).click();
   await expect(page.getByRole("heading", { name: "Connection checks" })).toBeVisible();
-  await page.getByRole("button", { name: "Choose a database anyway" }).click();
+  await page.getByRole("button", { name: "Choose a database", exact: true }).click();
   await expect(page.getByRole("radio", { name: /AdventureWorks2022/ })).toBeVisible();
   const held = await page.evaluate(() => {
     const dump = (store: Storage) =>

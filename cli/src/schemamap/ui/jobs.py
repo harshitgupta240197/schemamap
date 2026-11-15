@@ -291,8 +291,11 @@ class JobManager:
         over the only other reference through a one-slot box and empties it.
         """
         with self._lock:
-            if any(job.state is JobState.RUNNING for job in self._jobs.values()):
-                raise JobRunningError("An extract is already running.")
+            running = next(
+                (job for job in self._jobs.values() if job.state is JobState.RUNNING), None
+            )
+            if running is not None:
+                raise JobRunningError("An extract is already running.", running.id)
             job = Job(secrets.token_hex(16), self._clock)
             self._jobs[job.id] = job
             box = [config]

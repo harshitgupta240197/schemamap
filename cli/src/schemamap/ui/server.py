@@ -319,7 +319,13 @@ class LauncherHandler(BaseHTTPRequestHandler):
         try:
             self._route(route, identifier, body)
         except ApiError as refusal:
-            self._error(refusal.status, refusal.code, refusal.message, fix=refusal.fix)
+            self._error(
+                refusal.status,
+                refusal.code,
+                refusal.message,
+                fix=refusal.fix,
+                job_id=refusal.job_id,
+            )
         except Exception:  # a bug: answer with fixed wording, never with the exception's text
             self._error(
                 HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -375,12 +381,13 @@ class LauncherHandler(BaseHTTPRequestHandler):
             config, remember, _ = parse_test_request(body, require_database=True)
             try:
                 job_id = server.jobs.start(config, remember=remember)
-            except JobRunningError:
+            except JobRunningError as running:
                 raise ApiError(
                     HTTPStatus.CONFLICT,
                     "job_running",
                     "An extract is already running.",
                     "Wait for it to finish, or cancel it, then try again.",
+                    job_id=running.job_id,
                 ) from None
             self._json(HTTPStatus.ACCEPTED, {"job_id": job_id})
         elif route == "/api/maps":
@@ -538,8 +545,13 @@ class LauncherHandler(BaseHTTPRequestHandler):
         *,
         allow: str | None = None,
         fix: str | None = None,
+        job_id: str | None = None,
     ) -> None:
-        error = {"code": code, "message": message} | ({} if fix is None else {"fix": fix})
+        error = (
+            {"code": code, "message": message}
+            | ({} if fix is None else {"fix": fix})
+            | ({} if job_id is None else {"job_id": job_id})
+        )
         body = json.dumps({"error": error}, separators=(",", ":"))
         self._send(status, body.encode("utf-8"), "application/json", _NOTHING_POLICY, allow=allow)
 

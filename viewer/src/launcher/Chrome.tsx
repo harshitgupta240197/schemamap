@@ -23,12 +23,26 @@ const PATHS = {
   x: "M18 6 6 18M6 6l12 12",
   download: "M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2",
   trash: "M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3",
+  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2",
+  power: "M12 2v10M18.4 6.6a9 9 0 1 1-12.8 0",
+  plus: "M12 5v14M5 12h14",
+  external: "M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6",
+  folder:
+    "M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z",
   upload: "M12 15V3m0 0L8 7m4-4 4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2",
 } as const;
 
 export type IconName = keyof typeof PATHS;
 
-export function Icon({ name, size = 18 }: { readonly name: IconName; readonly size?: number }) {
+export function Icon({
+  name,
+  size = 18,
+  strokeWidth = 2,
+}: {
+  readonly name: IconName;
+  readonly size?: number;
+  readonly strokeWidth?: number;
+}) {
   return (
     <svg
       width={size}
@@ -36,7 +50,7 @@ export function Icon({ name, size = 18 }: { readonly name: IconName; readonly si
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
@@ -132,17 +146,21 @@ export function Header({
             <button
               type="button"
               className="lc-btn lc-btn--ghost lc-btn--small"
+              aria-label="Recent maps"
               aria-current={nav.recentCurrent ? "page" : undefined}
               onClick={nav.onRecent}
             >
-              Recent maps
+              <Icon name="clock" size={18} />
+              <span className="lc-btn__label">Recent maps</span>
             </button>
             <button
               type="button"
               className="lc-btn lc-btn--secondary lc-btn--small"
+              aria-label="Quit"
               onClick={nav.onQuit}
             >
-              Quit
+              <Icon name="power" size={18} />
+              <span className="lc-btn__label">Quit</span>
             </button>
           </nav>
         )}
@@ -169,7 +187,7 @@ export function Stepper({ current }: { readonly current: 1 | 2 | 3 | 4 | 5 }) {
               aria-current={here ? "step" : undefined}
             >
               <span className="lc-step__badge" aria-hidden="true">
-                {done ? <Icon name="check" size={14} /> : number}
+                {done ? <Icon name="check" size={14} strokeWidth={3} /> : number}
               </span>
               <span>
                 {name}
@@ -270,5 +288,34 @@ export function ScriptBlock({
         <p className="lc-hint">Could not copy. Select the script above and copy it by hand.</p>
       ) : null}
     </div>
+  );
+}
+
+/** The tones of a state: the status tokens, each with an icon and a word, never colour alone. */
+export type Tone = "fail" | "warn" | "ok" | "info";
+
+const TONE_ICON: Record<Tone, IconName> = {
+  fail: "warn",
+  warn: "warn",
+  ok: "check-circle",
+  info: "info",
+};
+
+/** The icon tile above a state card's heading: one set of tones on every screen. */
+export function StateTile({ tone, icon }: { readonly tone: Tone; readonly icon?: IconName }) {
+  return (
+    <span className={`lc-tile lc-tile--${tone}`} aria-hidden="true">
+      <Icon name={icon ?? TONE_ICON[tone]} size={26} />
+    </span>
+  );
+}
+
+/** "How to fix:" followed by the fix, on a line of running text: the one layout on every screen. */
+export function HowToFix({ fix }: { readonly fix: string }) {
+  return (
+    <p className="lc-fix-line">
+      <strong>How to fix: </strong>
+      {fix}
+    </p>
   );
 }

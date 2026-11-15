@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { CheckItem } from "./CheckScreen";
-import { Icon, Main, ScreenHeading, ScriptBlock } from "./Chrome";
+import { HowToFix, Icon, Main, ScreenHeading, ScriptBlock, StateTile } from "./Chrome";
 import { endpointLabel, type FormState } from "./form";
 import type { Failure, TestResult } from "./model";
 import { combinedFixScript, permissionScript } from "./permissionScript";
@@ -92,17 +92,12 @@ export function PickScreen({
     return withHeading(
       <>
         <section className="lc-card lc-card--state" aria-labelledby="pick-err-h">
+          <StateTile tone="fail" />
           <h2 id="pick-err-h" className="lc-h2 lc-h2--state">
-            <Icon name="warn" size={22} />
             Couldn’t load the list of databases
           </h2>
           <p role="alert">{state.failure.message}</p>
-          {state.failure.fix === null ? null : (
-            <p className="lc-fix">
-              <strong>How to fix: </strong>
-              {state.failure.fix}
-            </p>
-          )}
+          {state.failure.fix === null ? null : <HowToFix fix={state.failure.fix} />}
           <div className="lc-actions">
             <button type="button" className="lc-btn lc-btn--primary" onClick={onRetry}>
               <Icon name="refresh" size={18} />
@@ -121,18 +116,15 @@ export function PickScreen({
     return withHeading(
       <>
         <section className="lc-card lc-card--state" aria-labelledby="pick-empty-h">
+          <StateTile tone="info" icon="database" />
           <h2 id="pick-empty-h" className="lc-h2 lc-h2--state">
-            <Icon name="database" size={22} />
             This login can’t open any databases yet
           </h2>
           <p>
             {form.user.trim() === "" ? "This login" : form.user.trim()} signed in, but it has no
             user in any database on this server, so there is nothing to map.
           </p>
-          <p className="lc-fix">
-            <strong>How to fix: </strong>ask a DBA to run this in each database you want to map,
-            then check again.
-          </p>
+          <HowToFix fix="ask a DBA to run this in each database you want to map, then check again." />
           <ScriptBlock
             script={permissionScript(form.user.trim() === "" ? "your_login" : form.user.trim())}
             title="Permission script · T-SQL"
@@ -309,17 +301,12 @@ function DatabaseResults({ state }: { readonly state: DatabaseCheckState }) {
   if (state.kind === "failed") {
     return (
       <section className="lc-card lc-card--state lc-card--dbcheck" aria-labelledby="dbchk-h">
+        <StateTile tone="fail" />
         <h2 id="dbchk-h" className="lc-h2 lc-h2--state">
-          <Icon name="warn" size={22} />
           The checks could not run
         </h2>
         <p role="alert">{state.failure.message}</p>
-        {state.failure.fix === null ? null : (
-          <p className="lc-fix">
-            <strong>How to fix: </strong>
-            {state.failure.fix}
-          </p>
-        )}
+        {state.failure.fix === null ? null : <HowToFix fix={state.failure.fix} />}
       </section>
     );
   }

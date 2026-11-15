@@ -151,6 +151,7 @@ def test_the_job_answers_202_and_a_second_start_is_409_while_it_runs(
         assert status == 409
         assert answer["error"]["code"] == "job_running"
         assert answer["error"]["fix"]
+        assert answer["error"]["job_id"] == job_id
         assert headers["Content-Type"] == "application/json"
         extractor.release.set()
         assert wait_for(server, job_id)["state"] == "done"

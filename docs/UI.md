@@ -178,7 +178,7 @@ profile, needs a new link: restart `schemamap ui`.
 
 ### Job model (U.3)
 
-- One job at a time; a second `POST /api/jobs` gets `409 job_running`.
+- One job at a time; a second `POST /api/jobs` gets `409 job_running`, and the error carries `job_id`, the id of the extract that is running, so a second tab can follow its progress.
 - A job runs `extract_snapshot` in a worker thread. The extract pipeline reports progress through
   a callback (the CLI's progress bar uses the same one). The job records per-section state:
   `pending | running | done | skipped | failed`. A section's count (items read) is filled in when

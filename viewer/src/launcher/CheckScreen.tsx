@@ -1,4 +1,12 @@
-import { Icon, Main, ScreenHeading, ScriptBlock, type IconName } from "./Chrome";
+import {
+  HowToFix,
+  Icon,
+  Main,
+  ScreenHeading,
+  ScriptBlock,
+  StateTile,
+  type IconName,
+} from "./Chrome";
 import { endpointLabel, type FormState } from "./form";
 import type { CheckResult, CheckStatus, Failure, TestResult } from "./model";
 
@@ -14,6 +22,10 @@ const BADGE: Record<CheckStatus, { word: string; icon: IconName }> = {
   warn: { word: "Warning", icon: "warn" },
   ok: { word: "Pass", icon: "check-circle" },
 };
+
+function isFail(check: CheckResult): boolean {
+  return check.status === "fail";
+}
 
 /** The checks about the server and sign-in. Database checks wait until a database is chosen. */
 function serverChecks(checks: readonly CheckResult[]): CheckResult[] {
@@ -70,10 +82,7 @@ export function CheckItem({
         <p className="lc-check-item__message">{check.message}</p>
         {check.fix === null ? null : (
           <div className="lc-fix">
-            <p>
-              <strong>How to fix: </strong>
-              {check.fix}
-            </p>
+            <HowToFix fix={check.fix} />
             {!showScript || check.fixSql === null ? null : (
               <ScriptBlock script={check.fixSql} title="Permission script · T-SQL" />
             )}
@@ -96,6 +105,9 @@ interface Props {
 export function CheckScreen({ form, state, onAgain, onChoose, onEdit }: Props) {
   const where = endpointLabel(form.server.trim(), form.port.trim());
   const who = form.user.trim() === "" ? "" : ` · user ${form.user.trim()}`;
+  const anyFail =
+    state.kind === "done" &&
+    (!state.result.connected || serverChecks(state.result.checks).some(isFail));
   return (
     <Main>
       <div className="lc-title">
@@ -120,17 +132,12 @@ export function CheckScreen({ form, state, onAgain, onChoose, onEdit }: Props) {
 
       {state.kind === "failed" ? (
         <section className="lc-card lc-card--state" aria-labelledby="chk-h">
+          <StateTile tone="fail" />
           <h2 id="chk-h" className="lc-h2 lc-h2--state">
-            <Icon name="warn" size={22} />
             The checks could not run
           </h2>
           <p role="alert">{state.failure.message}</p>
-          {state.failure.fix === null ? null : (
-            <p className="lc-fix">
-              <strong>How to fix: </strong>
-              {state.failure.fix}
-            </p>
-          )}
+          {state.failure.fix === null ? null : <HowToFix fix={state.failure.fix} />}
           <div className="lc-actions">
             <button type="button" className="lc-btn lc-btn--primary" onClick={onAgain}>
               <Icon name="refresh" size={18} />
@@ -159,13 +166,27 @@ export function CheckScreen({ form, state, onAgain, onChoose, onEdit }: Props) {
             <p className="lc-hint lc-hint--note">{DATABASE_CHECKS_NOTE}</p>
           </section>
           <div className="lc-actions lc-actions--page">
-            <button type="button" className="lc-btn lc-btn--primary" onClick={onAgain}>
-              <Icon name="refresh" size={18} />
-              <span>Check again</span>
-            </button>
-            <button type="button" className="lc-btn lc-btn--secondary" onClick={onChoose}>
-              Choose a database anyway
-            </button>
+            {anyFail ? (
+              <>
+                <button type="button" className="lc-btn lc-btn--primary" onClick={onAgain}>
+                  <Icon name="refresh" size={18} />
+                  <span>Check again</span>
+                </button>
+                <button type="button" className="lc-btn lc-btn--secondary" onClick={onChoose}>
+                  Choose a database anyway
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="lc-btn lc-btn--primary" onClick={onChoose}>
+                  Choose a database
+                </button>
+                <button type="button" className="lc-btn lc-btn--secondary" onClick={onAgain}>
+                  <Icon name="refresh" size={18} />
+                  <span>Check again</span>
+                </button>
+              </>
+            )}
             <button type="button" className="lc-btn lc-btn--ghost" onClick={onEdit}>
               <Icon name="back" size={18} />
               <span>Edit connection</span>

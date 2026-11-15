@@ -87,6 +87,9 @@ Run the full checks for every area you touched before every commit. If a command
 - Conventional Commits with a scope: `feat(extract): ...`, `fix(viewer): ...`, `test(infer): ...`, `docs: ...`, `ci: ...`.
 - Never force-push, never rewrite `main`, never commit `.env`, credentials, `lab-data/` or `.bak` files.
 - At a gate: `gh pr create --fill` from the phase branch into `main`, then `gh pr checks --watch`, then report. Harshit approves the merge.
+- GitHub only auto-closes issues from PRs into `main`. After a crumb PR merges into a phase branch, run `gh issue close <n> --comment "Merged in #<PR>"`.
+- After a phase's gate, polish crumbs branch from `main` as `crumb/<id>` and PR straight into `main` with `Closes #…` (D-068).
+- Review and test harnesses stop every server, browser and background process they start, even when they fail.
 
 ## End of every crumb
 

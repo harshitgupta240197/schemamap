@@ -50,8 +50,16 @@ _CONNECTION_FIELDS = frozenset(
 class ApiError(Exception):
     """A request the server answers with an error. The text never holds a secret or a value."""
 
-    def __init__(self, status: HTTPStatus, code: str, message: str, fix: str | None = None) -> None:
+    def __init__(
+        self,
+        status: HTTPStatus,
+        code: str,
+        message: str,
+        fix: str | None = None,
+        job_id: str | None = None,
+    ) -> None:
         super().__init__(code)
+        self.job_id = job_id
         self.status = status
         self.code = code
         self.message = message

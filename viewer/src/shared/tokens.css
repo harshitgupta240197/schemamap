@@ -27,10 +27,12 @@
   --sm-accent-ring: rgb(91 63 160 / 25%);
   --sm-badge-bg: #f1ecfc;
   --sm-badge-fg: #3e2a7a;
-  --sm-warn-bg: #fff3dc;
-  --sm-warn-fg: #7a4700;
-  --sm-error-bg: #fdecea;
-  --sm-error-fg: #a4161a;
+  --sm-warn-bg: #fff3d6;
+  --sm-warn-fg: #7a4f00;
+  --sm-error-bg: #fce8ea;
+  --sm-error-fg: #a61e2a;
+  --sm-pass-bg: #e6f3f2;
+  --sm-pass-fg: #0b5f5b;
   --sm-sql-keyword: #432c7a;
   --sm-sql-string: #9b2d1d;
   --sm-sql-quoted: #0a5e5a;
@@ -99,6 +101,8 @@
   --sm-warn-fg: #f3d98b;
   --sm-error-bg: #3d1a15;
   --sm-error-fg: #ffb4a6;
+  --sm-pass-bg: #0f2f2c;
+  --sm-pass-fg: #8fe3dc;
   --sm-sql-keyword: #b7a3f0;
   --sm-sql-string: #f2a193;
   --sm-sql-quoted: #6fd3cc;

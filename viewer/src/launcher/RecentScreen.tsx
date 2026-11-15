@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { deleteMap, fetchMaps, importMap } from "./client";
-import { Icon, Main, ScreenHeading } from "./Chrome";
+import { HowToFix, Icon, Main, ScreenHeading, StateTile } from "./Chrome";
 import { formatExtracted, formatSize } from "./maps";
 import type { Failure, MapEntry } from "./model";
 
@@ -136,17 +136,12 @@ export function RecentScreen({ token, onNewConnection, onRerun }: Props) {
       ) : null}
       {list.kind === "failed" ? (
         <section className="lc-card lc-card--state" aria-labelledby="recent-err-h">
+          <StateTile tone="fail" />
           <h2 id="recent-err-h" className="lc-h2 lc-h2--state">
-            <Icon name="warn" size={22} />
             Couldn’t load your maps
           </h2>
           <p role="alert">{list.failure.message}</p>
-          {list.failure.fix === null ? null : (
-            <p className="lc-fix">
-              <strong>How to fix: </strong>
-              {list.failure.fix}
-            </p>
-          )}
+          {list.failure.fix === null ? null : <HowToFix fix={list.failure.fix} />}
           <button type="button" className="lc-btn lc-btn--primary" onClick={load}>
             <Icon name="refresh" size={18} />
             <span>Try again</span>
@@ -241,12 +236,15 @@ export function RecentScreen({ token, onNewConnection, onRerun }: Props) {
                           aria-label={`Delete the map of ${map.database}?`}
                           className="lc-confirm"
                         >
-                          <div>
-                            <p className="lc-confirm__title">Delete the map of {map.database}?</p>
-                            <p className="lc-hint">
-                              This removes the map and its snapshot from this computer. The database
-                              isn’t touched.
-                            </p>
+                          <div className="lc-confirm__text">
+                            <Icon name="warn" size={20} />
+                            <div>
+                              <p className="lc-confirm__title">Delete the map of {map.database}?</p>
+                              <p className="lc-hint">
+                                This removes the map and its snapshot from this computer. The
+                                database isn’t touched.
+                              </p>
+                            </div>
                           </div>
                           <div className="lc-actions">
                             <button

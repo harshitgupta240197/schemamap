@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { downloadMap } from "./client";
-import { Icon, Main, ScreenHeading } from "./Chrome";
+import { Icon, Main, ScreenHeading, StateTile } from "./Chrome";
 import { formatExtracted } from "./maps";
 import type { MapEntry } from "./model";
 import { saveBlob } from "./saveFile";
@@ -24,7 +24,7 @@ export function DoneScreen({ token, mapId, database, where, entry, onAnother, on
     entry === null
       ? null
       : `${entry.tables.toLocaleString("en-US")} ${entry.tables === 1 ? "table" : "tables"}`,
-    where,
+    where === "" ? null : where,
     entry === null ? null : `extracted ${formatExtracted(entry.extractedAt)}`,
   ].filter((part): part is string => part !== null);
 
@@ -40,11 +40,14 @@ export function DoneScreen({ token, mapId, database, where, entry, onAnother, on
 
   return (
     <Main>
-      <div className="lc-title">
-        <ScreenHeading focus>Your map of {database} is ready</ScreenHeading>
-        <p className="lc-lede">{facts.join(" · ")}</p>
-      </div>
       <section className="lc-card lc-card--state lc-card--done" aria-label="Your map">
+        <StateTile tone="ok" icon="check" />
+        <div className="lc-title">
+          <ScreenHeading focus>
+            {database === "" ? "Your map is ready" : `Your map of ${database} is ready`}
+          </ScreenHeading>
+          <p className="lc-lede">{facts.join(" · ")}</p>
+        </div>
         <div className="lc-actions">
           <a
             className="lc-btn lc-btn--primary"
@@ -52,6 +55,7 @@ export function DoneScreen({ token, mapId, database, where, entry, onAnother, on
             target="_blank"
             rel="noopener noreferrer"
           >
+            <Icon name="external" size={18} />
             <span>Open map</span>
             <span className="lc-btn__aside">(opens in a new tab)</span>
           </a>
@@ -67,9 +71,11 @@ export function DoneScreen({ token, mapId, database, where, entry, onAnother, on
         </p>
         <div className="lc-actions lc-actions--top">
           <button type="button" className="lc-btn lc-btn--ghost" onClick={onAnother}>
-            Extract another database
+            <Icon name="plus" size={18} />
+            <span>Extract another database</span>
           </button>
-          <p className="lc-hint">
+          <p className="lc-hint lc-hint--folder">
+            <Icon name="folder" size={15} />
             Kept on this computer. Find it later under{" "}
             <button type="button" className="lc-link" onClick={onRecent}>
               Recent maps

@@ -37,6 +37,8 @@ interface Api {
   maps: unknown[];
   importStatus?: number;
   quitStatus?: number;
+  /** When set, `POST /api/jobs` answers 409 with this body. */
+  refuseStart?: unknown;
 }
 
 let api: Api;
@@ -57,7 +59,10 @@ function stub(): void {
       if (path === "/api/connection/test") return json(PASSED);
       if (path === "/api/databases")
         return json({ databases: [{ name: "Sales" }, { name: "HR" }] });
-      if (path === "/api/jobs") return json({ job_id: JOB }, 202);
+      if (path === "/api/jobs")
+        return api.refuseStart === undefined
+          ? json({ job_id: JOB }, 202)
+          : json(api.refuseStart, 409);
       if (path === `/api/jobs/${JOB}`) {
         const next = api.jobs.length > 1 ? api.jobs.shift() : api.jobs[0];
         return json(next);
@@ -108,7 +113,7 @@ async function toPick(): Promise<void> {
   fireEvent.change(screen.getByLabelText("User name"), { target: { value: "reader" } });
   fireEvent.change(screen.getByLabelText("Password"), { target: { value: "hunter2" } });
   fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Choose a database anyway" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Choose a database" }));
   fireEvent.click(await screen.findByRole("radio", { name: /Sales/ }));
 }
 
@@ -384,5 +389,102 @@ describe("Quit", () => {
     fireEvent.click(screen.getByRole("button", { name: "Quit" }));
     await screen.findByText(/could not stop/);
     expect(screen.queryByRole("heading", { name: "Schema Map has stopped" })).toBeNull();
+  });
+});
+
+const BUSY = {
+  error: {
+    code: "job_running",
+    message: "An extract is already running.",
+    fix: "Wait for it to finish, or cancel it, then try again.",
+    job_id: JOB,
+  },
+};
+
+describe("a second tab starting an extract (#12)", () => {
+  it("says another extract is running instead of reporting a failure", async () => {
+    api.refuseStart = BUSY;
+    await toPick();
+    fireEvent.click(screen.getByRole("button", { name: "Extract map" }));
+    await screen.findByRole("heading", { name: "Another extract is running", level: 2 });
+    expect(screen.getByText(/probably in another tab/)).toBeTruthy();
+    expect(screen.queryByText(/could not finish/)).toBeNull();
+    expect(screen.queryByText(/Nothing was saved/)).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.querySelector(".lc-banner--fail")).toBeNull();
+    const main = within(screen.getByRole("main"));
+    expect(main.getByRole("button", { name: /Recent maps/ })).toBeTruthy();
+  });
+
+  it("links to the running extract's progress", async () => {
+    api.refuseStart = BUSY;
+    api.jobs = [running(["done", "running", "pending"])];
+    await toPick();
+    fireEvent.click(screen.getByRole("button", { name: "Extract map" }));
+    fireEvent.click(await screen.findByRole("button", { name: "See its progress" }));
+    await screen.findByRole("progressbar");
+    expect(screen.getByRole("heading", { name: "Extract in progress", level: 1 })).toBeTruthy();
+    expect(screen.getByText("1 of 3 sections done")).toBeTruthy();
+    expect(calls.some((call) => call.path === `/api/jobs/${JOB}`)).toBe(true);
+  });
+
+  it("still waits when the server did not name the running extract", async () => {
+    api.refuseStart = { error: { code: "job_running", message: "An extract is already running." } };
+    await toPick();
+    fireEvent.click(screen.getByRole("button", { name: "Extract map" }));
+    await screen.findByRole("heading", { name: "Another extract is running", level: 2 });
+    expect(screen.queryByRole("button", { name: "See its progress" })).toBeNull();
+  });
+});
+
+describe("status states (#8, #9)", () => {
+  it("shows a failed extract in the red banner with the cross, the fix inline, a red bar", async () => {
+    api.jobs = [
+      {
+        job_id: JOB,
+        state: "failed",
+        sections: sections(["done", "failed", "pending"]),
+        elapsed_ms: 62000,
+        error: { code: "query_timeout", message: "Too slow.", fix: "Raise Query timeout." },
+      },
+    ];
+    await startExtract();
+    await screen.findByRole("heading", { name: "The extract stopped at Tables" });
+    const banner = document.querySelector(".lc-banner--fail");
+    expect(banner?.querySelector("svg")).not.toBeNull();
+    const fix = banner?.querySelector(".lc-fix-line");
+    expect(fix?.textContent).toBe("How to fix: Raise Query timeout.");
+    expect(document.querySelector(".lc-progress--failed")).not.toBeNull();
+  });
+
+  it("marks Done with the success tile and icons on its actions", async () => {
+    api.jobs = [
+      {
+        job_id: JOB,
+        state: "done",
+        map_id: MAP,
+        sections: sections(["done", "done", "done"], [1, 71, 3]),
+        elapsed_ms: 3000,
+      },
+    ];
+    await startExtract();
+    const heading = await screen.findByRole("heading", { name: "Your map of Sales is ready" });
+    const card = heading.closest(".lc-card");
+    expect(card?.querySelector(".lc-tile--ok")).not.toBeNull();
+    expect(screen.getByRole("link", { name: /Open map/ }).querySelector("svg")).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Extract another database" }).querySelector("svg"),
+    ).not.toBeNull();
+  });
+
+  it("tints the delete confirmation red with a warning icon", async () => {
+    stub();
+    render(<App />);
+    await screen.findByRole("heading", { name: "Connect to SQL Server" });
+    fireEvent.click(screen.getByRole("button", { name: "Recent maps" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Delete the map of Sales" }));
+    const group = screen.getByRole("group", { name: "Delete the map of Sales?" });
+    expect(group.className).toContain("lc-confirm");
+    expect(group.querySelector(".lc-confirm__text svg")).not.toBeNull();
   });
 });
