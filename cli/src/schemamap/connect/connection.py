@@ -55,6 +55,19 @@ def describe_failure(exc: BaseException, config: ConnectionConfig) -> str:
     return f"{hint} Driver said: {detail[:_MAX_DETAIL]}" if detail else hint
 
 
+def split_failure(text: str) -> tuple[str, str | None]:
+    """Split a ``describe_failure`` message into what went wrong and how to fix it.
+
+    The driver's own words (``Driver said: ...``) stay with the problem. A message without a
+    ``Fix:`` part comes back whole with no fix.
+    """
+    problem, marker, rest = text.partition(" Fix: ")
+    if not marker:
+        return text, None
+    fix, said, driver = rest.partition(" Driver said: ")
+    return (f"{problem} Driver said: {driver}" if said else problem), fix
+
+
 def connect(config: ConnectionConfig) -> MetadataExecutor:
     """Open a read-only intent, encrypted-by-default connection wrapped in the executor.
 

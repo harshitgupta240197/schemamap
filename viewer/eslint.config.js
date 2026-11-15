@@ -9,6 +9,7 @@ export default tseslint.config(
     ignores: [
       "src/generated",
       "dist",
+      "dist-launcher",
       "playwright-report",
       "test-results",
       "node_modules",

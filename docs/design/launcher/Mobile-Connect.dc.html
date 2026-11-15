@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Schema Map · Connect (mobile)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#F6F4FA}
+a{color:#5B3FA0}a:hover{color:#432C7C}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:10px;font:600 15px/1 Inter,system-ui,sans-serif;text-decoration:none;cursor:pointer;border:1px solid transparent;box-sizing:border-box;white-space:nowrap}
+.btn-p{background:#5B3FA0;color:#FFFFFF}.btn-p:hover{background:#4B3288;color:#FFFFFF}
+.btn-s{background:#FFFFFF;color:#5B3FA0;border-color:#C9C1DA}.btn-s:hover{background:#F3EFFA;color:#4B3288}
+.btn-g{background:transparent;color:#4A445C}.btn-g:hover{background:#EEEAF5;color:#1F1A2E}
+.btn-d{background:#A61E2A;color:#FFFFFF}.btn-d:hover{background:#8E1823;color:#FFFFFF}
+.btn-sm{min-height:36px;padding:0 12px;font-size:14px}
+.icon-btn{width:44px;padding:0}
+.inp{width:100%;box-sizing:border-box;min-height:44px;padding:0 12px;border:1px solid #8C84A0;border-radius:10px;background:#FFFFFF;color:#1F1A2E;font:400 15px Inter,system-ui,sans-serif}
+.inp::placeholder{color:#7A7390}
+.inp:focus{outline:none;border-color:#5B3FA0;box-shadow:0 0 0 3px rgba(91,63,160,.22)}
+.card{background:#FFFFFF;border:1px solid #E4DFEE;border-radius:16px;box-shadow:0 1px 2px rgba(31,26,46,.04),0 8px 24px rgba(31,26,46,.05)}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;padding:0}
+a:focus-visible,button:focus-visible,summary:focus-visible,select:focus-visible,input[type=checkbox]:focus-visible,input[type=radio]:focus-visible{outline:3px solid #5B3FA0;outline-offset:2px}
+label:has(> input.sr:focus-visible){outline:3px solid #5B3FA0;outline-offset:2px}
+.seg:hover{background:#F3EFFA}
+.row:hover{background:#FAF8FD}
+summary{cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}
+details[open] .chev{transform:rotate(90deg)}
+input[type=checkbox],input[type=radio]{accent-color:#5B3FA0;width:18px;height:18px;margin:0;flex:none}
+pre{margin:0}
+@keyframes spin{to{transform:rotate(360deg)}}.spin{animation:spin 1s linear infinite}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+</style>
+</helmet>
+<div style="width:375px;min-height:1960px;background:#F6F4FA;font-family:Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;color:#1F1A2E;position:relative;box-sizing:border-box">
+<header style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:#FFFFFF;border-bottom:1px solid #E4DFEE">
+<div style="display:flex;align-items:center;gap:10px;min-width:0"><svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#5B3FA0"/><path d="M9 9 19 14M9 19l10-5" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/><circle cx="9" cy="9" r="2.6" fill="#FFFFFF"/><circle cx="9" cy="19" r="2.6" fill="#FFFFFF"/><circle cx="19" cy="14" r="3" fill="#8FE3DC"/></svg><span style="font-size:16px;font-weight:700;color:#1F1A2E;letter-spacing:-0.01em">Schema Map</span></div>
+<nav aria-label="Launcher" style="display:flex;align-items:center;gap:4px">
+<a class="btn btn-g" href="Mobile-Recent.dc.html" style="padding:0 10px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Recent</span></a>
+<a class="btn btn-g" href="Quit.dc.html" style="padding:0 10px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v10M18.4 6.6a9 9 0 1 1-12.8 0"/></svg><span>Quit</span></a>
+</nav>
+</header>
+<div style="padding:16px 16px 0">
+<p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#4A445C">Step 1 of 5 · Connect</p>
+<div aria-hidden="true" style="display:flex;gap:4px"><span style="flex:1;height:4px;border-radius:2px;background:#5B3FA0"></span><span style="flex:1;height:4px;border-radius:2px;background:#DCD6E8"></span><span style="flex:1;height:4px;border-radius:2px;background:#DCD6E8"></span><span style="flex:1;height:4px;border-radius:2px;background:#DCD6E8"></span><span style="flex:1;height:4px;border-radius:2px;background:#DCD6E8"></span></div>
+</div>
+<main style="max-width:1040px;margin:0 auto;padding:20px 16px 40px;box-sizing:border-box">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+<div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+<h1 style="margin:0;font-size:24px;line-height:1.25;font-weight:700;letter-spacing:-0.015em;color:#1F1A2E">Connect to SQL Server</h1>
+<p style="margin:0;font-size:15px;line-height:1.55;color:#4A445C;max-width:640px">Use a read-only login. Schema Map checks the connection and tells you in plain English what, if anything, needs fixing.</p>
+</div></div><div style="display:flex;flex-direction:column;gap:16px"><section class="card" aria-labelledby="conn-h" style="padding:20px;display:flex;flex-direction:column;gap:22px">
+<h2 id="conn-h" style="margin:0;font-size:17px;font-weight:700">Connection</h2>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:12px">
+<div><label for="server" style="display:block;font-size:14px;font-weight:600;color:#1F1A2E;margin-bottom:6px">Server</label><input id="server" class="inp" value="{{server}}" onChange="{{setServer}}" placeholder="sql01.example.local or 127.0.0.1" autocomplete="off" spellcheck="false" /></div>
+<div><label for="port" style="display:block;font-size:14px;font-weight:600;color:#1F1A2E;margin-bottom:6px">Port</label><input id="port" class="inp" value="{{port}}" onChange="{{setPort}}" inputmode="numeric" autocomplete="off" /></div>
+</div>
+<fieldset style="border:0;margin:0;padding:0;min-width:0">
+<legend style="padding:0;font-size:14px;font-weight:600;margin-bottom:8px">Sign in with</legend>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<label class="seg" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;box-sizing:border-box;flex:1 1 100%;justify-content:flex-start;border:{{sqlBorder}};background:{{sqlBg}};color:{{sqlFg}}"><input class="sr" type="radio" name="auth" checked="{{sqlOn}}" onChange="{{sqlPick}}" />SQL Server login</label>
+<sc-if value="{{onWindows}}" hint-placeholder-val="{{true}}"><label class="seg" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;box-sizing:border-box;flex:1 1 100%;justify-content:flex-start;border:{{winBorder}};background:{{winBg}};color:{{winFg}}"><input class="sr" type="radio" name="auth" checked="{{winOn}}" onChange="{{winPick}}" />Windows</label></sc-if>
+<label class="seg" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;box-sizing:border-box;flex:1 1 100%;justify-content:flex-start;border:{{entraBorder}};background:{{entraBg}};color:{{entraFg}}"><input class="sr" type="radio" name="auth" checked="{{entraOn}}" onChange="{{entraPick}}" />Microsoft Entra ID</label>
+</div>
+</fieldset>
+<sc-if value="{{isEntra}}" hint-placeholder-val="{{false}}">
+<div><label for="entra" style="display:block;font-size:14px;font-weight:600;color:#1F1A2E;margin-bottom:6px">Entra method</label>
+<select id="entra" class="inp" value="{{entra}}" onChange="{{setEntra}}">
+<option value="password">Password</option>
+<option value="interactive">Interactive (opens a Microsoft sign-in page)</option>
+<option value="integrated">Integrated (your signed-in account)</option>
+<option value="msi">Managed identity</option>
+<option value="sp">Service principal</option>
+</select>
+<p style="margin:6px 0 0;font-size:13px;line-height:1.5;color:#625C75">Only the methods your installed driver supports are listed.</p></div>
+</sc-if>
+<sc-if value="{{noteOn}}" hint-placeholder-val="{{false}}"><div style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#F3EFFA;border:1px solid #E1D8F2;color:#4A445C;font-size:14px;line-height:1.5"><span style="padding-top:2px;display:inline-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B3FA0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg></span><div>{{noteText}}</div></div></sc-if>
+<sc-if value="{{showUser}}" hint-placeholder-val="{{true}}">
+<div><label for="user" style="display:block;font-size:14px;font-weight:600;color:#1F1A2E;margin-bottom:6px">{{userLabel}}</label><input id="user" class="inp" value="{{user}}" onChange="{{setUser}}" autocomplete="username" spellcheck="false" /></div>
+</sc-if>
+<sc-if value="{{showPw}}" hint-placeholder-val="{{true}}">
+<div><label for="pw" style="display:block;font-size:14px;font-weight:600;color:#1F1A2E;margin-bottom:6px">{{pwLabel}}</label>
+<div style="display:flex;gap:8px">
+<input id="pw" class="inp" type="{{pwType}}" value="{{pw}}" onChange="{{setPw}}" autocomplete="current-password" aria-describedby="pw-hint" />
+<button type="button" class="btn btn-s" onClick="{{togglePw}}" aria-pressed="{{pwPressed}}" aria-label="{{pwAria}}" style="min-width:84px;padding:0 12px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>{{pwBtn}}</span></button>
+</div>
+<p id="pw-hint" style="margin:6px 0 0;font-size:13px;line-height:1.5;color:#625C75;display:flex;gap:6px;align-items:flex-start"><span style="padding-top:2px;display:inline-flex"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#625C75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span><span>Held in memory for this check only. Never saved, logged or shown again.</span></p>
+</div>
+</sc-if>
+<div style="display:flex;flex-direction:column;gap:14px;padding-top:4px">
+<label style="display:flex;gap:12px;align-items:flex-start;cursor:pointer">
+<span style="padding-top:2px;display:inline-flex"><input type="checkbox" checked="{{trust}}" onChange="{{toggleTrust}}" aria-describedby="trust-d" /></span>
+<span style="display:flex;flex-direction:column;gap:2px">
+<span style="font-size:15px;font-weight:600;display:flex;gap:8px;align-items:center;flex-wrap:wrap">Trust server certificate <span style="font-size:12px;font-weight:600;color:#7A4F00;background:#FFF3D6;padding:2px 8px;border-radius:999px">Local labs only</span></span>
+<span id="trust-d" style="font-size:13px;line-height:1.5;color:#625C75">Skips checking who issued the server's certificate. The connection is still encrypted.</span>
+</span>
+</label>
+<sc-if value="{{trust}}" hint-placeholder-val="{{false}}"><div style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#FFF8E6;border:1px solid #F2DFAE;color:#5C3D00;font-size:14px;line-height:1.5"><span style="padding-top:2px;display:inline-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7A4F00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg></span><div>Use this only for a lab on your own machine. For a shared server, install a certificate from a trusted authority on the server instead.</div></div></sc-if>
+<label style="display:flex;gap:12px;align-items:flex-start;cursor:pointer">
+<span style="padding-top:2px;display:inline-flex"><input type="checkbox" checked="{{remember}}" onChange="{{toggleRemember}}" aria-describedby="rem-d" /></span>
+<span style="display:flex;flex-direction:column;gap:2px">
+<span style="font-size:15px;font-weight:600">Remember this connection</span>
+<span id="rem-d" style="font-size:13px;line-height:1.5;color:#625C75">Saves the server, port, sign-in method and user name on this computer. Never the password.</span>
+</span>
+</label>
+</div>
+<details style="border-top:1px solid #E4DFEE;padding-top:16px">
+<summary style="display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:#4A445C;min-height:44px"><span class="chev" style="display:inline-flex;transition:transform .15s"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>Advanced</summary>
+<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding-top:12px">
+<div><label for="ct" style="display:block;font-size:14px;font-weight:600;color:#1F1A2E;margin-bottom:6px">Connection timeout (seconds)</label><input id="ct" class="inp" value="15" inputmode="numeric" /><p style="margin:6px 0 0;font-size:13px;line-height:1.5;color:#625C75">How long to wait for the server to answer.</p></div>
+<div><label for="qt" style="display:block;font-size:14px;font-weight:600;color:#1F1A2E;margin-bottom:6px">Query timeout (seconds)</label><input id="qt" class="inp" value="60" inputmode="numeric" /><p style="margin:6px 0 0;font-size:13px;line-height:1.5;color:#625C75">Per catalog query. Raise it for very large databases.</p></div>
+</div>
+<p style="margin:14px 0 0;font-size:13px;line-height:1.5;color:#625C75">Schema Map always connects with read-only intent and runs only its published catalog queries.</p>
+</details>
+<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-top:1px solid #E4DFEE;padding-top:20px">
+<a class="btn btn-p" href="Mobile-Check.dc.html" style="width:100%">Test connection</a>
+<span style="font-size:13px;color:#625C75">Runs read-only checks. Changes nothing on the server.</span>
+</div>
+</section><section class="card" aria-labelledby="rec-h" style="padding:20px">
+<h2 id="rec-h" style="margin:0 0 4px;font-size:16px;font-weight:700">Recent connections</h2>
+<p style="margin:0 0 12px;font-size:13px;color:#625C75">Saved on this computer. Passwords are never saved.</p>
+<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px">
+<sc-for list="{{recents}}" as="r" hint-placeholder-count="3">
+<li style="display:flex;align-items:center;gap:8px;padding:8px 4px 8px 10px;border-radius:10px;border:1px solid #EEEAF5">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+<span style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{r.server}}">{{r.server}}, {{r.port}}</span>
+<span style="font-size:12px;color:#625C75;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{r.authLabel}}{{r.userPart}} · {{r.when}}</span>
+</div>
+<button type="button" class="btn btn-s" onClick="{{r.use}}" aria-label="{{r.useAria}}">Use</button>
+<button type="button" class="btn btn-g icon-btn" onClick="{{r.forget}}" aria-label="{{r.forgetAria}}" style=""><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+</li>
+</sc-for>
+</ul>
+<sc-if value="{{noRecents}}" hint-placeholder-val="{{false}}"><p style="margin:0;font-size:14px;color:#625C75">No saved connections yet. Tick “Remember this connection” to keep one here.</p></sc-if>
+</section><section class="card" aria-labelledby="what-h" style="padding:20px">
+<h2 id="what-h" style="margin:0 0 12px;font-size:16px;font-weight:700">What Schema Map reads</h2>
+<ul style="list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:12px;font-size:14px;line-height:1.5;color:#4A445C"><li style="display:flex;gap:10px;align-items:flex-start"><span style="padding-top:1px;display:inline-flex"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0E7C77" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg></span><span>Reads system catalog views only, such as sys.tables and sys.foreign_keys. Never your rows.</span></li><li style="display:flex;gap:10px;align-items:flex-start"><span style="padding-top:1px;display:inline-flex"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0E7C77" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span>Needs VIEW DEFINITION, not SELECT. The check below tells you exactly what is missing.</span></li><li style="display:flex;gap:10px;align-items:flex-start"><span style="padding-top:1px;display:inline-flex"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0E7C77" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span><span>Runs on this computer. The map is a single offline file you control.</span></li></ul>
+<a href="#" style="font-size:14px;font-weight:600">See every query it runs</a>
+</section></div>
+</main>
+<footer style="max-width:1040px;margin:0 auto;padding:0 16px 32px;display:flex;align-items:center;gap:8px;font-size:13px;color:#625C75">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#625C75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Runs only on this computer at 127.0.0.1. Nothing is sent anywhere.</span>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"os": {"editor": "enum", "options": ["windows", "macos", "linux"], "default": "windows"}, "$preview": {"width": 375, "height": 1960}}'>
+class Component extends DCLogic {
+  state = { server: 'localhost', port: '14333', auth: 'sql', entra: 'password', user: 'schemamap_reader', pw: 'lab-only-example', showPw: false, trust: true, remember: true, recents: [{"server": "localhost", "port": "14333", "auth": "sql", "authLabel": "SQL Server login", "user": "schemamap_reader", "when": "Used today"}, {"server": "lab-sql.example.local", "port": "1433", "auth": "windows", "authLabel": "Windows", "user": "", "when": "Used 3 days ago"}, {"server": "reporting.example.database.windows.net", "port": "1433", "auth": "entra", "authLabel": "Microsoft Entra ID", "user": "reader@example.com", "when": "Used 9 Nov"}] };
+  renderVals() {
+    const s = this.state;
+    const os = this.props.os ?? 'windows';
+    const onWindows = os === 'windows';
+    const auth = (s.auth === 'windows' && !onWindows) ? 'sql' : s.auth;
+    const set = (k) => (e) => this.setState({ [k]: e.target.value });
+    const isEntra = auth === 'entra';
+    const em = s.entra;
+    const segStyle = (on) => on
+      ? { b: '2px solid #5B3FA0', bg: '#F3EFFA', fg: '#4B3288' }
+      : { b: '1px solid #8C84A0', bg: '#FFFFFF', fg: '#1F1A2E' };
+    const sq = segStyle(auth === 'sql'), wi = segStyle(auth === 'windows'), en = segStyle(isEntra);
+    const showUser = auth === 'sql' || (isEntra && (em === 'password' || em === 'sp' || em === 'interactive'));
+    const showPw = auth === 'sql' || (isEntra && (em === 'password' || em === 'sp'));
+    let noteText = '';
+    if (auth === 'windows') noteText = 'Uses your current Windows sign-in. No user name or password is needed.';
+    else if (isEntra && em === 'interactive') noteText = 'A Microsoft sign-in page opens in your browser. The user name is optional.';
+    else if (isEntra && em === 'integrated') noteText = 'Uses the Microsoft account you are signed in to on this computer.';
+    else if (isEntra && em === 'msi') noteText = 'Uses the managed identity of the Azure machine this runs on.';
+    return {
+      onWindows, isEntra, entra: em,
+      sqlOn: auth === 'sql', winOn: auth === 'windows', entraOn: isEntra,
+      sqlPick: () => this.setState({ auth: 'sql' }),
+      winPick: () => this.setState({ auth: 'windows' }),
+      entraPick: () => this.setState({ auth: 'entra' }),
+      sqlBorder: sq.b, sqlBg: sq.bg, sqlFg: sq.fg,
+      winBorder: wi.b, winBg: wi.bg, winFg: wi.fg,
+      entraBorder: en.b, entraBg: en.bg, entraFg: en.fg,
+      server: s.server, port: s.port, user: s.user, pw: s.pw,
+      setServer: set('server'), setPort: set('port'), setUser: set('user'), setPw: set('pw'), setEntra: set('entra'),
+      showUser, showPw,
+      userLabel: isEntra ? (em === 'sp' ? 'Application (client) ID' : 'User name (email)') : 'User name',
+      pwLabel: isEntra && em === 'sp' ? 'Client secret' : 'Password',
+      pwType: s.showPw ? 'text' : 'password',
+      pwBtn: s.showPw ? 'Hide' : 'Show',
+      pwAria: s.showPw ? 'Hide password' : 'Show password',
+      pwPressed: s.showPw ? 'true' : 'false',
+      togglePw: () => this.setState({ showPw: !s.showPw }),
+      noteOn: noteText !== '', noteText,
+      trust: s.trust, remember: s.remember,
+      toggleTrust: () => this.setState({ trust: !s.trust }),
+      toggleRemember: () => this.setState({ remember: !s.remember }),
+      noRecents: s.recents.length === 0,
+      recents: s.recents.filter((r) => onWindows || r.auth !== 'windows').map((r) => ({
+        ...r,
+        userPart: r.user ? ' · ' + r.user : '',
+        useAria: 'Use ' + r.server + ', ' + r.port,
+        forgetAria: 'Forget ' + r.server + ', ' + r.port,
+        use: () => this.setState({ server: r.server, port: r.port, auth: r.auth, user: r.user, pw: '' }),
+        forget: () => this.setState({ recents: s.recents.filter((x) => x !== r) })
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

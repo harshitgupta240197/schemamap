@@ -73,6 +73,13 @@ def test_redact_masks_longest_first_and_ignores_empty() -> None:
     assert redact("abc abcdef", ["abc", "abcdef", ""]) == "*** ***"
 
 
+def test_redact_masks_a_password_that_contains_a_pwd_keyword_whole() -> None:
+    password = "S3cret};PWD={pw}"
+    for echoed in (password, "PWD=" + password, "x {S3cret}};PWD={{pw}}} y"):
+        text = redact(f"Driver said: {echoed}", [password, "{S3cret}};PWD={{pw}}}"])
+        assert "S3cret" not in text
+
+
 def test_redact_masks_pwd_fragments_even_for_unknown_passwords() -> None:
     assert redact("x PWD={other;}}pw};Database=d", []) == "x ***;Database=d"
     assert redact("password = hunter2 end", []) == "*** end"
@@ -128,3 +135,20 @@ def test_successful_connect_sets_timeouts_and_runs_named_query(
     assert seen["autocommit"] is True
     assert seen["timeout"] == 15
     assert "ApplicationIntent={ReadOnly}" in seen["text"]
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        (
+            "Login failed. Fix: Check the password. Driver said: nope",
+            ("Login failed. Driver said: nope", "Check the password."),
+        ),
+        ("Login failed. Fix: Check the password.", ("Login failed.", "Check the password.")),
+        ("Something else entirely.", ("Something else entirely.", None)),
+    ],
+)
+def test_split_failure_separates_the_fix_and_keeps_the_driver_words(
+    text: str, expected: tuple[str, str | None]
+) -> None:
+    assert connection_module.split_failure(text) == expected

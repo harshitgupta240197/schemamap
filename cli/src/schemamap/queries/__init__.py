@@ -23,6 +23,7 @@ class QueryName(enum.Enum):
     CHECK_CONSTRAINTS = "check_constraints"
     COLUMNS = "columns"
     DATABASE_USER = "database_user"
+    DATABASES = "databases"
     DEPENDENCIES = "dependencies"
     DOCTOR_SERVER_INFO = "doctor_server_info"
     FOREIGN_KEYS = "foreign_keys"

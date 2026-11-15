@@ -1,0 +1,120 @@
+/*
+ * Design tokens, shared by the map and the launcher. Light is the default and matches the landing
+ * page (site/style.css). Dark applies when theme.ts sets data-theme="dark" on <html>. Colours are
+ * hex so src/theme.test.ts can check every pairing's contrast in both themes.
+ */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("./fonts/inter-latin-wght-normal.woff2") format("woff2");
+}
+
+:root {
+  color-scheme: light;
+
+  --sm-bg: #faf9fc;
+  --sm-surface: #ffffff;
+  --sm-header: #f2f1f6;
+  --sm-border: #eceaf2;
+  --sm-edge: #7a7690;
+  --sm-text: #1e1b2e;
+  --sm-muted: #4a4760;
+  --sm-accent: #5b3fa0;
+  --sm-on-accent: #ffffff;
+  --sm-focus: #5b3fa0;
+  --sm-accent-ring: rgb(91 63 160 / 25%);
+  --sm-badge-bg: #f1ecfc;
+  --sm-badge-fg: #3e2a7a;
+  --sm-warn-bg: #fff3dc;
+  --sm-warn-fg: #7a4700;
+  --sm-error-bg: #fdecea;
+  --sm-error-fg: #a4161a;
+  --sm-sql-keyword: #432c7a;
+  --sm-sql-string: #9b2d1d;
+  --sm-sql-quoted: #0a5e5a;
+  --sm-sql-comment: #5d5a72;
+  --sm-sql-number: #0a6b43;
+  --sm-sql-variable: #7a4700;
+  --sm-shadow: rgb(30 27 46 / 8%);
+  --sm-shadow-raised: rgb(30 27 46 / 16%);
+  --sm-scrim: rgb(30 27 46 / 30%);
+  --sm-mask: rgb(30 27 46 / 6%);
+
+  /* Schema stripe colours: colour-blind-safe hues, each 3:1 on the surfaces (theme.test.ts). */
+  --sm-schema-0: #0072b2;
+  --sm-schema-1: #c25400;
+  --sm-schema-2: #00785a;
+  --sm-schema-3: #a8467f;
+  --sm-schema-4: #8a6600;
+  --sm-schema-5: #2a82b8;
+  --sm-schema-6: #5c6670;
+  --sm-schema-7: #7a4fbf;
+
+  --sm-space-1: 4px;
+  --sm-space-2: 8px;
+  --sm-space-3: 12px;
+  --sm-space-4: 16px;
+  --sm-space-5: 24px;
+  --sm-space-6: 32px;
+
+  --sm-text-xs: 11px;
+  --sm-text-sm: 12px;
+  --sm-text-md: 13px;
+  --sm-text-lg: 14px;
+  --sm-text-xl: 16px;
+  --sm-text-2xl: 20px;
+  /* Text in overview boxes: 10 px on screen at the compact threshold (zoom 0.6, zoom.ts). */
+  --sm-text-box: 17px;
+
+  --sm-radius-sm: 6px;
+  --sm-radius-md: 8px;
+  --sm-radius-lg: 12px;
+  --sm-radius-xl: 16px;
+  --sm-secondary: #0e7c77;
+
+  --sm-font:
+    "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sm-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --sm-bg: #14121c;
+  --sm-surface: #1d1a29;
+  --sm-header: #262234;
+  --sm-border: #332f44;
+  --sm-edge: #8f8aa8;
+  --sm-text: #eceaf4;
+  --sm-muted: #b0acc4;
+  --sm-accent: #b7a3f0;
+  --sm-on-accent: #17122a;
+  --sm-focus: #b7a3f0;
+  --sm-accent-ring: rgb(183 163 240 / 30%);
+  --sm-badge-bg: #2f2750;
+  --sm-badge-fg: #e0d6fa;
+  --sm-warn-bg: #3b2f0c;
+  --sm-warn-fg: #f3d98b;
+  --sm-error-bg: #3d1a15;
+  --sm-error-fg: #ffb4a6;
+  --sm-sql-keyword: #b7a3f0;
+  --sm-sql-string: #f2a193;
+  --sm-sql-quoted: #6fd3cc;
+  --sm-sql-comment: #b0acc4;
+  --sm-sql-number: #7fd6a6;
+  --sm-sql-variable: #e8b866;
+  --sm-shadow: rgb(0 0 0 / 40%);
+  --sm-shadow-raised: rgb(0 0 0 / 60%);
+  --sm-scrim: rgb(0 0 0 / 55%);
+  --sm-mask: rgb(0 0 0 / 35%);
+  --sm-schema-0: #56b4e9;
+  --sm-schema-1: #ff8a4c;
+  --sm-schema-2: #3dd6a3;
+  --sm-schema-3: #e58fc0;
+  --sm-schema-4: #f0d060;
+  --sm-schema-5: #8fb8ff;
+  --sm-schema-6: #a9b4c2;
+  --sm-schema-7: #b9a3f5;
+}

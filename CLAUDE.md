@@ -15,11 +15,11 @@ Schema Map connects to a SQL Server database with a read-only login, reads only 
 ```
 cli/        Python package `schemamap` (extract, infer, export, CLI)
   src/schemamap/queries/   every SQL statement lives here as a .sql file
-viewer/     React + TypeScript single-file viewer (Vite)
+viewer/     React + TypeScript single-file viewer (Vite), plus the `schemamap ui` launcher page (second entry)
 site/       Landing page and waitlist: static HTML plus one Vercel function (api/join), no build step
 schema/     snapshot.v1.json, generated from cli/src/schemamap/snapshot/ (never edit by hand)
-tools/      lab.py (SQL Server Docker lab), synthetic schema generator, build_viewer.py (packages the viewer for `schemamap view`), check_wheel.py (checks the wheel carries it)
-docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate reports
+tools/      lab.py (SQL Server Docker lab), synthetic schema generator, build_viewer.py (packages the viewer and launcher for `schemamap view` and `schemamap ui`), check_wheel.py (checks the wheel carries them), ui_smoke.py (starts `schemamap ui` from an installed wheel and drives it; the CI `ui-smoke` job)
+docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, UI.md, gate reports, plans/ (phase plans), images/ui/ (launcher screenshots for UI.md)
 .github/    CI workflows
 ```
 
@@ -32,9 +32,11 @@ docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, gate repo
 - Site checks: `cd site && npm run lint && npm test && npm run e2e` (needs `npx playwright install chromium`)
 - Site against real local Supabase (needs Docker and the Supabase CLI): `cd site && supabase start && npm run test:integration`; `npm run local:up` serves the site on it
 - Landing-page screenshots (needs the packaged viewer): `cd viewer && npm run site:shots && cd .. && uv run tools/site_shots.py`
-- Package the viewer for `schemamap view` (needs `npm ci` in `viewer/`; output is gitignored): `uv run tools/build_viewer.py`
+- Package the viewer and launcher for `schemamap view` and `schemamap ui` (needs `npm ci` in `viewer/`; output is gitignored): `uv run tools/build_viewer.py`
 - Viewer end-to-end (needs the packaged viewer; the global setup makes the AdventureWorks and WWI maps with the real CLI; Firefox needs `npx playwright install firefox`): `cd viewer && npx playwright test`
+- Launcher end-to-end against the lab (lab up, packaged viewer; the CI integration job runs it): `cd viewer && SCHEMAMAP_E2E_LAB=1 npx playwright test e2e/launcher-lab.spec.ts --project=chromium`
 - Wheel contains the viewer and a matching manifest: `cd cli && uv build --wheel && cd .. && uv run tools/check_wheel.py cli/dist/*.whl`
+- Launcher smoke test on the built wheel (the CI `ui-smoke` job runs it on all three systems): `uv build --wheel --directory cli && uv venv ui-smoke-env && uv pip install --python ui-smoke-env cli/dist/*.whl && uv run tools/ui_smoke.py --venv ui-smoke-env`
 - Regenerate the snapshot JSON Schema after changing `snapshot/` models: `cd cli && uv run python scripts/gen_snapshot_schema.py` (a test fails if `schema/snapshot.v1.json` is stale)
 - Lab: `uv run tools/lab.py up | restore all | status | down [--purge]` (also `restore <db>`, `grant <db> [--view-database-state]`, `edgecases`, `synth --tables N`; see `docs/LAB.md`)
 
@@ -79,19 +81,20 @@ Run the full checks for every area you touched before every commit. If a command
 
 ## Git workflow
 
-- Work on the current phase branch (`phase-<n>-<name>`). Create it from `main` if it doesn't exist.
+- The phase branch is `phase-<n>-<name>` (create it from `main` if it doesn't exist). Crumbs do not commit to it directly (D-068).
+- **Every crumb gets a GitHub issue** before work starts: `gh issue create --title "<crumb ID> <title>" --body-file <crumb text> --label phase-<letter>` (the crumb text is the body; the label is the phase, e.g. `phase-u`; create it with `gh label create` if missing). Findings from reviews use `severity:high`, `severity:medium` or `severity:low` as well.
+- **Work on a branch `crumb/<id>`** (e.g. `crumb/u7`) cut from the phase branch.
 - Conventional Commits with a scope: `feat(extract): ...`, `fix(viewer): ...`, `test(infer): ...`, `docs: ...`, `ci: ...`.
-- At the end of every crumb: run checks → `git add` only the files you meant to change → commit with the crumb's message → `git push`.
 - Never force-push, never rewrite `main`, never commit `.env`, credentials, `lab-data/` or `.bak` files.
-- At a gate: `gh pr create --fill`, then `gh pr checks --watch`, then report. Harshit approves the merge.
+- At a gate: `gh pr create --fill` from the phase branch into `main`, then `gh pr checks --watch`, then report. Harshit approves the merge.
 
 ## End of every crumb
 
 1. All checks green for the areas touched.
-2. Commit and push, then `gh run watch` the pushed commit. The crumb is not done until CI is green.
-3. Append one line to `docs/PROGRESS.md`: `YYYY-MM-DD | <crumb ID> | <commit hash> | <one-line note>`, then commit and push it.
-4. Run `gh run watch --exit-status` on that last (PROGRESS) commit and wait for it. The crumb is not done until that run is green too.
-5. Five-line summary, including the result of that last run.
+2. `git add` only the files you meant to change, commit with the crumb's message, `git push -u origin crumb/<id>`.
+3. Append one line to `docs/PROGRESS.md`: `YYYY-MM-DD | <crumb ID> | <commit hash of the last code commit> | <one-line note>`, commit and push it on the same branch.
+4. `gh pr create --base <phase branch>` with `Closes #<issue>` in the body, then `gh pr checks --watch` and wait. The crumb is not done until every check is green.
+5. **Stop.** Print the PR URL and the short summary (what changed, test results, anything Harshit must decide). Harshit reviews on GitHub and merges with a merge commit; do not merge it, and do not start the next crumb until told.
 
 ## Decisions and dependencies
 

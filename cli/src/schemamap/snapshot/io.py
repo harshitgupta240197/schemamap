@@ -103,6 +103,10 @@ def load_snapshot(text: str | bytes) -> Snapshot:
         document = json.loads(text)
     except json.JSONDecodeError as exc:
         raise SnapshotError(f"not valid JSON: {exc.msg} at line {exc.lineno}") from exc
+    except (UnicodeDecodeError, RecursionError) as exc:
+        raise SnapshotError(
+            "not valid JSON: the file is not UTF-8 text or is nested too deep"
+        ) from exc
     if not isinstance(document, dict) or document.get("format") != FORMAT:
         raise SnapshotError(f"not a Schema Map snapshot (expected format {FORMAT!r})")
     version = document.get("format_version")

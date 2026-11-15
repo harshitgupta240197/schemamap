@@ -49,4 +49,9 @@ viewer/screenshots/
 # Built viewer, packaged by tools/build_viewer.py (D-051)
 cli/src/schemamap/viewer_dist/
 viewer/.flow-maps/
+viewer/dist-launcher/
 viewer/.site-shots/
+
+# Stray outputs of running the CLI inside cli/ (maps and snapshots belong in a chosen folder)
+cli/*-map.html
+cli/*.snapshot.json*

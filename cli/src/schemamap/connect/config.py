@@ -106,8 +106,11 @@ class ConnectionConfig:
         return text
 
     def secrets(self) -> tuple[str, ...]:
-        """Strings that must never appear in any message: the password and the connection string."""
+        """Strings that must never appear in any message.
+
+        The connection string, the password, and the password as brace-quoted in it.
+        """
         found = [self.connection_string()]
         if self.password:
-            found.append(self.password)
+            found += [self.password, _quote(self.password)]
         return tuple(found)

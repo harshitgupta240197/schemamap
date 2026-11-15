@@ -1,4 +1,5 @@
 dist
+dist-launcher
 playwright-report
 test-results
 package-lock.json

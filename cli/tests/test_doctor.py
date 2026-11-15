@@ -6,7 +6,7 @@ from typer.testing import CliRunner
 
 from schemamap import cli
 from schemamap.cli import app
-from schemamap.connect import AuthMode, ConnectionConfig, Status, diagnose
+from schemamap.connect import AuthMode, ConnectionConfig, Scope, Status, diagnose
 from schemamap.connect import doctor as doctor_module
 from schemamap.errors import ConnectError, DriverUnavailableError, QueryRefusedError
 from schemamap.queries import QueryName
@@ -275,3 +275,87 @@ def test_report_failed_ignores_warnings(monkeypatch: pytest.MonkeyPatch) -> None
     assert not diagnose(config()).failed
     patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: []})
     assert diagnose(config()).failed
+
+
+def test_a_missing_permission_carries_its_hint_in_parts(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: []})
+    check = checks_by_name(diagnose(config()))["VIEW DEFINITION"]
+    assert check.message is not None and check.message.startswith("VIEW DEFINITION is missing:")
+    assert check.fix is not None and check.fix.startswith("Ask a DBA to run GRANT")
+    assert check.fix_sql == "USE [d];\nGRANT VIEW DEFINITION TO [reader_user];"
+    assert check.next_step == f"{check.message} {check.fix}"
+
+
+def test_a_failed_connection_splits_the_problem_from_the_fix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def refuse(_config: ConnectionConfig) -> None:
+        raise ConnectError(
+            "Login failed for database 'd'. Fix: Check the user name and password. "
+            "Driver said: bad login"
+        )
+
+    monkeypatch.setattr(doctor_module, "load_driver", lambda: object())
+    monkeypatch.setattr(doctor_module, "connect", refuse)
+    check = checks_by_name(diagnose(config()))["Connection"]
+    assert check.message == "Login failed for database 'd'. Driver said: bad login"
+    assert check.fix == "Check the user name and password."
+    assert check.next_step is not None and check.next_step.startswith("The connection failed: ")
+
+
+def test_a_missing_driver_splits_the_problem_from_the_fix(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail() -> object:
+        raise DriverUnavailableError("The SQL Server driver could not be loaded. Install X.")
+
+    monkeypatch.setattr(doctor_module, "load_driver", fail)
+    check = checks_by_name(diagnose(config()))["Driver"]
+    assert check.message == "The SQL Server driver could not be loaded."
+    assert check.fix == "Install X."
+
+
+def test_every_check_has_a_scope(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, GREEN)
+    scopes = {c.name: c.scope for c in diagnose(config()).checks}
+    assert scopes == {
+        "Driver": Scope.SERVER,
+        "Connection": Scope.SERVER,
+        "Server": Scope.SERVER,
+        "VIEW DEFINITION": Scope.DATABASE,
+        "VIEW DATABASE STATE": Scope.DATABASE,
+        "SELECT sys.sql_expression_dependencies": Scope.DATABASE,
+        "Query Store": Scope.DATABASE,
+    }
+
+
+def test_with_no_database_no_database_check_is_evaluated(monkeypatch: pytest.MonkeyPatch) -> None:
+    asked: list[QueryName] = []
+
+    class Recording(FakeConnection):
+        def run(self, name: QueryName) -> list[tuple[Any, ...]]:
+            asked.append(name)
+            return super().run(name)
+
+    monkeypatch.setattr(doctor_module, "load_driver", lambda: object())
+    monkeypatch.setattr(doctor_module, "connect", lambda _c: Recording(GREEN))
+    report = diagnose(config(), database_checks=False)
+    assert {c.scope for c in report.checks} == {Scope.SERVER}
+    assert asked == [QueryName.DOCTOR_SERVER_INFO]
+    assert "database" not in checks_by_name(report)["Server"].detail
+
+
+def test_the_fix_script_names_the_chosen_database(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: []})
+    chosen = ConnectionConfig(
+        server="h", database="AdventureWorks2022", user="u", password=PASSWORD
+    )
+    check = checks_by_name(diagnose(chosen))["VIEW DEFINITION"]
+    assert check.status is Status.FAIL
+    assert check.fix_sql == "USE [AdventureWorks2022];\nGRANT VIEW DEFINITION TO [reader_user];"
+
+
+def test_a_database_name_with_a_closing_bracket_is_quoted(monkeypatch: pytest.MonkeyPatch) -> None:
+    patch(monkeypatch, {**GREEN, QueryName.PERMISSIONS: []})
+    odd = ConnectionConfig(server="h", database="a]b", user="u", password=PASSWORD)
+    check = checks_by_name(diagnose(odd))["VIEW DEFINITION"]
+    assert check.fix_sql is not None
+    assert check.fix_sql.startswith("USE [a]]b];\n")

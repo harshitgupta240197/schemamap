@@ -418,6 +418,9 @@
 }
 
 /*
+ * Compact sizes are 10.02px, not 10px, on screen: a computed font size is rounded to four decimals
+ * (22.2222px at zoom 0.45), which would otherwise measure just under the 10 px floor.
+ *
  * A compact container keeps its name and count at a readable size on screen (as compact table
  * and cluster names do). Tiles keep their names, cut with an ellipsis, while a readable line
  * fits (SchemaNode drops them below that) and always show their table counts.
@@ -425,14 +428,14 @@
 .react-flow[data-compact="true"] .sm-schema__name {
   max-width: 100%;
   font-size: max(
-    calc(10px / var(--sm-zoom, 1)),
+    calc(10.02px / var(--sm-zoom, 1)),
     min(calc(16px / var(--sm-zoom, 1)), var(--sm-name-fit, 16px))
   );
   line-height: 1.1;
 }
 
 .react-flow[data-compact="true"] .sm-schema__count {
-  font-size: calc(10px / var(--sm-zoom, 1));
+  font-size: calc(10.02px / var(--sm-zoom, 1));
   line-height: 1.1;
 }
 
@@ -443,7 +446,7 @@
 
 .react-flow[data-compact="true"] .sm-schema__tile-name,
 .react-flow[data-compact="true"] .sm-schema__tile-count {
-  font-size: calc(10px / var(--sm-zoom, 1));
+  font-size: calc(10.02px / var(--sm-zoom, 1));
   line-height: 1.1;
 }
 
@@ -491,7 +494,7 @@
   max-width: 100%;
   overflow: hidden;
   font-size: max(
-    calc(10px / var(--sm-zoom, 1)),
+    calc(10.02px / var(--sm-zoom, 1)),
     min(calc(12px / var(--sm-zoom, 1)), var(--sm-name-fit, 12px))
   );
   line-height: 1.1;
@@ -515,6 +518,6 @@
   border-left: none;
   background: none;
   color: var(--sm-muted);
-  font-size: calc(10px / var(--sm-zoom, 1));
+  font-size: calc(10.02px / var(--sm-zoom, 1));
   line-height: 1.1;
 }

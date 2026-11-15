@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { ThemeSwitch } from "../shared/ThemeSwitch";
 import { LAYOUT_LIMIT } from "../graph/layout";
 import type { SnapshotIndexes } from "../snapshot/indexes";
 import type { Clustering } from "./clusters";
@@ -252,6 +253,7 @@ export function Toolbar({
       <span className="sm-toolbar__count" role="status">
         {countLine(level, folding, selected, levelSchema(indexes, state), shown, total)}
       </span>
+      <ThemeSwitch />
     </div>
   );
 }

@@ -34,7 +34,11 @@ async function audit(page: Page, scheme: string, state: string): Promise<void> {
 
 async function open(page: Page, scheme: (typeof SCHEMES)[number], url: string): Promise<void> {
   await page.setViewportSize({ width: 1400, height: 900 });
-  await page.emulateMedia({ colorScheme: scheme });
+  // The map is light unless chosen otherwise, so each scheme is chosen the way a person would
+  // have: stored by the theme switch (theme.ts).
+  await page.addInitScript((choice) => {
+    window.localStorage.setItem("schemamap-theme", choice);
+  }, scheme);
   await page.goto(url);
 }
 

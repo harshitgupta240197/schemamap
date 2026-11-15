@@ -70,6 +70,9 @@ def reader_config(lab: ModuleType, password: str, database: str) -> ConnectionCo
     )
 
 
+# Values for the queries that take parameters (every other query takes none).
+QUERY_PARAMS = {QueryName.DATABASES: {"include_system": 0}}
+
 # Queries that fail by design for a reader without VIEW DATABASE STATE.
 NEEDS_VIEW_DATABASE_STATE = frozenset({QueryName.ROW_COUNTS})
 
@@ -100,7 +103,7 @@ def test_executor_runs_every_named_query(
         for name in QueryName:
             if name in NEEDS_VIEW_DATABASE_STATE:
                 continue  # run with that permission in test_extract_sections_integration.py
-            executor.run(name)
+            executor.run(name, QUERY_PARAMS.get(name))
 
 
 def test_executor_refuses_raw_sql_on_a_live_connection(

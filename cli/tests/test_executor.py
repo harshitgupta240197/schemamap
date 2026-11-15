@@ -120,3 +120,28 @@ def test_bind_params_refuses_mismatches(
 ) -> None:
     with pytest.raises(QueryRefusedError, match=message):
         bind_params(declared, params)
+
+
+def test_a_gate_runs_before_every_query_and_can_stop_it() -> None:
+    connection = FakeDriverConnection()
+    executor = MetadataExecutor(connection)
+    calls: list[str] = []
+    executor.set_gate(lambda: calls.append("gate"))
+    executor.run(QueryName.SCHEMAS)
+    executor.run(QueryName.SCHEMAS)
+    assert calls == ["gate", "gate"]
+
+    class Stop(Exception):
+        pass
+
+    def refuse() -> None:
+        raise Stop
+
+    executor.set_gate(refuse)
+    sent = len(connection.cursors)
+    with pytest.raises(Stop):
+        executor.run(QueryName.SCHEMAS)
+    assert len(connection.cursors) == sent  # no cursor was even opened
+
+    executor.set_gate(None)
+    assert executor.run(QueryName.SCHEMAS) == [("a", 1)]
