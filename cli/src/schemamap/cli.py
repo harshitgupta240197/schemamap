@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import os
+import signal
+import sys
 import webbrowser
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
+from types import FrameType
 from typing import Annotated
 
 import typer
@@ -54,7 +60,10 @@ from schemamap.ui.security import LAUNCH_CODE_TTL_SECONDS
 from schemamap.ui.server import IDLE_TIMEOUT_SECONDS, LauncherServer
 from schemamap.viewer import embed_snapshot, load_viewer
 
+EXIT_OK = 0
 EXIT_FAILURE = 1
+# Signals that stop `schemamap ui` the way Quit does (Windows has both too).
+_STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM)
 
 EXIT_CODES_EPILOG = (
     "\b\nExit codes:\n"
@@ -429,16 +438,44 @@ def ui(
     console.print(f"Data folder: {folder}", markup=False, soft_wrap=True)
     if not no_open and not open_in_browser(server.url):
         console.print("Could not start a browser. Open the link above yourself.", markup=False)
+    with _stop_on_signals(server):
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:  # a Ctrl+C that came before the handler took over
+            pass
+        finally:
+            server.server_close()
+        if server.stop_reason == "idle":
+            console.print(
+                f"Schema Map launcher stopped after {IDLE_TIMEOUT_SECONDS // 60} minutes "
+                "without use.",
+                markup=False,
+            )
+        else:
+            console.print("Schema Map launcher stopped.", markup=False)
+        if server.jobs.busy:
+            # The job's query outlived the wait in server_close. A normal exit would run the
+            # driver's exit hook, which closes that connection under the running query and
+            # crashes the process (U.7). tmp/ is already emptied, so leave at once.
+            sys.stdout.flush()
+            sys.stderr.flush()
+            os._exit(EXIT_OK)
+
+
+@contextmanager
+def _stop_on_signals(server: LauncherServer) -> Iterator[None]:
+    """While the block runs, Ctrl+C and SIGTERM ask the launcher to stop, as Quit does.
+
+    Neither raises KeyboardInterrupt, so a second Ctrl+C (or the copy of the signal that
+    `uv run` forwards) cannot cut ``server_close`` short while a job winds down (U.7).
+    """
+
+    def stop(signum: int, frame: FrameType | None) -> None:
+        server.request_stop("interrupt")
+
+    previous = {number: signal.signal(number, stop) for number in _STOP_SIGNALS}
     try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
+        yield
     finally:
-        server.server_close()
-    if server.stop_reason == "idle":
-        console.print(
-            f"Schema Map launcher stopped after {IDLE_TIMEOUT_SECONDS // 60} minutes without use.",
-            markup=False,
-        )
-    else:
-        console.print("Schema Map launcher stopped.", markup=False)
+        for number, handler in previous.items():
+            signal.signal(number, signal.SIG_DFL if handler is None else handler)

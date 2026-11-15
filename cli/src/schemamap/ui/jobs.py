@@ -320,6 +320,17 @@ class JobManager:
             return None
         return "cancelling" if job.request_cancel() else job.state.value
 
+    @property
+    def busy(self) -> bool:
+        """Whether a job's worker thread is still running.
+
+        It can outlive ``shutdown``: cancelling waits for the query in flight, and ``shutdown``
+        waits only so long.
+        """
+        with self._lock:
+            thread = self._thread
+        return thread is not None and thread.is_alive()
+
     def shutdown(self, wait: float = SHUTDOWN_WAIT_SECONDS) -> None:
         """Cancel the running job, if any, and give it a moment to stop."""
         with self._lock:

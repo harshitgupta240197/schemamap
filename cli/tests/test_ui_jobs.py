@@ -417,6 +417,23 @@ def test_shutdown_cancels_a_running_job_and_waits_for_it(tmp_path: Path) -> None
     rig.manager.shutdown()  # nothing running: returns at once
 
 
+def test_busy_says_whether_a_worker_outlived_the_shutdown_wait(tmp_path: Path) -> None:
+    # A query in flight ignores cancelling until it returns; shutdown waits only so long, and
+    # `schemamap ui` must know the worker is still there (U.7).
+    rig = Rig(tmp_path, extractor=Extractor(pause_before=Section.TABLES))
+    assert not rig.manager.busy
+    job_id = rig.manager.start(config(), remember=False)
+    assert rig.extractor.reached.wait(5)
+    rig.manager.shutdown(wait=0.05)
+    assert rig.manager.busy
+    rig.extractor.release.set()
+    assert rig.wait(job_id)["state"] == "cancelled"
+    deadline = time.monotonic() + 5
+    while rig.manager.busy and time.monotonic() < deadline:
+        time.sleep(0.005)
+    assert not rig.manager.busy
+
+
 # -- remembering ------------------------------------------------------------------------------
 
 
