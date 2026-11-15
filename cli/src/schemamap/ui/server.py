@@ -218,6 +218,10 @@ class LauncherHandler(BaseHTTPRequestHandler):
         headers and fixed wording that never quotes the request.
         """
         self.close_connection = True
+        if not self.request_version.startswith("HTTP/1."):
+            # A line the parser could not read can leave HTTP/0.9 (Python 3.10, 3.11), which
+            # would send the body with no status line or headers. Answer in HTTP/1.0.
+            self.request_version = "HTTP/1.0"
         status = HTTPStatus(code)
         self._error(status, _PROTOCOL_ERRORS.get(status, "bad_request"), f"{status.phrase}.")
 
