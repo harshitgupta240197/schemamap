@@ -589,3 +589,16 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 **Why.** The extract screens follow the approved frames (D-064) while holding to the metadata-only, no-stored-secrets rules.
 
 **Cost.** One extra password entry when going back to Pick after an extract. **Not added:** no dependency.
+
+## D-067 Launcher on three operating systems: smoke test on the built wheel, skip link, re-run explains itself (2026-11-15)
+
+**Decision (crumb U.6).**
+- **A `ui-smoke` CI job runs on Ubuntu, macOS and Windows.** It builds the viewer and launcher, builds the wheel, checks the wheel carries them, installs it into a clean virtual environment, and runs `tools/ui_smoke.py`. The script starts `schemamap ui --no-open` twice in a home folder named `Zoë Müller` (a space and an accent; `HOME` and `USERPROFILE` both point at it): once with the default data folder, which must appear as `SchemaMap` inside that home, and once with `--data-dir` set to a path with spaces and accents. Each launch must refuse a wrong launch code, accept the real one once and refuse it the second time (D-060), refuse `/api/health` without the token and answer it with the token, stop on `POST /api/quit` with exit status 0, and have made its data folder (mode 0700 off Windows).
+- **The default data folder is `SchemaMap` in the home folder on every system** (`%USERPROFILE%\SchemaMap` on Windows). It was already so; it is now tested with five awkward home names on each system, and `~` in `--data-dir` is tested too. No platform-specific code was needed.
+- **Windows sign-in** was already offered only when the server reports Windows and refused elsewhere. It is now covered end to end: the page sends `auth: "windows"` with no user or password, and the route builds `Trusted_Connection=yes` with no `UID` or `PWD`.
+- **Every launcher screen starts with a "Skip to main content" link**, hidden until it has focus, which moves focus to `<main>` without changing the address (the fragment stays untouched).
+- **Re-run opens its dialog even when no remembered connection matches.** It then shows one line, "Tick “Remember this connection” next time to re-run with just a password.", and a "Set up the connection" button that goes to Connect with the server filled in. Before, it jumped to Connect with no explanation.
+
+**Why.** A launcher that works on the author's Mac is not "the same on Windows"; the smoke test is the proof, and testing the wheel (not the source tree) also proves the packaged pages are in it. The console encoding is deliberately left at each system's default: Rich already escapes what a console cannot show, so a user name in another script does not crash `ui`. The dialog change explains why a click did not simply re-run.
+
+**Cost.** One more CI job (about three minutes per system, no database, no Docker). One more click when a map's connection is unknown. **Not added:** no dependency.

@@ -182,6 +182,40 @@ def test_a_green_connection_test_lists_every_check(
     assert not (server.data_dir / FILE_NAME).exists()
 
 
+def test_windows_sign_in_reaches_the_driver_as_a_trusted_connection(
+    server: LauncherServer, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """On Windows the `windows` mode becomes Trusted_Connection, with no login or password."""
+    monkeypatch.setattr("schemamap.connect.config.sys.platform", "win32")
+    monkeypatch.setattr(doctor_module, "load_driver", lambda: object())
+    opened: list[str] = []
+
+    def capture(config: Any) -> GreenConnection:
+        opened.append(config.connection_string())
+        return GreenConnection()
+
+    monkeypatch.setattr(doctor_module, "connect", capture)
+    settings = connection("typed-then-hidden", auth="windows")
+    del settings["user"]
+    status, _, body = post(server, "/api/connection/test", {"connection": settings})
+    assert status == 200
+    assert json.loads(body)["connected"] is True
+    assert len(opened) == 1
+    assert "Trusted_Connection=yes" in opened[0]
+    assert "UID=" not in opened[0] and "PWD=" not in opened[0]
+    assert "typed-then-hidden" not in opened[0]
+
+
+def test_windows_sign_in_is_refused_with_a_clear_message_off_windows(
+    server: LauncherServer, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("schemamap.connect.config.sys.platform", "darwin")
+    settings = connection("pw", auth="windows")
+    status, _, body = post(server, "/api/connection/test", {"connection": settings})
+    assert status == 422
+    assert "only available on Windows" in json.loads(body)["error"]["message"]
+
+
 def test_without_a_database_only_server_checks_run(
     server: LauncherServer, monkeypatch: pytest.MonkeyPatch
 ) -> None:

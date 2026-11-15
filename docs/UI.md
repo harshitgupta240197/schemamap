@@ -4,10 +4,110 @@
 launcher: connect, check, pick a database, extract, open the map. The CLI stays for scripts. The
 map file it produces is the same offline file `schemamap view` writes (D-057).
 
-Status: U.1 built (the hardened server core: Host, Origin, Fetch Metadata, launch code, token,
-body limits, headers, quit and idle shutdown, `--port` / `--data-dir`); the rest of this
-document is the contract that crumbs U.2–U.3 implement. Plan and non-negotiables:
-`docs/plans/PHASE_U.md`. Review amendments to U.0 are in D-060.
+Status: built through U.6 (server, connection API, jobs and library, and the launcher screens:
+connect, check, pick, extract, done, recent maps, quit; checked on Windows, macOS and Linux in
+CI). Plan and non-negotiables: `docs/plans/PHASE_U.md`. Review amendments to U.0 are in D-060.
+Sections 1 to 4 below are the technical contract; the next section is for people using it.
+
+## Using the launcher
+
+Screenshots are of the launcher at 1280 px wide with made-up connection details; nothing in them
+is real data.
+
+### Start it
+
+```
+schemamap ui
+```
+
+The terminal prints one line, `Schema Map is running at http://127.0.0.1:<port>/#c=<code>`, and
+your browser opens at it. The page only answers your own computer. The link works once and
+expires after a minute; if you closed the tab or waited too long, press Ctrl+C and run
+`schemamap ui` again. Use `--no-open` to print the link without opening a browser, `--port` to
+choose the port, and `--data-dir` to keep your maps somewhere else.
+
+The first Tab stop on every screen is a **Skip to main content** link (it appears when it has
+focus). The whole flow works from the keyboard.
+
+### 1. Connect
+
+![The Connect screen: server, port, sign-in method, user name, password, and recent connections.](images/ui/launcher-connect.png)
+
+Enter the server (a name or an address), the port if it is not 1433, and how to sign in:
+
+- **SQL Server login:** a user name and password. Use a read-only login.
+- **Windows:** shown only on Windows. It uses the Windows account you are signed in with, so
+  there is no user name or password to type.
+- **Microsoft Entra ID:** the methods Schema Map supports are listed on the screen.
+
+Tick **Remember this connection** to keep the server, port, sign-in method and user name for
+next time. The password is never saved, logged or shown again. **Trust server certificate** is
+for local labs with a self-signed certificate; leave it off for a real server.
+
+### 2. Check
+
+![The Check screen: each check with a status word, a message, and a fix.](images/ui/launcher-check.png)
+
+**Test connection** runs read-only checks and lists each one as pass, warning or fail, with what
+to do about it. If a permission is missing, the screen gives a short SQL script with a **Copy
+script** button to send to whoever manages the server. Schema Map needs `VIEW DEFINITION`, not
+`SELECT` on your tables.
+
+### 3. Choose a database
+
+![The database picker: a search box and a list of databases with one selected.](images/ui/launcher-pick.png)
+
+Pick the database to map. The search box narrows a long list. Choosing a database also checks
+that login's permissions in that database.
+
+### 4. Extract
+
+![The Extract screen: the sections being read, each with its progress, and a Cancel button.](images/ui/launcher-extract.png)
+
+Schema Map reads the database's metadata, section by section, and shows the time so far. Cancel
+stops it and keeps nothing. If it fails, the screen says why and what to change.
+
+### 5. Open the map
+
+![The Done screen: Open map, Save map file, and Extract another database.](images/ui/launcher-done.png)
+
+**Open map** opens it in a new tab. **Save map file** downloads the single offline `.html` file
+to share or keep. **Extract another database** goes back to the picker.
+
+### Recent maps
+
+![Recent maps: a table of earlier maps with Open, Re-run and Delete.](images/ui/launcher-recent.png)
+
+Every map is kept in the data folder. From **Recent maps** (top bar) you can open one, re-run its
+extract, delete it (after a confirmation), or add a snapshot file you already have.
+
+**Re-run** asks only for the password when the connection is known: the server you are connected
+to now, or one you ticked **Remember this connection** for. Otherwise it says so and takes you
+to Connect with the server filled in.
+
+### Where your files are
+
+| System  | Default folder              |
+| ------- | --------------------------- |
+| Windows | `%USERPROFILE%\SchemaMap`   |
+| macOS   | `~/SchemaMap`               |
+| Linux   | `~/SchemaMap`               |
+
+User names with spaces or accents are fine (`C:\Users\Zoë Müller\SchemaMap`). The folder holds
+your maps and the list of remembered connections, and nothing leaves it. Delete the folder to
+remove everything Schema Map saved.
+
+### Stopping
+
+Press **Quit** in the top bar, or Ctrl+C in the terminal. It also stops by itself after 30
+minutes without use.
+
+### If something goes wrong
+
+- **"This link has already been used or has expired":** run `schemamap ui` again.
+- **"Cannot listen on 127.0.0.1 port ...":** another program has that port. Leave out `--port`.
+- **"The launcher page is not built":** you are running from a checkout; see the README.
+- **A check fails:** the screen names the fix. `schemamap doctor` shows the same checks.
 
 ## 1. Architecture
 

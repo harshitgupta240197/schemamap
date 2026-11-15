@@ -84,3 +84,18 @@ def check_wheel() -> ModuleType:
     sys.modules["schemamap_check_wheel"] = module
     spec.loader.exec_module(module)
     return module
+
+
+UI_SMOKE_PATH = LAB_PATH.with_name("ui_smoke.py")
+
+
+@pytest.fixture(scope="session")
+def ui_smoke() -> ModuleType:
+    """Load tools/ui_smoke.py (a standalone script, not part of the package) as a module."""
+    spec = importlib.util.spec_from_file_location("schemamap_ui_smoke", UI_SMOKE_PATH)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["schemamap_ui_smoke"] = module
+    spec.loader.exec_module(module)
+    return module

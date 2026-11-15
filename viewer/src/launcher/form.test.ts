@@ -130,6 +130,17 @@ describe("the request", () => {
     expect(body).not.toHaveProperty("password");
   });
 
+  it("passes Windows sign-in through as the `windows` mode, with no password", () => {
+    const body = toConnection(
+      filled({ group: "windows", user: "", password: "typed-then-hidden" }),
+      windows,
+    );
+    expect(body?.auth).toBe("windows");
+    expect(body).not.toHaveProperty("password");
+    expect(body).not.toHaveProperty("user");
+    expect(JSON.stringify(body)).not.toContain("typed-then-hidden");
+  });
+
   it("is null for a form that fails validation", () => {
     expect(toConnection(filled({ port: "x" }), linux)).toBeNull();
   });
