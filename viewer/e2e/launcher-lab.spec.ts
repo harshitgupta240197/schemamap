@@ -97,7 +97,10 @@ test("connect, extract, open the map, re-run, delete and import against the real
   await map.close();
 
   // Recent maps lists it; Re-run asks for the password again and makes a second map.
-  await page.getByRole("button", { name: "Recent maps" }).click();
+  await page
+    .getByRole("navigation", { name: "Launcher" })
+    .getByRole("button", { name: "Recent maps" })
+    .click();
   const rows = page.getByRole("table").getByRole("row");
   await expect(rows).toHaveCount(2);
   await expect(page.getByRole("table").getByText("71", { exact: true })).toBeVisible();
@@ -112,7 +115,10 @@ test("connect, extract, open the map, re-run, delete and import against the real
   });
 
   // Delete one of the two maps.
-  await page.getByRole("button", { name: "Recent maps" }).click();
+  await page
+    .getByRole("navigation", { name: "Launcher" })
+    .getByRole("button", { name: "Recent maps" })
+    .click();
   await expect(rows).toHaveCount(3);
   await page.getByRole("button", { name: "Delete the map of AdventureWorks2022" }).first().click();
   await page.getByRole("button", { name: "Delete map" }).click();
