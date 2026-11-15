@@ -96,8 +96,17 @@ export interface HeaderNav {
   readonly recentCurrent: boolean;
 }
 
-/** The brand line; with `nav`, the Recent maps and Quit buttons every launcher screen carries. */
-export function Header({ nav }: { readonly nav?: HeaderNav }) {
+/**
+ * The brand line; with `nav`, the Recent maps and Quit buttons every launcher screen carries.
+ * `stopped` (the Quit screen) turns the "running" pill into "Stopped".
+ */
+export function Header({
+  nav,
+  stopped = false,
+}: {
+  readonly nav?: HeaderNav;
+  readonly stopped?: boolean;
+}) {
   return (
     <>
       <SkipLink />
@@ -105,11 +114,18 @@ export function Header({ nav }: { readonly nav?: HeaderNav }) {
         <div className="lc-brand">
           <Mark />
           <span className="lc-brand__name">Schema Map</span>
-          <span className="lc-pill">
-            <span className="lc-pill__dot" aria-hidden="true" />
-            <span className="lc-pill__long">Running on this computer · 127.0.0.1</span>
-            <span className="lc-pill__short">This computer only</span>
-          </span>
+          {stopped ? (
+            <span className="lc-pill lc-pill--stopped">
+              <span className="lc-pill__dot" aria-hidden="true" />
+              Stopped
+            </span>
+          ) : (
+            <span className="lc-pill">
+              <span className="lc-pill__dot" aria-hidden="true" />
+              <span className="lc-pill__long">Running on this computer · 127.0.0.1</span>
+              <span className="lc-pill__short">This computer only</span>
+            </span>
+          )}
         </div>
         {nav === undefined ? null : (
           <nav aria-label="Launcher" className="lc-topnav">

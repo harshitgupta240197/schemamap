@@ -376,7 +376,7 @@ export function App() {
     <>
       <Header
         {...(screen === "quit"
-          ? {}
+          ? { stopped: true }
           : {
               nav: {
                 onRecent: () => {
