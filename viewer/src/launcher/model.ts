@@ -2,6 +2,8 @@
 
 export type AuthGroup = "sql" | "windows" | "entra";
 export type CheckStatus = "ok" | "warn" | "fail";
+/** What a check judges: the server and sign-in, or the chosen database's permissions. */
+export type CheckScope = "server" | "database";
 
 export interface AuthModeInfo {
   readonly id: string;
@@ -27,6 +29,7 @@ export interface RememberedConnection {
 export interface CheckResult {
   readonly name: string;
   readonly status: CheckStatus;
+  readonly scope: CheckScope;
   readonly message: string;
   readonly fix: string | null;
   readonly fixSql: string | null;
@@ -91,10 +94,17 @@ const STATUS_ORDER: Record<CheckStatus, number> = { fail: 0, warn: 1, ok: 2 };
 
 function checkResult(value: unknown): CheckResult | null {
   if (!isObj(value)) return null;
-  const { name, status, message, fix, fix_sql: fixSql } = value;
+  const { name, status, scope, message, fix, fix_sql: fixSql } = value;
   if (typeof name !== "string") return null;
   if (status !== "ok" && status !== "warn" && status !== "fail") return null;
-  return { name, status, message: str(message) ?? name, fix: str(fix), fixSql: str(fixSql) };
+  return {
+    name,
+    status,
+    scope: scope === "database" ? "database" : "server",
+    message: str(message) ?? name,
+    fix: str(fix),
+    fixSql: str(fixSql),
+  };
 }
 
 /** `POST /api/connection/test`, with the checks ordered fail, warn, pass (stable inside each). */

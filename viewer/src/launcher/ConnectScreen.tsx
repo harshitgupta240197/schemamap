@@ -1,4 +1,4 @@
-import { useRef, useState, type SyntheticEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type SyntheticEvent, type ReactNode } from "react";
 import { Icon, ScreenHeading } from "./Chrome";
 import {
   GROUP_LABELS,
@@ -70,6 +70,26 @@ interface Props {
 }
 
 /** Step 1: where to connect and how to sign in. */
+const NARROW = "(max-width: 479px)";
+
+/** True while the window is narrower than 480 px, so a long placeholder can be shortened. */
+function useNarrow(): boolean {
+  const query = typeof window.matchMedia === "function" ? window.matchMedia(NARROW) : null;
+  const [narrow, setNarrow] = useState(query?.matches ?? false);
+  useEffect(() => {
+    if (query === null) return undefined;
+    const update = () => {
+      setNarrow(query.matches);
+    };
+    update();
+    query.addEventListener("change", update);
+    return () => {
+      query.removeEventListener("change", update);
+    };
+  }, [query]);
+  return narrow;
+}
+
 export function ConnectScreen({
   caps,
   form,
@@ -80,6 +100,7 @@ export function ConnectScreen({
   focusHeading,
   forgetError,
 }: Props) {
+  const narrow = useNarrow();
   const [revealed, setRevealed] = useState(false);
   const [tried, setTried] = useState(false);
   const root = useRef<HTMLFormElement>(null);
@@ -131,7 +152,9 @@ export function ConnectScreen({
                     onChange={(event) => {
                       set({ server: event.target.value });
                     }}
-                    placeholder="sql01.example.local or 127.0.0.1"
+                    placeholder={
+                      narrow ? "sql01.example.local" : "sql01.example.local or 127.0.0.1"
+                    }
                     autoComplete="off"
                     spellCheck={false}
                     aria-describedby={describedBy}
@@ -238,7 +261,7 @@ export function ConnectScreen({
                 id="pw"
                 label="Password"
                 error={errors.password}
-                hint="Held in memory for this session only. Never saved, logged or shown again."
+                hint="Kept only in this tab until your map is made. Never saved, logged or shown again."
               >
                 {(describedBy, invalid) => (
                   <div className="lc-pw">

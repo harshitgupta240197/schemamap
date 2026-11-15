@@ -176,9 +176,24 @@ def test_a_green_connection_test_lists_every_check(
     ]
     assert {c["status"] for c in answer["checks"]} == {"ok"}
     for check in answer["checks"]:
-        assert set(check) == {"name", "status", "message", "fix", "fix_sql"}
+        assert set(check) == {"name", "status", "message", "fix", "fix_sql", "scope"}
+        assert check["scope"] in {"server", "database"}
         assert check["message"] and check["fix"] is None and check["fix_sql"] is None
     assert not (server.data_dir / FILE_NAME).exists()
+
+
+def test_without_a_database_only_server_checks_run(
+    server: LauncherServer, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(doctor_module, "load_driver", lambda: object())
+    monkeypatch.setattr(doctor_module, "connect", lambda _config: GreenConnection())
+    settings = connection("pw")
+    del settings["database"]
+    _, _, body = post(server, "/api/connection/test", {"connection": settings})
+    checks = json.loads(body)["checks"]
+    assert [c["name"] for c in checks] == ["Driver", "Connection", "Server"]
+    assert {c["scope"] for c in checks} == {"server"}
+    assert "master" not in checks[2]["message"]
 
 
 def test_a_missing_permission_is_a_check_with_a_message_a_fix_and_the_statement(
@@ -199,7 +214,8 @@ def test_a_missing_permission_is_a_check_with_a_message_a_fix_and_the_statement(
     definition = by_name["VIEW DEFINITION"]
     assert definition["status"] == "fail"
     assert definition["message"].startswith("VIEW DEFINITION is missing:")
-    assert definition["fix_sql"] == "GRANT VIEW DEFINITION TO [reader];"
+    assert definition["fix_sql"] == "USE [Sales];\nGRANT VIEW DEFINITION TO [reader];"
+    assert definition["scope"] == "database"
     assert definition["fix"].startswith("Ask a DBA to run GRANT VIEW DEFINITION TO [reader];")
     assert by_name["SELECT sys.sql_expression_dependencies"]["status"] == "warn"
 

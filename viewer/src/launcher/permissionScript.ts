@@ -14,3 +14,14 @@ export function permissionScript(user: string): string {
     `GRANT SELECT ON sys.sql_expression_dependencies TO ${login};`,
   ].join("\n");
 }
+
+/**
+ * One script for every missing permission a database check found. Each check's statement
+ * starts with the same `USE [<database>];` line, so the lines are joined without repeats.
+ */
+export function combinedFixScript(statements: readonly (string | null)[]): string {
+  const lines = statements.flatMap((statement) =>
+    statement === null ? [] : statement.split("\n"),
+  );
+  return [...new Set(lines)].join("\n");
+}

@@ -12,7 +12,7 @@ import {
 import { ConnectScreen } from "./ConnectScreen";
 import { initialForm, toConnection, type FormState } from "./form";
 import type { Capabilities, RememberedConnection } from "./model";
-import { PickScreen, type PickState } from "./PickScreen";
+import { PickScreen, type DatabaseCheckState, type PickState } from "./PickScreen";
 import { startSession } from "./session";
 
 type Screen = "connect" | "check" | "pick";
@@ -42,6 +42,7 @@ export function App() {
   const [moved, setMoved] = useState(false);
   const [check, setCheck] = useState<CheckState>({ kind: "running" });
   const [pick, setPick] = useState<PickState>({ kind: "loading" });
+  const [dbCheck, setDbCheck] = useState<DatabaseCheckState>({ kind: "idle" });
   const [includeSystem, setIncludeSystem] = useState(false);
   const [forgetError, setForgetError] = useState<string | null>(null);
   // Answers that arrive after the person moved on are dropped.
@@ -140,7 +141,23 @@ export function App() {
     });
   };
 
+  const checkDatabase = (database: string) => {
+    const body = toConnection(form, caps, database);
+    if (body === null) return;
+    const mine = generation.current;
+    setDbCheck({ kind: "running", database });
+    void testConnection(token, body, false).then((outcome) => {
+      if (mine !== generation.current) return;
+      setDbCheck(
+        outcome.ok
+          ? { kind: "done", database, result: outcome.value }
+          : { kind: "failed", database, failure: outcome.failure },
+      );
+    });
+  };
+
   const openPicker = () => {
+    setDbCheck({ kind: "idle" });
     go("pick");
     loadDatabases(includeSystem);
   };
@@ -187,6 +204,12 @@ export function App() {
         <PickScreen
           form={form}
           state={pick}
+          dbCheck={dbCheck}
+          onExtract={checkDatabase}
+          onSelect={() => {
+            generation.current += 1;
+            setDbCheck({ kind: "idle" });
+          }}
           includeSystem={includeSystem}
           onIncludeSystem={(include) => {
             setIncludeSystem(include);

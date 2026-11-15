@@ -2,6 +2,8 @@ import { Icon, ScreenHeading, ScriptBlock, type IconName } from "./Chrome";
 import { endpointLabel, type FormState } from "./form";
 import type { CheckResult, CheckStatus, Failure, TestResult } from "./model";
 
+export const DATABASE_CHECKS_NOTE = "Database permissions are checked when you choose a database.";
+
 export type CheckState =
   | { readonly kind: "running" }
   | { readonly kind: "done"; readonly result: TestResult }
@@ -12,6 +14,11 @@ const BADGE: Record<CheckStatus, { word: string; icon: IconName }> = {
   warn: { word: "Warning", icon: "warn" },
   ok: { word: "Pass", icon: "check-circle" },
 };
+
+/** The checks about the server and sign-in. Database checks wait until a database is chosen. */
+function serverChecks(checks: readonly CheckResult[]): CheckResult[] {
+  return checks.filter((check) => check.scope === "server");
+}
 
 function Summary({ checks }: { readonly checks: readonly CheckResult[] }) {
   const count = (status: CheckStatus) => checks.filter((check) => check.status === status).length;
@@ -42,7 +49,13 @@ function Summary({ checks }: { readonly checks: readonly CheckResult[] }) {
   );
 }
 
-function CheckItem({ check }: { readonly check: CheckResult }) {
+export function CheckItem({
+  check,
+  showScript = true,
+}: {
+  readonly check: CheckResult;
+  readonly showScript?: boolean;
+}) {
   const badge = BADGE[check.status];
   return (
     <li className="lc-check-item">
@@ -61,7 +74,7 @@ function CheckItem({ check }: { readonly check: CheckResult }) {
               <strong>How to fix: </strong>
               {check.fix}
             </p>
-            {check.fixSql === null ? null : (
+            {!showScript || check.fixSql === null ? null : (
               <ScriptBlock script={check.fixSql} title="Permission script · T-SQL" />
             )}
           </div>
@@ -137,12 +150,13 @@ export function CheckScreen({ form, state, onAgain, onChoose, onEdit }: Props) {
             <h2 id="chk-h" className="lc-sr">
               Check results
             </h2>
-            <Summary checks={state.result.checks} />
+            <Summary checks={serverChecks(state.result.checks)} />
             <ul className="lc-checklist">
-              {state.result.checks.map((check, index) => (
+              {serverChecks(state.result.checks).map((check, index) => (
                 <CheckItem key={`${check.name}-${String(index)}`} check={check} />
               ))}
             </ul>
+            <p className="lc-hint lc-hint--note">{DATABASE_CHECKS_NOTE}</p>
           </section>
           <div className="lc-actions lc-actions--page">
             <button type="button" className="lc-btn lc-btn--primary" onClick={onAgain}>

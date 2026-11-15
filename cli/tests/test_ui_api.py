@@ -152,9 +152,21 @@ def test_a_mode_without_a_password_needs_none() -> None:
     assert config.auth is AuthMode.ENTRA_DEFAULT
 
 
+def test_the_test_request_may_leave_the_database_out_but_a_job_may_not() -> None:
+    bare = {key: value for key, value in BASE.items() if key != "database"}
+    config, _, chosen = parse_test_request({"connection": bare})
+    assert config.database == "master" and chosen is False
+    assert (
+        refusal(
+            lambda body: parse_test_request(body, require_database=True), {"connection": bare}
+        ).status
+        == 400
+    )
+
+
 def test_the_test_request_takes_a_connection_and_a_remember_flag() -> None:
-    config, remember = parse_test_request({"connection": BASE})
-    assert config.database == "Sales" and remember is False
+    config, remember, chosen = parse_test_request({"connection": BASE})
+    assert config.database == "Sales" and remember is False and chosen is True
     assert parse_test_request({"connection": BASE, "remember": True})[1] is True
     assert refusal(parse_test_request, {"connection": BASE, "remember": "yes"}).status == 400
     assert refusal(parse_test_request, {"connection": BASE, "include_system": True}).status == 400

@@ -115,7 +115,6 @@ describe("the request", () => {
     expect(toConnection(filled({ server: "  db1 ", port: " 14333 " }), linux)).toEqual({
       server: "db1",
       port: 14333,
-      database: "master",
       auth: "sql",
       user: "schemamap_reader",
       password: "p@ss",

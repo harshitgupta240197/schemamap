@@ -297,6 +297,126 @@ describe("Check and Pick", () => {
   });
 });
 
+const DATABASE_FAIL = {
+  checks: [
+    {
+      name: "Server",
+      status: "ok",
+      scope: "server",
+      message: "Reached.",
+      fix: null,
+      fix_sql: null,
+    },
+    {
+      name: "VIEW DEFINITION",
+      status: "fail",
+      scope: "database",
+      message: "VIEW DEFINITION is missing: the map would be empty.",
+      fix: "Ask a DBA to run GRANT VIEW DEFINITION TO [reader];",
+      fix_sql: "USE [Sales];\nGRANT VIEW DEFINITION TO [reader];",
+    },
+    {
+      name: "SELECT sys.sql_expression_dependencies",
+      status: "warn",
+      scope: "database",
+      message: "Dependencies are skipped.",
+      fix: "Ask a DBA.",
+      fix_sql: "USE [Sales];\nGRANT SELECT ON sys.sql_expression_dependencies TO [reader];",
+    },
+  ],
+  connected: true,
+  ok: false,
+  remembered: false,
+};
+
+const SERVER_ONLY = {
+  checks: [
+    {
+      name: "Server",
+      status: "ok",
+      scope: "server",
+      message: "Reached.",
+      fix: null,
+      fix_sql: null,
+    },
+    {
+      name: "VIEW DEFINITION",
+      status: "fail",
+      scope: "database",
+      message: "Judged on master by mistake.",
+      fix: "x",
+      fix_sql: "GRANT VIEW DEFINITION TO [reader];",
+    },
+  ],
+  connected: true,
+  ok: false,
+  remembered: false,
+};
+
+describe("database checks", () => {
+  it("leaves database checks off the Check screen and says when they run", async () => {
+    await ready({ test: SERVER_ONLY });
+    fillAndTest();
+    await screen.findByRole("heading", { name: "Connection checks" });
+    await screen.findByText("Reached.");
+    expect(screen.queryByText("Judged on master by mistake.")).toBeNull();
+    expect(
+      screen.getByText("Database permissions are checked when you choose a database."),
+    ).toBeTruthy();
+    const sent = calls.find((call) => call.path === "/api/connection/test");
+    expect(sent?.body).toMatchObject({ connection: { server: "db1" } });
+    expect((sent?.body as { connection: object }).connection).not.toHaveProperty("database");
+  });
+
+  it("checks the chosen database on Extract map and shows a failure with its script", async () => {
+    await ready({ test: SERVER_ONLY });
+    fillAndTest();
+    fireEvent.click(await screen.findByRole("button", { name: "Choose a database anyway" }));
+    fireEvent.click(await screen.findByRole("radio", { name: /Sales/ }));
+    stubFetch({ test: DATABASE_FAIL });
+    fireEvent.click(screen.getByRole("button", { name: "Extract map" }));
+    await screen.findByText("VIEW DEFINITION is missing: the map would be empty.");
+    const sent = calls.find((call) => call.path === "/api/connection/test");
+    expect(sent?.body).toMatchObject({ connection: { database: "Sales" }, remember: false });
+    expect(screen.getByText("Dependencies are skipped.")).toBeTruthy();
+    const script = screen.getByRole("region", { name: "Permission script · T-SQL" });
+    expect(script.textContent).toBe(
+      "USE [Sales];\nGRANT VIEW DEFINITION TO [reader];\nGRANT SELECT ON sys.sql_expression_dependencies TO [reader];",
+    );
+    expect(screen.getByRole("button", { name: "Copy script" })).toBeTruthy();
+  });
+
+  it("goes on to the not-yet-available state when the database passes", async () => {
+    await ready();
+    fillAndTest();
+    fireEvent.click(await screen.findByRole("button", { name: "Choose a database anyway" }));
+    fireEvent.click(await screen.findByRole("radio", { name: /Sales/ }));
+    stubFetch({
+      test: {
+        checks: [
+          {
+            name: "VIEW DEFINITION",
+            status: "ok",
+            scope: "database",
+            message: "ok",
+            fix: null,
+            fix_sql: null,
+          },
+        ],
+        connected: true,
+        ok: true,
+        remembered: false,
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Extract map" }));
+    await screen.findByText(/Extracting a map is the next step/);
+    expect(screen.getByText("Permissions on Sales look good.")).toBeTruthy();
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Extract map" }).disabled).toBe(
+      true,
+    );
+  });
+});
+
 describe("starting up", () => {
   it("says how to get a link when there is no session", async () => {
     window.sessionStorage.clear();

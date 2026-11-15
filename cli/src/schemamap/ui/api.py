@@ -145,10 +145,22 @@ def parse_connection(value: object, *, default_database: str | None = None) -> C
         raise ApiError(HTTPStatus.UNPROCESSABLE_ENTITY, "invalid", str(exc)) from None
 
 
-def parse_test_request(body: dict[str, object]) -> tuple[ConnectionConfig, bool]:
-    """The connection and the ``remember`` flag of ``POST /api/connection/test``."""
+def parse_test_request(
+    body: dict[str, object], *, require_database: bool = False
+) -> tuple[ConnectionConfig, bool, bool]:
+    """The connection, the ``remember`` flag and whether a database was chosen.
+
+    The database may be left out: the checks then open ``master``, which every login can open,
+    and judge the server only. A database named in the request is the one whose permissions
+    are checked. A request that needs one (an extract job) sets ``require_database``.
+    """
     _only(body, frozenset({"connection", "remember"}))
-    return parse_connection(body.get("connection")), _flag(body, "remember")
+    value = body.get("connection")
+    chosen = isinstance(value, dict) and _text(value, "database", required=False) not in (None, "")
+    config = parse_connection(
+        value, default_database=None if require_database else DEFAULT_DATABASE
+    )
+    return config, _flag(body, "remember"), bool(chosen)
 
 
 def parse_databases_request(body: dict[str, object]) -> tuple[ConnectionConfig, bool]:
@@ -184,11 +196,16 @@ def _check_json(check: Check, config: ConnectionConfig) -> dict[str, object]:
         "message": _scrub(message, config),
         "fix": _scrub(check.fix, config),
         "fix_sql": _scrub(check.fix_sql, config),
+        "scope": check.scope.value,
     }
 
 
 def run_connection_test(
-    config: ConnectionConfig, *, remember: bool, store: ConnectionStore
+    config: ConnectionConfig,
+    *,
+    remember: bool,
+    store: ConnectionStore,
+    database_checks: bool = True,
 ) -> dict[str, object]:
     """Run the doctor checks and report each one.
 
@@ -196,8 +213,10 @@ def run_connection_test(
     result, not an error. A connection that opened is saved when ``remember`` is set (its
     server, port, database, mode and user only), even if a check warns or fails after that: the
     settings are right and the fix is on the server. One that did not open is not saved.
+
+    Each check carries its ``scope``. Without ``database_checks`` only the server checks run.
     """
-    report = diagnose(config)
+    report = diagnose(config, database_checks=database_checks)
     remembered = False
     if remember and report.connected:
         store.remember(config)

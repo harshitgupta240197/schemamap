@@ -337,16 +337,18 @@ class LauncherHandler(BaseHTTPRequestHandler):
             entries = [entry.to_json() for entry in server.connections.entries()]
             self._json(HTTPStatus.OK, {"connections": entries})
         elif route == "/api/connection/test":
-            config, remember = parse_test_request(body)
+            config, remember, chosen = parse_test_request(body)
             self._json(
                 HTTPStatus.OK,
-                run_connection_test(config, remember=remember, store=server.connections),
+                run_connection_test(
+                    config, remember=remember, store=server.connections, database_checks=chosen
+                ),
             )
         elif route == "/api/databases":
             config, include_system = parse_databases_request(body)
             self._json(HTTPStatus.OK, list_databases(config, include_system=include_system))
         elif route == "/api/jobs":
-            config, remember = parse_test_request(body)
+            config, remember, _ = parse_test_request(body, require_database=True)
             try:
                 job_id = server.jobs.start(config, remember=remember)
             except JobRunningError:

@@ -36,12 +36,17 @@ class Permission(str, enum.Enum):
         return f"GRANT {self.value} TO {_principal(user)};"
 
 
+def quote_name(name: str) -> str:
+    """``name`` as a bracket-quoted T-SQL identifier, with ``]`` doubled."""
+    return f"[{name.replace(']', ']]')}]"
+
+
 def _principal(user: str | None) -> str:
     """``[user]`` with ``]`` doubled, or the placeholder. ``guest`` is never named: granting
     to it would open the permission to every login."""
     if user is None or user.lower() == "guest":
         return USER_PLACEHOLDER
-    return f"[{user.replace(']', ']]')}]"
+    return quote_name(user)
 
 
 def grant_note(user: str | None) -> str:

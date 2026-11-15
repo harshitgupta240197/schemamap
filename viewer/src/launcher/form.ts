@@ -23,7 +23,7 @@ export type FormErrors = Partial<
 export interface ConnectionBody {
   readonly server: string;
   readonly port: number;
-  readonly database: string;
+  readonly database?: string;
   readonly auth: string;
   readonly user?: string;
   readonly password?: string;
@@ -37,9 +37,6 @@ export const GROUP_LABELS: Record<AuthGroup, string> = {
   windows: "Windows",
   entra: "Microsoft Entra ID",
 };
-
-/** The database every login can open, used until the person picks one. */
-export const DEFAULT_DATABASE = "master";
 
 /** The sign-in groups this machine offers, in display order. Windows needs a Windows server list entry. */
 export function offeredGroups(caps: Capabilities): AuthGroup[] {
@@ -101,11 +98,14 @@ export function validate(form: FormState, caps: Capabilities): FormErrors {
   return errors;
 }
 
-/** The request body for a form that passed `validate`; null if it did not. */
+/**
+ * The request body for a form that passed `validate`; null if it did not. Without a
+ * `database` the body names none, and the server judges the server alone.
+ */
 export function toConnection(
   form: FormState,
   caps: Capabilities,
-  database: string = DEFAULT_DATABASE,
+  database?: string,
 ): ConnectionBody | null {
   const mode = selectedMode(form, caps);
   const port = whole(form.port, 1, 65535);
@@ -116,7 +116,7 @@ export function toConnection(
   return {
     server: form.server.trim(),
     port,
-    database,
+    ...(database === undefined ? {} : { database }),
     auth: mode.id,
     ...(mode.needsUser || user !== "" ? { user } : {}),
     ...(mode.needsPassword ? { password: form.password } : {}),

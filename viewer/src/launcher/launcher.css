@@ -310,6 +310,21 @@ p {
   overflow: hidden;
 }
 
+.lc-card--dbcheck,
+.lc-dbcheck-ok {
+  margin-top: 20px;
+}
+
+.lc-card--dbcheck .lc-h2 {
+  padding: 18px 20px 14px;
+}
+
+.lc-card--dbcheck .lc-script {
+  width: auto;
+  margin: 0 16px 16px;
+  max-width: calc(100% - 32px);
+}
+
 .lc-card--pick {
   display: flex;
   flex-direction: column;
@@ -381,6 +396,10 @@ p {
   font-size: 13px;
   line-height: 1.5;
   color: var(--sm-muted);
+}
+
+.lc-hint--note {
+  margin: 12px 0 0;
 }
 
 .lc-hint--page {
@@ -825,14 +844,16 @@ input[type="radio"] {
 
 .lc-script__bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
   padding: 8px 8px 8px 14px;
   border-bottom: 1px solid var(--sm-border);
 }
 
 .lc-script__title {
+  white-space: nowrap;
   font-size: 13px;
   font-weight: 600;
   color: var(--sm-muted);

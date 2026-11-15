@@ -175,3 +175,26 @@ def test_a_remembered_connection_is_listed_and_can_be_forgotten(
     assert status == 200
     _, _, listing = request(server, "/api/connections", headers=AUTH)
     assert json.loads(listing) == {"connections": []}
+
+
+def test_a_login_without_view_definition_fails_on_the_chosen_database(
+    server: LauncherServer, lab: ModuleType, passwords: tuple[str, str]
+) -> None:
+    """VIEW DEFINITION is judged on the database sent, and the script names it."""
+    sa, reader = passwords
+    database = "AdventureWorks2022"
+    revoke = f"USE [{database}];\nGO\nREVOKE VIEW DEFINITION FROM [{lab.READER_MIN_LOGIN}];\nGO\n"
+    done = lab.run_sqlcmd("sa", sa, script_text=revoke, extra_env={lab.ENV_READER: reader})
+    assert done.returncode == 0, done.stdout + done.stderr
+    try:
+        connection = lab_connection(lab, reader, database) | {"user": lab.READER_MIN_LOGIN}
+        _, body = post(server, "/api/connection/test", {"connection": connection})
+        checks = {c["name"]: c for c in json.loads(body)["checks"]}
+        definition = checks["VIEW DEFINITION"]
+        assert definition["status"] == "fail" and definition["scope"] == "database"
+        assert definition["fix_sql"].startswith("USE [AdventureWorks2022];\n")
+        del connection["database"]
+        _, body = post(server, "/api/connection/test", {"connection": connection})
+        assert "VIEW DEFINITION" not in {c["name"] for c in json.loads(body)["checks"]}
+    finally:
+        lab.grant_reader(lab.load_credentials(), database, False)
