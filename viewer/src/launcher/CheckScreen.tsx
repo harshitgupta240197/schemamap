@@ -1,4 +1,4 @@
-import { Icon, ScreenHeading, ScriptBlock, type IconName } from "./Chrome";
+import { Icon, Main, ScreenHeading, ScriptBlock, type IconName } from "./Chrome";
 import { endpointLabel, type FormState } from "./form";
 import type { CheckResult, CheckStatus, Failure, TestResult } from "./model";
 
@@ -97,7 +97,7 @@ export function CheckScreen({ form, state, onAgain, onChoose, onEdit }: Props) {
   const where = endpointLabel(form.server.trim(), form.port.trim());
   const who = form.user.trim() === "" ? "" : ` · user ${form.user.trim()}`;
   return (
-    <main className="lc-main">
+    <Main>
       <div className="lc-title">
         <ScreenHeading focus>Connection checks</ScreenHeading>
         <p className="lc-lede">
@@ -178,6 +178,6 @@ export function CheckScreen({ form, state, onAgain, onChoose, onEdit }: Props) {
           </p>
         </>
       ) : null}
-    </main>
+    </Main>
   );
 }

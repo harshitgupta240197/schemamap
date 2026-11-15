@@ -63,6 +63,30 @@ p {
   outline-offset: 2px;
 }
 
+/* The skip link: off screen until it takes focus, then the first thing on the page. */
+.lc-skip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--sm-accent);
+  color: var(--sm-on-accent);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.lc-skip:focus {
+  transform: none;
+}
+
+/* The main region takes focus from the skip link only; it is not a control. */
+.lc-main:focus {
+  outline: none;
+}
+
 /* ---- header, steps, footer ---- */
 .lc-header {
   display: flex;

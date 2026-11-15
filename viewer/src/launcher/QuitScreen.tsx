@@ -1,9 +1,9 @@
-import { ScreenHeading } from "./Chrome";
+import { Main, ScreenHeading } from "./Chrome";
 
 /** Shown after Quit: the server is gone, so nothing on this page works any more. */
 export function QuitScreen() {
   return (
-    <main className="lc-main">
+    <Main>
       <div className="lc-title">
         <ScreenHeading focus>Schema Map has stopped</ScreenHeading>
         <p className="lc-lede">
@@ -15,6 +15,6 @@ export function QuitScreen() {
           To start again, run <code className="lc-code">schemamap ui</code> in a terminal.
         </p>
       </section>
-    </main>
+    </Main>
   );
 }

@@ -303,11 +303,20 @@ describe("Recent maps", () => {
     expect(alert.textContent).toContain(".json or .json.gz");
   });
 
-  it("sends the person to Connect when the map's server is not known", async () => {
+  it("explains how to re-run with a password when no connection matches, then goes to Connect", async () => {
     await toRecent();
     fireEvent.click(await screen.findByRole("button", { name: "Re-run Sales" }));
+    const dialog = await screen.findByRole("dialog", { name: "Re-run Sales" });
+    expect(dialog.textContent).toContain(
+      "Tick “Remember this connection” next time to re-run with just a password.",
+    );
+    expect(within(dialog).queryByLabelText("Password")).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: "Re-run extract" })).toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Set up the connection" }));
     await screen.findByRole("heading", { name: "Connect to SQL Server" });
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByLabelText<HTMLInputElement>("Server").value).toBe("db1");
+    expect(calls.some((call) => call.path === "/api/jobs")).toBe(false);
   });
 
   it("re-runs through a dialog that traps focus, closes on Esc and asks for the password", async () => {
@@ -319,6 +328,7 @@ describe("Recent maps", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "Re-run Sales" });
     expect(dialog.textContent).toContain("db1, 1433 · SQL Server login · reader");
+    expect(dialog.textContent).not.toContain("Remember this connection");
     const password = within(dialog).getByLabelText("Password");
     expect(document.activeElement).toBe(password);
     const cancel = within(dialog).getByRole("button", { name: "Cancel" });

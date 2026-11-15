@@ -176,8 +176,16 @@ test("a keyboard alone gets from Connect through Check to a chosen database", as
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await open(page);
-  // The top bar (Recent maps, Quit) comes first in the tab order.
-  await tabTo(page, page.getByLabel("Server", { exact: true }));
+  // The skip link is the first Tab stop and takes the keyboard past the top bar and the steps.
+  await page.keyboard.press("Tab");
+  const skip = page.getByRole("link", { name: "Skip to main content" });
+  await expect(skip).toBeFocused();
+  await expect(skip).toBeInViewport({ ratio: 1 });
+  await page.keyboard.press("Enter");
+  await expect(page.locator("main")).toBeFocused();
+  await expect(page).not.toHaveURL(/#main-content/);
+  await page.keyboard.press("Tab");
+  await expect(page.getByLabel("Server", { exact: true })).toBeFocused();
   await page.keyboard.type("127.0.0.1");
   await tabTo(page, page.getByLabel("User name", { exact: true }));
   await page.keyboard.type("schemamap_reader");

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { CheckItem } from "./CheckScreen";
-import { Icon, ScreenHeading, ScriptBlock } from "./Chrome";
+import { Icon, Main, ScreenHeading, ScriptBlock } from "./Chrome";
 import { endpointLabel, type FormState } from "./form";
 import type { Failure, TestResult } from "./model";
 import { combinedFixScript, permissionScript } from "./permissionScript";
@@ -69,10 +69,10 @@ export function PickScreen({
   );
 
   const withHeading = (body: ReactNode) => (
-    <main className="lc-main">
+    <Main>
       {heading}
       {body}
-    </main>
+    </Main>
   );
 
   if (state.kind === "loading") {

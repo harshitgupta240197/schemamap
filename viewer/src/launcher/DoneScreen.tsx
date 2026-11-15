@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { downloadMap } from "./client";
-import { Icon, ScreenHeading } from "./Chrome";
+import { Icon, Main, ScreenHeading } from "./Chrome";
 import { formatExtracted } from "./maps";
 import type { MapEntry } from "./model";
 import { saveBlob } from "./saveFile";
@@ -39,7 +39,7 @@ export function DoneScreen({ token, mapId, database, where, entry, onAnother, on
   };
 
   return (
-    <main className="lc-main">
+    <Main>
       <div className="lc-title">
         <ScreenHeading focus>Your map of {database} is ready</ScreenHeading>
         <p className="lc-lede">{facts.join(" · ")}</p>
@@ -78,6 +78,6 @@ export function DoneScreen({ token, mapId, database, where, entry, onAnother, on
           </p>
         </div>
       </section>
-    </main>
+    </Main>
   );
 }

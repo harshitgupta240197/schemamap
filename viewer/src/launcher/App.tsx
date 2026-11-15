@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { connectMessage } from "./api";
 import { CheckScreen, type CheckState } from "./CheckScreen";
-import { Footer, Header, Stepper } from "./Chrome";
+import { Footer, Header, Main, Stepper } from "./Chrome";
 import {
   cancelJob,
   fetchCapabilities,
@@ -207,7 +207,7 @@ export function App() {
     return (
       <>
         <Header />
-        <main className="lc-main">
+        <Main>
           <section className="lc-card lc-card--state">
             <p className="lc-running" role="status">
               {boot.kind === "problem" ? null : <span className="lc-spinner" aria-hidden="true" />}
@@ -220,7 +220,7 @@ export function App() {
               </p>
             ) : null}
           </section>
-        </main>
+        </Main>
         <Footer />
       </>
     );
@@ -345,11 +345,8 @@ export function App() {
 
   const rerunPlan = rerun === null ? null : rerunTarget(rerun, form, remembered, caps);
 
-  const askRerun = (map: MapEntry) => {
-    if (rerunTarget(map, form, remembered, caps) !== null) {
-      setRerun(map);
-      return;
-    }
+  const setUpRerun = (map: MapEntry) => {
+    setRerun(null);
     setForm({ ...form, server: map.server ?? form.server, password: "" });
     go("connect");
   };
@@ -490,19 +487,28 @@ export function App() {
           onNewConnection={() => {
             go("connect");
           }}
-          onRerun={askRerun}
+          onRerun={setRerun}
         />
       ) : null}
       {screen === "quit" ? <QuitScreen /> : null}
-      {rerun !== null && rerunPlan !== null ? (
+      {rerun !== null ? (
         <RerunDialog
           database={rerun.database}
-          summary={rerunSummary(rerunPlan, caps)}
-          needsPassword={selectedMode(rerunPlan, caps)?.needsPassword === true}
+          summary={
+            rerunPlan === null ? (rerun.server ?? "Unknown server") : rerunSummary(rerunPlan, caps)
+          }
+          needsPassword={
+            rerunPlan !== null && selectedMode(rerunPlan, caps)?.needsPassword === true
+          }
+          known={rerunPlan !== null}
           onClose={() => {
             setRerun(null);
           }}
+          onSetUp={() => {
+            setUpRerun(rerun);
+          }}
           onSubmit={(password) => {
+            if (rerunPlan === null) return;
             setRerun(null);
             startExtract({ ...rerunPlan, password }, rerun.database);
           }}

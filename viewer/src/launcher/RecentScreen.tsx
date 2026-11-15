@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { deleteMap, fetchMaps, importMap } from "./client";
-import { Icon, ScreenHeading } from "./Chrome";
+import { Icon, Main, ScreenHeading } from "./Chrome";
 import { formatExtracted, formatSize } from "./maps";
 import type { Failure, MapEntry } from "./model";
 
@@ -81,7 +81,7 @@ export function RecentScreen({ token, onNewConnection, onRerun }: Props) {
   };
 
   return (
-    <main className="lc-main">
+    <Main>
       <div className="lc-title lc-title--row">
         <div className="lc-title">
           <ScreenHeading focus>Recent maps</ScreenHeading>
@@ -284,6 +284,6 @@ export function RecentScreen({ token, onNewConnection, onRerun }: Props) {
         Re-run asks for the password again, because Schema Map never saves passwords. “Open a
         snapshot file” accepts .json or .json.gz files made by schemamap extract.
       </p>
-    </main>
+    </Main>
   );
 }

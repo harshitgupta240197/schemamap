@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type SyntheticEvent, type ReactNode } from "react";
-import { Icon, ScreenHeading } from "./Chrome";
+import { Icon, Main, ScreenHeading } from "./Chrome";
 import {
   GROUP_LABELS,
   authLabel,
@@ -127,7 +127,7 @@ export function ConnectScreen({
   };
 
   return (
-    <main className="lc-main">
+    <Main>
       <div className="lc-title">
         <ScreenHeading focus={focusHeading}>Connect to SQL Server</ScreenHeading>
         <p className="lc-lede">
@@ -490,6 +490,6 @@ export function ConnectScreen({
           </section>
         </div>
       </div>
-    </main>
+    </Main>
   );
 }

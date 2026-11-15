@@ -395,3 +395,86 @@ test("Quit stops the server and says the tab can be closed", async ({ page }) =>
   expect(await page.evaluate(() => document.body.innerHTML)).not.toContain(PASSWORD);
   await audit(page, "quit", true);
 });
+
+/** The skip link is the first tabbable thing on the page, and activating it focuses main. */
+async function expectSkipLinkFirst(page: Page, screen: string): Promise<void> {
+  const firstTabbable = await page.evaluate(() => {
+    const first = document.querySelector<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    return first?.textContent ?? null;
+  });
+  expect(firstTabbable, `${screen}: the first Tab stop`).toBe("Skip to main content");
+  const skip = page.getByRole("link", { name: "Skip to main content" });
+  await skip.focus();
+  await expect(skip, `${screen}: visible on focus`).toBeInViewport({ ratio: 1 });
+  await page.keyboard.press("Enter");
+  await expect(page.locator("main"), `${screen}: focus moves to main`).toBeFocused();
+}
+
+test("the skip link is the first Tab stop on every launcher screen and axe stays clean", async ({
+  page,
+}) => {
+  const world = newWorld(RUNNING);
+  await stub(page, world);
+  await page.goto(current().url);
+  await expect(page.getByRole("heading", { name: "Connect to SQL Server" })).toBeVisible();
+  // A real Tab from a fresh page lands on it.
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();
+  await expectSkipLinkFirst(page, "connect");
+  await page.getByRole("link", { name: "Skip to main content" }).focus();
+  await audit(page, "connect-skip-focused", false);
+
+  await page.getByLabel("Server", { exact: true }).fill("127.0.0.1");
+  await page.getByLabel("User name", { exact: true }).fill("schemamap_reader");
+  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByRole("button", { name: "Test connection" }).click();
+  await expect(page.getByRole("heading", { name: "Connection checks" })).toBeVisible();
+  await expectSkipLinkFirst(page, "check");
+
+  await page.getByRole("button", { name: "Choose a database anyway" }).click();
+  await expect(page.getByRole("heading", { name: "Choose a database" })).toBeVisible();
+  await expectSkipLinkFirst(page, "pick");
+
+  await page.getByRole("radio", { name: /AdventureWorks2022/ }).check({ force: true });
+  await page.getByRole("button", { name: "Extract map" }).click();
+  await expect(page.getByRole("heading", { name: "Extracting AdventureWorks2022" })).toBeVisible();
+  await expectSkipLinkFirst(page, "extract");
+
+  world.status = DONE;
+  await expect(
+    page.getByRole("heading", { name: "Your map of AdventureWorks2022 is ready" }),
+  ).toBeVisible();
+  await expectSkipLinkFirst(page, "done");
+
+  await page
+    .getByRole("navigation", { name: "Launcher" })
+    .getByRole("button", { name: "Recent maps" })
+    .click();
+  await expect(page.getByRole("heading", { name: "Recent maps", level: 1 })).toBeVisible();
+  await expectSkipLinkFirst(page, "recent");
+
+  await page.getByRole("button", { name: "Quit" }).click();
+  await expect(page.getByRole("heading", { name: "Schema Map has stopped" })).toBeVisible();
+  await expectSkipLinkFirst(page, "quit");
+});
+
+test("Re-run with no matching connection says how to make it a password only", async ({ page }) => {
+  const world = newWorld();
+  await stub(page, world);
+  await page.goto(current().url);
+  await page.getByRole("button", { name: "Recent maps" }).click();
+  await page.getByRole("button", { name: "Re-run AdventureWorks2022" }).click();
+  const dialog = page.getByRole("dialog", { name: "Re-run AdventureWorks2022" });
+  await expect(dialog).toContainText(
+    "Tick “Remember this connection” next time to re-run with just a password.",
+  );
+  await expect(dialog.getByLabel("Password")).toHaveCount(0);
+  await audit(page, "recent-rerun-unknown", true);
+
+  await dialog.getByRole("button", { name: "Set up the connection" }).click();
+  await expect(page.getByRole("heading", { name: "Connect to SQL Server" })).toBeFocused();
+  await expect(page.getByLabel("Server", { exact: true })).toHaveValue("127.0.0.1");
+  expect(world.posted).toHaveLength(0);
+});

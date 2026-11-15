@@ -1,4 +1,4 @@
-import { Icon, ScreenHeading } from "./Chrome";
+import { Icon, Main, ScreenHeading } from "./Chrome";
 import { failedSection, formatElapsed, sectionCount, sectionProgress, sectionTitle } from "./maps";
 import type { JobStatus, SectionState } from "./model";
 
@@ -49,7 +49,7 @@ export function ExtractScreen({
   const failed = state.kind === "failed";
   const stoppedAt = job === null ? null : failedSection(job);
   return (
-    <main className="lc-main">
+    <Main>
       <div className="lc-title">
         <ScreenHeading focus>Extracting {state.database}</ScreenHeading>
         <p className="lc-lede">Reading system catalog views on {where}. No row data is read.</p>
@@ -94,7 +94,7 @@ export function ExtractScreen({
           onCancel={onCancel}
         />
       )}
-    </main>
+    </Main>
   );
 }
 

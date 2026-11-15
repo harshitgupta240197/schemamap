@@ -96,6 +96,28 @@ function fillAndTest(password = "hunter2") {
   fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
 }
 
+describe("the skip link", () => {
+  it("is the first tabbable element and moves focus to main without changing the address", async () => {
+    await ready();
+    const skip = screen.getByRole("link", { name: "Skip to main content" });
+    const tabbable = document.querySelector<HTMLElement>("a[href], button, input");
+    expect(tabbable).toBe(skip);
+    const main = screen.getByRole("main");
+    expect(main.getAttribute("tabindex")).toBe("-1");
+    expect(skip.getAttribute("href")).toBe(`#${main.id}`);
+    fireEvent.click(skip);
+    expect(document.activeElement).toBe(main);
+    expect(window.location.hash).toBe("");
+  });
+
+  it("is there before the page is ready, too", () => {
+    stubFetch({});
+    render(<App />);
+    expect(screen.getByRole("link", { name: "Skip to main content" })).toBeTruthy();
+    expect(screen.getByRole("main")).toBeTruthy();
+  });
+});
+
 describe("the Connect screen", () => {
   it("trusts the server certificate only when asked", async () => {
     await ready();

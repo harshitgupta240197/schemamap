@@ -60,6 +60,35 @@ function Mark() {
   );
 }
 
+/** The id of the page's main region: the skip link's target. */
+export const MAIN_ID = "main-content";
+
+/** The first Tab stop on every screen: visible on focus, it moves focus to the main region. */
+function SkipLink() {
+  return (
+    <a
+      className="lc-skip"
+      href={`#${MAIN_ID}`}
+      onClick={(event) => {
+        // Move focus without changing the address: the page's fragment is not ours to rewrite.
+        event.preventDefault();
+        document.getElementById(MAIN_ID)?.focus();
+      }}
+    >
+      Skip to main content
+    </a>
+  );
+}
+
+/** The one `<main>` of a screen; the skip link lands here. */
+export function Main({ children }: { readonly children: ReactNode }) {
+  return (
+    <main id={MAIN_ID} tabIndex={-1} className="lc-main">
+      {children}
+    </main>
+  );
+}
+
 export interface HeaderNav {
   readonly onRecent: () => void;
   readonly onQuit: () => void;
@@ -70,36 +99,39 @@ export interface HeaderNav {
 /** The brand line; with `nav`, the Recent maps and Quit buttons every launcher screen carries. */
 export function Header({ nav }: { readonly nav?: HeaderNav }) {
   return (
-    <header className="lc-header">
-      <div className="lc-brand">
-        <Mark />
-        <span className="lc-brand__name">Schema Map</span>
-        <span className="lc-pill">
-          <span className="lc-pill__dot" aria-hidden="true" />
-          <span className="lc-pill__long">Running on this computer · 127.0.0.1</span>
-          <span className="lc-pill__short">This computer only</span>
-        </span>
-      </div>
-      {nav === undefined ? null : (
-        <nav aria-label="Launcher" className="lc-topnav">
-          <button
-            type="button"
-            className="lc-btn lc-btn--ghost lc-btn--small"
-            aria-current={nav.recentCurrent ? "page" : undefined}
-            onClick={nav.onRecent}
-          >
-            Recent maps
-          </button>
-          <button
-            type="button"
-            className="lc-btn lc-btn--secondary lc-btn--small"
-            onClick={nav.onQuit}
-          >
-            Quit
-          </button>
-        </nav>
-      )}
-    </header>
+    <>
+      <SkipLink />
+      <header className="lc-header">
+        <div className="lc-brand">
+          <Mark />
+          <span className="lc-brand__name">Schema Map</span>
+          <span className="lc-pill">
+            <span className="lc-pill__dot" aria-hidden="true" />
+            <span className="lc-pill__long">Running on this computer · 127.0.0.1</span>
+            <span className="lc-pill__short">This computer only</span>
+          </span>
+        </div>
+        {nav === undefined ? null : (
+          <nav aria-label="Launcher" className="lc-topnav">
+            <button
+              type="button"
+              className="lc-btn lc-btn--ghost lc-btn--small"
+              aria-current={nav.recentCurrent ? "page" : undefined}
+              onClick={nav.onRecent}
+            >
+              Recent maps
+            </button>
+            <button
+              type="button"
+              className="lc-btn lc-btn--secondary lc-btn--small"
+              onClick={nav.onQuit}
+            >
+              Quit
+            </button>
+          </nav>
+        )}
+      </header>
+    </>
   );
 }
 

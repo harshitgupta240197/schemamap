@@ -6,12 +6,28 @@ interface Props {
   /** "localhost, 14333 · SQL Server login · schemamap_reader". */
   readonly summary: string;
   readonly needsPassword: boolean;
+  /** False when no remembered connection matches this map: the dialog explains and offers Connect. */
+  readonly known: boolean;
   readonly onSubmit: (password: string) => void;
+  /** Leave for the Connect screen, with this map's server filled in. */
+  readonly onSetUp: () => void;
   readonly onClose: () => void;
 }
 
+/** Shown when nothing remembered matches the map: how to make the next re-run a password only. */
+export const REMEMBER_HINT =
+  "Tick “Remember this connection” next time to re-run with just a password.";
+
 /** Re-run a saved map: Schema Map never saves passwords, so this asks for it again. */
-export function RerunDialog({ database, summary, needsPassword, onSubmit, onClose }: Props) {
+export function RerunDialog({
+  database,
+  summary,
+  needsPassword,
+  known,
+  onSubmit,
+  onSetUp,
+  onClose,
+}: Props) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const submit = (event: SyntheticEvent) => {
@@ -33,7 +49,12 @@ export function RerunDialog({ database, summary, needsPassword, onSubmit, onClos
           </h2>
           <p className="lc-hint">{summary}</p>
         </div>
-        {needsPassword ? (
+        {known ? null : (
+          <p id="rerun-remember-hint" className="lc-hint">
+            {REMEMBER_HINT}
+          </p>
+        )}
+        {known && needsPassword ? (
           <div className="lc-field">
             <label htmlFor="rerun-pw" className="lc-label">
               Password
@@ -66,9 +87,15 @@ export function RerunDialog({ database, summary, needsPassword, onSubmit, onClos
           <button type="button" className="lc-btn lc-btn--ghost" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="lc-btn lc-btn--primary">
-            Re-run extract
-          </button>
+          {known ? (
+            <button type="submit" className="lc-btn lc-btn--primary">
+              Re-run extract
+            </button>
+          ) : (
+            <button type="button" className="lc-btn lc-btn--primary" onClick={onSetUp}>
+              Set up the connection
+            </button>
+          )}
         </div>
       </form>
     </Modal>
