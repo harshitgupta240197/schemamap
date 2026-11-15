@@ -602,3 +602,16 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 **Why.** A launcher that works on the author's Mac is not "the same on Windows"; the smoke test is the proof, and testing the wheel (not the source tree) also proves the packaged pages are in it. The console encoding is deliberately left at each system's default: Rich already escapes what a console cannot show, so a user name in another script does not crash `ui`. The dialog change explains why a click did not simply re-run.
 
 **Cost.** One more CI job (about three minutes per system, no database, no Docker). One more click when a map's connection is unknown. **Not added:** no dependency.
+
+## D-068 One GitHub issue and one pull request per crumb (2026-11-15)
+
+**Decision.**
+- Every crumb from U.7 on gets a GitHub issue (`gh issue create`, the crumb text as the body, labelled with its phase, e.g. `phase-u`). Review findings also carry `severity:high`, `severity:medium` or `severity:low`.
+- Work happens on a branch `crumb/<id>` cut from the phase branch. At the end of the crumb a pull request goes into the phase branch with `Closes #<issue>` (`gh pr create`); the agent waits for `gh pr checks --watch` and then stops and prints the PR URL.
+- Harshit reviews the pull request on GitHub and merges it with a merge commit. The agent never merges it and does not begin the next crumb until told.
+- Gate pull requests from the phase branch into `main` stay as they were (`gh pr create --fill`, `gh pr checks --watch`, report, Harshit approves).
+- CLAUDE.md's Git workflow and End of every crumb sections carry the same steps. The PROGRESS line is committed on the crumb branch, so it is part of the reviewed pull request.
+
+**Why.** Until now every crumb landed as direct commits on the phase branch, so the first time a human saw a change as a whole was the gate. A pull request per crumb gives a reviewable diff, a place for comments, CI results next to the change, and a link from the issue (what was asked) to the pull request (what was done). Merge commits keep each crumb visible as one unit in the history.
+
+**Cost.** One issue, one branch and one review wait per crumb; work stops at the pull request until it is merged. Crumbs that depend on an unmerged one must wait or be cut from its branch deliberately. **Not added:** no dependency.

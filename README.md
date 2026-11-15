@@ -19,7 +19,8 @@ uv sync
 ```
 
 The launcher and map viewer are built pages that are packaged into the command. From a checkout,
-build them once (needs Node.js 24): `cd viewer && npm ci && cd .. && uv run tools/build_viewer.py`.
+build them once (needs Node.js 24): `cd viewer && npm ci && npm run build`, then from the repo
+root: `uv run tools/build_viewer.py`.
 A released wheel already contains them.
 
 ## Quickstart: the launcher

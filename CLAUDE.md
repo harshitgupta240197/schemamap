@@ -81,19 +81,20 @@ Run the full checks for every area you touched before every commit. If a command
 
 ## Git workflow
 
-- Work on the current phase branch (`phase-<n>-<name>`). Create it from `main` if it doesn't exist.
+- The phase branch is `phase-<n>-<name>` (create it from `main` if it doesn't exist). Crumbs do not commit to it directly (D-068).
+- **Every crumb gets a GitHub issue** before work starts: `gh issue create --title "<crumb ID> <title>" --body-file <crumb text> --label phase-<letter>` (the crumb text is the body; the label is the phase, e.g. `phase-u`; create it with `gh label create` if missing). Findings from reviews use `severity:high`, `severity:medium` or `severity:low` as well.
+- **Work on a branch `crumb/<id>`** (e.g. `crumb/u7`) cut from the phase branch.
 - Conventional Commits with a scope: `feat(extract): ...`, `fix(viewer): ...`, `test(infer): ...`, `docs: ...`, `ci: ...`.
-- At the end of every crumb: run checks → `git add` only the files you meant to change → commit with the crumb's message → `git push`.
 - Never force-push, never rewrite `main`, never commit `.env`, credentials, `lab-data/` or `.bak` files.
-- At a gate: `gh pr create --fill`, then `gh pr checks --watch`, then report. Harshit approves the merge.
+- At a gate: `gh pr create --fill` from the phase branch into `main`, then `gh pr checks --watch`, then report. Harshit approves the merge.
 
 ## End of every crumb
 
 1. All checks green for the areas touched.
-2. Commit and push, then `gh run watch` the pushed commit. The crumb is not done until CI is green.
-3. Append one line to `docs/PROGRESS.md`: `YYYY-MM-DD | <crumb ID> | <commit hash> | <one-line note>`, then commit and push it.
-4. Run `gh run watch --exit-status` on that last (PROGRESS) commit and wait for it. The crumb is not done until that run is green too.
-5. Five-line summary, including the result of that last run.
+2. `git add` only the files you meant to change, commit with the crumb's message, `git push -u origin crumb/<id>`.
+3. Append one line to `docs/PROGRESS.md`: `YYYY-MM-DD | <crumb ID> | <commit hash of the last code commit> | <one-line note>`, commit and push it on the same branch.
+4. `gh pr create --base <phase branch>` with `Closes #<issue>` in the body, then `gh pr checks --watch` and wait. The crumb is not done until every check is green.
+5. **Stop.** Print the PR URL and the short summary (what changed, test results, anything Harshit must decide). Harshit reviews on GitHub and merges with a merge commit; do not merge it, and do not start the next crumb until told.
 
 ## Decisions and dependencies
 
