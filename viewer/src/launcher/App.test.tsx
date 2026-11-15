@@ -53,6 +53,15 @@ function stubFetch(stub: Stub): void {
       }
       if (path.startsWith("/api/connections/")) return json({ deleted: true });
       if (path === "/api/connection/test") return json(stub.test ?? GREEN, stub.testStatus ?? 200);
+      if (path === "/api/jobs") return json({ job_id: "j".repeat(32) }, 202);
+      if (path.startsWith("/api/jobs/")) {
+        return json({
+          job_id: "j".repeat(32),
+          state: "running",
+          sections: [],
+          elapsed_ms: 0,
+        });
+      }
       if (path === "/api/databases") {
         return json(
           stub.databases ?? { databases: [{ name: "AdventureWorks2022" }, { name: "Sales" }] },
@@ -386,7 +395,7 @@ describe("database checks", () => {
     expect(screen.getByRole("button", { name: "Copy script" })).toBeTruthy();
   });
 
-  it("goes on to the not-yet-available state when the database passes", async () => {
+  it("starts the extract when the database passes, and drops the password", async () => {
     await ready();
     fillAndTest();
     fireEvent.click(await screen.findByRole("button", { name: "Choose a database anyway" }));
@@ -409,11 +418,13 @@ describe("database checks", () => {
       },
     });
     fireEvent.click(screen.getByRole("button", { name: "Extract map" }));
-    await screen.findByText(/Extracting a map is the next step/);
-    expect(screen.getByText("Permissions on Sales look good.")).toBeTruthy();
-    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Extract map" }).disabled).toBe(
-      true,
-    );
+    await screen.findByRole("heading", { name: "Extracting Sales" });
+    const started = calls.find((call) => call.path === "/api/jobs");
+    expect(started?.method).toBe("POST");
+    expect(started?.body).toMatchObject({
+      connection: { database: "Sales", password: "hunter2" },
+      remember: false,
+    });
   });
 });
 

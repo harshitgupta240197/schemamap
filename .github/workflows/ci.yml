@@ -204,6 +204,41 @@ jobs:
         working-directory: cli
         run: uv run pytest -m integration -rP
 
+      # The launcher end to end: the real `schemamap ui`, a real browser and this lab. The lab
+      # passwords reach the test through the environment, as for lab.py above.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: viewer/package-lock.json
+
+      - name: Build the viewer and launcher
+        working-directory: viewer
+        run: |
+          npm ci
+          npm run build
+
+      - name: Package the viewer and launcher for the CLI
+        run: uv run tools/build_viewer.py
+
+      - name: Launcher end-to-end against the lab
+        working-directory: viewer
+        env:
+          SCHEMAMAP_E2E_LAB: "1"
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test e2e/launcher-lab.spec.ts --project=chromium
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: launcher-lab-report
+          path: |
+            viewer/playwright-report/
+            viewer/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: SQL Server log tail
         if: failure()
         run: docker logs --tail 60 schemamap-lab

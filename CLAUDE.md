@@ -34,6 +34,7 @@ docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, UI.md, ga
 - Landing-page screenshots (needs the packaged viewer): `cd viewer && npm run site:shots && cd .. && uv run tools/site_shots.py`
 - Package the viewer and launcher for `schemamap view` and `schemamap ui` (needs `npm ci` in `viewer/`; output is gitignored): `uv run tools/build_viewer.py`
 - Viewer end-to-end (needs the packaged viewer; the global setup makes the AdventureWorks and WWI maps with the real CLI; Firefox needs `npx playwright install firefox`): `cd viewer && npx playwright test`
+- Launcher end-to-end against the lab (lab up, packaged viewer; the CI integration job runs it): `cd viewer && SCHEMAMAP_E2E_LAB=1 npx playwright test e2e/launcher-lab.spec.ts --project=chromium`
 - Wheel contains the viewer and a matching manifest: `cd cli && uv build --wheel && cd .. && uv run tools/check_wheel.py cli/dist/*.whl`
 - Regenerate the snapshot JSON Schema after changing `snapshot/` models: `cd cli && uv run python scripts/gen_snapshot_schema.py` (a test fails if `schema/snapshot.v1.json` is stale)
 - Lab: `uv run tools/lab.py up | restore all | status | down [--purge]` (also `restore <db>`, `grant <db> [--view-database-state]`, `edgecases`, `synth --tables N`; see `docs/LAB.md`)

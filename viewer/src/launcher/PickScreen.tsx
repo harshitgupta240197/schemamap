@@ -24,7 +24,13 @@ interface Props {
   readonly state: PickState;
   readonly dbCheck: DatabaseCheckState;
   readonly onExtract: (database: string) => void;
-  readonly onSelect: () => void;
+  /** The chosen database; kept by the app so Try again and Cancel come back to it. */
+  readonly selected: string | null;
+  readonly onSelect: (name: string) => void;
+  /** True when the sign-in needs a password and the page no longer holds one. */
+  readonly askPassword: boolean;
+  readonly password: string;
+  readonly onPassword: (password: string) => void;
   readonly includeSystem: boolean;
   readonly onIncludeSystem: (include: boolean) => void;
   readonly onRetry: () => void;
@@ -38,7 +44,11 @@ export function PickScreen({
   state,
   dbCheck,
   onExtract,
+  selected,
   onSelect,
+  askPassword,
+  password,
+  onPassword,
   includeSystem,
   onIncludeSystem,
   onRetry,
@@ -46,7 +56,6 @@ export function PickScreen({
   onBack,
 }: Props) {
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
   const where = endpointLabel(form.server.trim(), form.port.trim());
   const who = form.user.trim() === "" ? "" : ` as ${form.user.trim()}`;
   const heading = (
@@ -152,7 +161,6 @@ export function PickScreen({
   const chosen = selected !== null && state.names.includes(selected) ? selected : null;
   const checked = chosen !== null && dbCheck.kind !== "idle" && dbCheck.database === chosen;
   const running = checked && dbCheck.kind === "running";
-  const passed = checked && dbCheck.kind === "done" && !dbCheck.result.checks.some(isFail);
 
   return withHeading(
     <>
@@ -182,6 +190,7 @@ export function PickScreen({
             <input
               type="checkbox"
               checked={includeSystem}
+              disabled={askPassword}
               onChange={(event) => {
                 onIncludeSystem(event.target.checked);
               }}
@@ -202,8 +211,7 @@ export function PickScreen({
                 value={name}
                 checked={chosen === name}
                 onChange={() => {
-                  setSelected(name);
-                  onSelect();
+                  onSelect(name);
                 }}
               />
               <Icon name="database" size={18} />
@@ -230,6 +238,27 @@ export function PickScreen({
             </div>
           ) : null}
         </fieldset>
+        {askPassword ? (
+          <div className="lc-field lc-field--again">
+            <label htmlFor="pick-pw" className="lc-label">
+              Password
+            </label>
+            <input
+              id="pick-pw"
+              className="lc-input"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => {
+                onPassword(event.target.value);
+              }}
+            />
+            <p className="lc-hint">
+              Schema Map dropped the password when the extract started and never saves it. Enter it
+              again to extract.
+            </p>
+          </div>
+        ) : null}
         <div className="lc-pick-foot">
           <span className="lc-hint" role="status">
             {chosen === null ? "Pick a database" : `${chosen} selected`}
@@ -242,7 +271,7 @@ export function PickScreen({
             <button
               type="button"
               className="lc-btn lc-btn--primary"
-              disabled={chosen === null || running || passed}
+              disabled={chosen === null || running || (askPassword && password === "")}
               onClick={() => {
                 if (chosen !== null) onExtract(chosen);
               }}
@@ -251,11 +280,6 @@ export function PickScreen({
             </button>
           </div>
         </div>
-        {passed ? (
-          <p className="lc-hint">
-            Extracting a map is the next step and is not in this release yet.
-          </p>
-        ) : null}
       </section>
       {checked ? <DatabaseResults state={dbCheck} /> : null}
     </>,

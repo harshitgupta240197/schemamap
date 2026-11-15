@@ -1,22 +1,13 @@
-import AxeBuilder from "@axe-core/playwright";
-import { mkdirSync } from "node:fs";
-import path from "node:path";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { watchViolations } from "./helpers";
 import { launcherPerTest } from "./launcher-server";
+import { answer, audit, tabTo } from "./launcher-stubs";
 
 // The launcher's Connect, Check and Choose-database screens (U.4) in a real browser, served by
 // the real `schemamap ui`. The session and the capabilities come from the real server; the
 // routes that would need SQL Server (the checks, the database list) and the remembered list are
 // stubbed with synthetic data. Each state is checked with axe at 1280 and 375 px, and the main
 // ones are screenshotted into screenshots/launcher/ for CI to upload (the folder is gitignored).
-
-const SHOTS = path.resolve("screenshots", "launcher");
-const WIDTHS = [
-  { width: 1280, height: 900 },
-  { width: 375, height: 800 },
-] as const;
-const BLOCKING = new Set(["serious", "critical"]);
 
 const permissionScript =
   "USE [AdventureWorks2022];\nGRANT VIEW DEFINITION TO [schemamap_reader];\nGRANT SELECT ON sys.sql_expression_dependencies TO [schemamap_reader];";
@@ -126,11 +117,6 @@ interface Stub {
 }
 
 async function stubApi(page: Page, stub: Stub = {}): Promise<void> {
-  const answer = (
-    route: { fulfill: (o: object) => Promise<void> },
-    status: number,
-    body: unknown,
-  ) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
   await page.route("**/api/connection/test", (route) => {
     const sent = route.request().postDataJSON() as { connection?: { database?: string } };
     const { status, body } =
@@ -184,52 +170,14 @@ async function toDatabaseCheck(page: Page): Promise<void> {
   await expect(page.getByRole("heading", { name: /needs a permission/ })).toBeVisible();
 }
 
-/** Axe at each width: no serious or critical violation, no sideways scroll; optional screenshot. */
-async function audit(page: Page, state: string, shot: boolean): Promise<void> {
-  mkdirSync(SHOTS, { recursive: true });
-  for (const size of WIDTHS) {
-    await page.setViewportSize(size);
-    const { violations } = await new AxeBuilder({ page }).analyze();
-    const blocking = violations
-      .filter((violation) => BLOCKING.has(violation.impact ?? ""))
-      .map((violation) => ({
-        rule: violation.id,
-        impact: violation.impact,
-        nodes: violation.nodes.slice(0, 3).map((node) => node.target.join(" ")),
-      }));
-    expect(blocking, `${state} at ${String(size.width)} px`).toEqual([]);
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow, `${state} scrolls sideways at ${String(size.width)} px`).toBeLessThanOrEqual(
-      0,
-    );
-    if (shot) {
-      await page.screenshot({
-        path: path.join(SHOTS, `${state}-${String(size.width)}.png`),
-        fullPage: true,
-      });
-    }
-  }
-}
-
-/** Press Tab until `target` has focus: proves the control can be reached from the keyboard. */
-async function tabTo(page: Page, target: Locator): Promise<void> {
-  for (let presses = 0; presses < 40; presses += 1) {
-    if (await target.evaluate((element) => element === document.activeElement)) return;
-    await page.keyboard.press("Tab");
-  }
-  throw new Error("the keyboard never reached the control");
-}
-
 test("a keyboard alone gets from Connect through Check to a chosen database", async ({
   page,
   context,
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await open(page);
-  await page.keyboard.press("Tab");
-  await expect(page.getByLabel("Server", { exact: true })).toBeFocused();
+  // The top bar (Recent maps, Quit) comes first in the tab order.
+  await tabTo(page, page.getByLabel("Server", { exact: true }));
   await page.keyboard.type("127.0.0.1");
   await tabTo(page, page.getByLabel("User name", { exact: true }));
   await page.keyboard.type("schemamap_reader");

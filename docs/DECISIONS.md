@@ -575,3 +575,17 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 **Why.** First-time users should connect and pick a database without reading docs, with every server-offered choice coming from the server.
 
 **Cost.** One more route and one more CSP source (`data:` for fonts only). **Not added:** no dependency.
+
+## D-066 Launcher Extract, Done and Recent screens (2026-11-15)
+
+**Decision (crumb U.5).**
+- **The password is wiped when the job starts, so the page asks again.** `form.password` is set to empty in the same tick as `POST /api/jobs`, and on Edit connection and Quit. Cancel, Try again and Extract another database all return to Pick, which then shows a Password field (the sign-in needs one and the page holds none) and disables the system-database toggle, because listing databases needs the login too. The alternative, keeping the password for later screens, breaks the rule that it lives only as long as one request needs it.
+- **Re-run finds its connection on the page.** A map records the server host and database, not the port, sign-in method or user. Re-run uses the Connect form when it is for the same server, else a remembered connection for that host; certificate trust and timeouts always come from the form. With neither, it opens Connect with the server filled in. A map entry is not extended to carry connection settings: that would store more than the five settings D-062 allows.
+- **Save map file fetches with the token.** Every `/api/*` route needs the session header, which a plain download link cannot send, so the page fetches the file and hands the blob to the browser. Open map is a plain link to `/maps/<id>` (the route that needs no token) with `target="_blank"` and `rel="noopener noreferrer"`.
+- **Section counts show only after the job ends** (D-063): the server fills them in then, and the page also hides them while the job runs. The API has no per-section duration, so none is shown. Section names are the extract's own (schemas, tables, views, routines, synonyms, relationships, dependencies, row counts), not the mockup's sample list.
+- **The top bar comes first in the tab order** (Recent maps, Quit), so the Connect keyboard test now tabs to Server instead of expecting it on the first press.
+- **The lab end-to-end test is gated by `SCHEMAMAP_E2E_LAB=1`.** It runs in the integration CI job, which has the lab; the viewer job and a laptop without Docker skip it. It reads the reader's password through `lab.read_env()`.
+
+**Why.** The extract screens follow the approved frames (D-064) while holding to the metadata-only, no-stored-secrets rules.
+
+**Cost.** One extra password entry when going back to Pick after an extract. **Not added:** no dependency.

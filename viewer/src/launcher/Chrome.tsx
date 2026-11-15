@@ -21,6 +21,9 @@ const PATHS = {
   refresh: "M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5",
   back: "M19 12H5M12 19l-7-7 7-7",
   x: "M18 6 6 18M6 6l12 12",
+  download: "M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2",
+  trash: "M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3",
+  upload: "M12 15V3m0 0L8 7m4-4 4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2",
 } as const;
 
 export type IconName = keyof typeof PATHS;
@@ -57,7 +60,15 @@ function Mark() {
   );
 }
 
-export function Header() {
+export interface HeaderNav {
+  readonly onRecent: () => void;
+  readonly onQuit: () => void;
+  /** True on the Recent maps screen. */
+  readonly recentCurrent: boolean;
+}
+
+/** The brand line; with `nav`, the Recent maps and Quit buttons every launcher screen carries. */
+export function Header({ nav }: { readonly nav?: HeaderNav }) {
   return (
     <header className="lc-header">
       <div className="lc-brand">
@@ -69,6 +80,25 @@ export function Header() {
           <span className="lc-pill__short">This computer only</span>
         </span>
       </div>
+      {nav === undefined ? null : (
+        <nav aria-label="Launcher" className="lc-topnav">
+          <button
+            type="button"
+            className="lc-btn lc-btn--ghost lc-btn--small"
+            aria-current={nav.recentCurrent ? "page" : undefined}
+            onClick={nav.onRecent}
+          >
+            Recent maps
+          </button>
+          <button
+            type="button"
+            className="lc-btn lc-btn--secondary lc-btn--small"
+            onClick={nav.onQuit}
+          >
+            Quit
+          </button>
+        </nav>
+      )}
     </header>
   );
 }
@@ -76,7 +106,7 @@ export function Header() {
 export const STEPS = ["Connect", "Check", "Choose database", "Extract", "Open map"] as const;
 
 /** Five steps: a numbered list on a wide screen, "Step n of 5" with bars on a narrow one. */
-export function Stepper({ current }: { readonly current: 1 | 2 | 3 }) {
+export function Stepper({ current }: { readonly current: 1 | 2 | 3 | 4 | 5 }) {
   return (
     <nav aria-label="Progress" className="lc-steps">
       <ol className="lc-steps__list">

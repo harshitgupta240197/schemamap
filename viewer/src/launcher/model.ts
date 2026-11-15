@@ -47,6 +47,42 @@ export interface Failure {
   readonly fix: string | null;
 }
 
+export type JobState = "running" | "done" | "failed" | "cancelled";
+export type SectionState = "pending" | "running" | "done" | "skipped" | "failed";
+
+export interface SectionStatus {
+  readonly name: string;
+  readonly state: SectionState;
+  /** Items read; the server fills it in only once the job has ended in `done` (D-063). */
+  readonly count: number | null;
+}
+
+/** Why a job failed: fixed wording from the server, never a submitted value. */
+export interface JobError {
+  readonly code: string;
+  readonly message: string;
+  readonly fix: string | null;
+}
+
+export interface JobStatus {
+  readonly id: string;
+  readonly state: JobState;
+  readonly sections: readonly SectionStatus[];
+  readonly elapsedMs: number;
+  readonly mapId: string | null;
+  readonly error: JobError | null;
+}
+
+/** One saved map, as the maps list sends it. */
+export interface MapEntry {
+  readonly id: string;
+  readonly database: string;
+  readonly server: string | null;
+  readonly extractedAt: string;
+  readonly tables: number;
+  readonly bytes: number;
+}
+
 type Obj = Record<string, unknown>;
 
 function isObj(value: unknown): value is Obj {
@@ -136,4 +172,67 @@ export function parseFailure(status: number, body: unknown): Failure {
     return { status, message: error.message, fix: str(error.fix) };
   }
   return { status, message: `Schema Map answered with an error (${String(status)}).`, fix: null };
+}
+
+/** `POST /api/jobs`: the new job's id. */
+export function parseJobStarted(body: unknown): string | null {
+  return isObj(body) ? str(body.job_id) : null;
+}
+
+const JOB_STATES: readonly string[] = ["running", "done", "failed", "cancelled"];
+const SECTION_STATES: readonly string[] = ["pending", "running", "done", "skipped", "failed"];
+
+function sectionStatus(value: unknown): SectionStatus | null {
+  if (!isObj(value)) return null;
+  const { name, state, count } = value;
+  if (typeof name !== "string" || typeof state !== "string") return null;
+  if (!SECTION_STATES.includes(state)) return null;
+  return {
+    name,
+    state: state as SectionState,
+    count: typeof count === "number" ? count : null,
+  };
+}
+
+/** `GET /api/jobs/<id>`. */
+export function parseJobStatus(body: unknown): JobStatus | null {
+  if (!isObj(body)) return null;
+  const { job_id: id, state, elapsed_ms: elapsed, map_id: mapId, error } = body;
+  if (typeof id !== "string" || typeof state !== "string" || !JOB_STATES.includes(state)) {
+    return null;
+  }
+  const sections = list(body.sections).flatMap((entry) => sectionStatus(entry) ?? []);
+  const failure =
+    isObj(error) && typeof error.message === "string"
+      ? { code: str(error.code) ?? "failed", message: error.message, fix: str(error.fix) }
+      : null;
+  return {
+    id,
+    state: state as JobState,
+    sections,
+    elapsedMs: typeof elapsed === "number" ? elapsed : 0,
+    mapId: str(mapId),
+    error: failure,
+  };
+}
+
+function mapEntry(value: unknown): MapEntry | null {
+  if (!isObj(value)) return null;
+  const { id, database, server, extracted_at: extractedAt, tables, bytes } = value;
+  if (typeof id !== "string" || typeof database !== "string") return null;
+  if (typeof extractedAt !== "string" || typeof tables !== "number" || typeof bytes !== "number") {
+    return null;
+  }
+  return { id, database, server: str(server), extractedAt, tables, bytes };
+}
+
+/** `GET /api/maps`: the maps in the order the server sent them (newest first). */
+export function parseMaps(body: unknown): MapEntry[] | null {
+  if (!isObj(body) || !Array.isArray(body.maps)) return null;
+  return list(body.maps).flatMap((entry) => mapEntry(entry) ?? []);
+}
+
+/** `POST /api/maps/import`: the id of the new map. */
+export function parseImported(body: unknown): string | null {
+  return isObj(body) ? str(body.map_id) : null;
 }
