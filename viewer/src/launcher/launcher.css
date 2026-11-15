@@ -233,8 +233,9 @@ p {
 
 .lc-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
   width: 100%;
   max-width: 1040px;
   margin: auto auto 0;
@@ -1646,4 +1647,85 @@ a.lc-btn {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+/* ---- technical details and the queries page (#10) ---- */
+.lc-details {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--sm-muted);
+}
+
+.lc-details summary {
+  width: fit-content;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lc-details__list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 16px;
+  margin: 8px 0 0;
+}
+
+.lc-details__list dt {
+  font-weight: 600;
+}
+
+.lc-details__list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--sm-font-mono);
+}
+
+.lc-reads__link {
+  align-self: flex-start;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.lc-footer__link {
+  margin-left: auto;
+  font-size: 13px;
+}
+
+.lc-queries__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  margin: 0 0 16px;
+}
+
+.lc-queries {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lc-queries__item {
+  min-width: 0;
+}
+
+.lc-queries__name {
+  margin: 0;
+  font-family: var(--sm-font-mono);
+}
+
+.lc-queries__purpose {
+  margin: 4px 0 10px;
+  color: var(--sm-muted);
+}
+
+.lc-queries .lc-script__code {
+  max-height: 320px;
+  overflow: auto;
+}
+
+.lc-hint--folder .lc-code {
+  overflow-wrap: anywhere;
 }

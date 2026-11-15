@@ -211,11 +211,16 @@ export function Stepper({ current }: { readonly current: 1 | 2 | 3 | 4 | 5 }) {
   );
 }
 
-export function Footer() {
+export function Footer({ onQueries }: { readonly onQueries?: () => void }) {
   return (
     <footer className="lc-footer">
       <Icon name="lock" size={15} />
       <span>Runs only on this computer at 127.0.0.1. Nothing is sent anywhere.</span>
+      {onQueries === undefined ? null : (
+        <button type="button" className="lc-link lc-footer__link" onClick={onQueries}>
+          See every query it runs
+        </button>
+      )}
     </footer>
   );
 }
@@ -243,9 +248,12 @@ export function ScreenHeading({
 export function ScriptBlock({
   script,
   title,
+  copyName,
 }: {
   readonly script: string;
   readonly title: string;
+  /** When set, the button reads "Copy" and is named "Copy <copyName>": many blocks on one page. */
+  readonly copyName?: string;
 }) {
   const [message, setMessage] = useState<"" | "copied" | "failed">("");
   const copy = () => {
@@ -269,9 +277,18 @@ export function ScriptBlock({
     <div className="lc-script">
       <div className="lc-script__bar">
         <span className="lc-script__title">{title}</span>
-        <button type="button" className="lc-btn lc-btn--secondary lc-btn--small" onClick={copy}>
+        <button
+          type="button"
+          className="lc-btn lc-btn--secondary lc-btn--small"
+          onClick={copy}
+          {...(copyName === undefined
+            ? {}
+            : { "aria-label": `${message === "copied" ? "Copied" : "Copy"} ${copyName}` })}
+        >
           <Icon name={message === "copied" ? "check" : "copy"} size={16} />
-          <span>{message === "copied" ? "Copied" : "Copy script"}</span>
+          <span>
+            {message === "copied" ? "Copied" : copyName === undefined ? "Copy script" : "Copy"}
+          </span>
         </button>
       </div>
       <pre className="lc-script__code" role="region" tabIndex={0} aria-label={title}>

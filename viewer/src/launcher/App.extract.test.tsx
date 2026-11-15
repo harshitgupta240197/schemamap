@@ -56,6 +56,7 @@ function stub(): void {
         Promise.resolve(new Response(JSON.stringify(value), { status }));
       if (path === "/api/capabilities") return json(capabilitiesBody("linux"));
       if (path === "/api/connections") return json({ connections: [] });
+      if (path === "/api/maps/folder") return json({ folder: "~/SchemaMap/maps" });
       if (path === "/api/connection/test") return json(PASSED);
       if (path === "/api/databases")
         return json({ databases: [{ name: "Sales" }, { name: "HR" }] });
@@ -164,6 +165,7 @@ describe("the Extract screen", () => {
     await startExtract();
     await screen.findByRole("heading", { name: "Your map of Sales is ready" }, { timeout: 3000 });
     expect(screen.getByText(/71 tables · db1, 1433/)).toBeTruthy();
+    expect(screen.getByText("~/SchemaMap/maps")).toBeTruthy();
     const open = screen.getByRole("link", { name: /Open map/ });
     expect(open.getAttribute("href")).toBe(`/maps/${MAP}`);
     expect(open.getAttribute("target")).toBe("_blank");
@@ -193,6 +195,12 @@ describe("the Extract screen", () => {
     expect(screen.getByText(/Nothing was saved/)).toBeTruthy();
     expect(screen.getByText("Elapsed 1:02")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+    const details = document.querySelector<HTMLDetailsElement>("details.lc-details");
+    expect(details?.open).toBe(false);
+    expect(details?.textContent).toContain("tables, columns, indexes");
+    expect(details?.textContent).toContain("query_timeout");
+    expect(details?.textContent).not.toContain("db1");
+    expect(details?.textContent).not.toContain("reader");
   });
 
   it("cancels, comes back to Pick and asks for the password again", async () => {

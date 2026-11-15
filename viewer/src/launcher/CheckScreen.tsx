@@ -8,6 +8,8 @@ import {
   type IconName,
 } from "./Chrome";
 import { endpointLabel, type FormState } from "./form";
+import { failureCategory } from "./maps";
+import { TechnicalDetails } from "./TechnicalDetails";
 import type { CheckResult, CheckStatus, Failure, TestResult } from "./model";
 
 export const DATABASE_CHECKS_NOTE = "Database permissions are checked when you choose a database.";
@@ -138,6 +140,7 @@ export function CheckScreen({ form, state, onAgain, onChoose, onEdit }: Props) {
           </h2>
           <p role="alert">{state.failure.message}</p>
           {state.failure.fix === null ? null : <HowToFix fix={state.failure.fix} />}
+          <TechnicalDetails query="doctor_server_info" category={failureCategory(state.failure)} />
           <div className="lc-actions">
             <button type="button" className="lc-btn lc-btn--primary" onClick={onAgain}>
               <Icon name="refresh" size={18} />

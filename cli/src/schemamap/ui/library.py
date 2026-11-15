@@ -132,6 +132,11 @@ class MapLibrary:
         self._template = template
         self._lock = threading.Lock()
 
+    @property
+    def folder(self) -> Path:
+        """The folder the maps are kept in."""
+        return self._maps
+
     def add(self, snapshot: Snapshot) -> str:
         """Make a map from the snapshot, keep it, and return its new id.
 

@@ -379,6 +379,10 @@ every `POST`, it takes a JSON body: send `{}`.
 
 **`GET /maps/<id>`** (U.3, no token, see below) serves the map HTML, unchanged.
 
+**`GET /api/maps/folder`** (U.8a) returns `{ "folder": "~/SchemaMap/maps" }`, the maps folder with the home folder shown as `~`.
+
+**`GET /api/queries`** (U.8a) returns `{ "version", "queries": [{ "name", "purpose", "sql" }] }`: every named query this version can run, sorted by name, with the SQL text byte-for-byte from the packaged files.
+
 **`GET /api/maps/<id>/download`** (U.3) returns the map HTML with
 `Content-Disposition: attachment`. The page fetches it with the token and saves it via a blob.
 

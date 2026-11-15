@@ -644,3 +644,16 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 
 **Cost.** One extra field in one error answer. **Not added:** no dependency. The frames' folder path in the Done card is not shown: the server does not tell the page where maps are kept.
 
+
+## D-071 "See every query it runs" is a local launcher page; "Technical details" stays on failure screens (2026-11-15)
+
+**Decision (crumb U.8a, issue #10).** Build "See every query it runs" as a local launcher page, and keep "Technical details" on failure screens.
+- `GET /api/queries` (token and Host checks as for every route) lists every `QueryName` with its name, a one-line purpose from the .sql header comment (else the name) and the SQL text read as bytes from the packaged files. The page, "Queries Schema Map runs", opens from Connect's "What Schema Map reads" card and from the footer, with the version, a search box and a Copy button on each query.
+- "Technical details" (collapsed) on Check, Pick and Extract failure screens shows the query name, the error category and the time. Never the server name, user name, password or connection string.
+- `GET /api/maps/folder` returns the maps folder with the home folder shown as `~`; the Done screen prints it.
+
+**Why.** The strongest trust signal for a DBA. Served locally it works offline, matches the installed version exactly and sends nothing anywhere.
+
+**Alternatives.** Link to GitHub (needs network, can drift from the installed version); drop both (loses the trust signal).
+
+**Cost.** Two read-only routes and one page. The folder is its own route so the `/api/maps` answer is unchanged. **Not added:** no dependency.
