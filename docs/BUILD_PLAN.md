@@ -902,6 +902,29 @@ Branch `phase-u-launcher`. Gate: U.7, then PR, merge commit, tag `v0.1.0-alpha.3
   - [ ] Launcher checks green locally; CI green on the last pushed commit (PROGRESS commit included)
 - Commit: `feat(ui): connect, check and database picker screens`
 
+### U.4a Database checks use the chosen database
+- Model: Sonnet 5.5 · Effort: medium · Mode: normal
+- Session: /clear → /model sonnet → /effort medium
+- Depends on: U.4
+- Goal: the launcher never judges database permissions against master; it checks the database the user picked.
+- Build:
+  - Each doctor check in the API response gets a `scope`: "server" or "database". No new queries.
+  - Check screen (no database chosen): server checks only (driver, reachable, certificate, sign-in, version, read-only intent), plus one neutral line: "Database permissions are checked when you choose a database."
+  - Pick screen: "Extract map" first calls POST /api/connection/test with the chosen database and runs the database checks (VIEW DEFINITION, dependencies, VIEW DATABASE STATE). A FAIL shows those results on Pick with the permission script for that database (USE [<chosen>]) and Copy; PASS or WARN-only goes on to the existing disabled-until-U.5 state.
+  - Database names in scripts are bracket-quoted with ] doubled.
+  - Password hint text: "Kept only in this tab until your map is made. Never saved, logged or shown again."
+  - Permission script header at 375 px: label stays on one line (no "T-/SQL" break); the Copy button wraps below it if needed.
+  - Server placeholder is "sql01.example.local" below 480 px wide; keep the full text on desktop.
+- Tests:
+  - pytest: every check has a scope; with no database, no database-scope check is evaluated; for a lab login without VIEW DEFINITION (as in the 1.12 tests) on AdventureWorks2022, VIEW DEFINITION FAILs and fix_sql names [AdventureWorks2022]; a database name containing ] is quoted correctly
+  - Vitest: Check screen shows no database checks and the neutral line; Pick shows database results on FAIL
+  - Playwright (stubbed API): Connect → Check (server checks pass) → Pick → Extract map with a failing database → script names the chosen database; axe zero serious/critical at 1280 and 375 px
+  - Playwright: after typing a password and moving Connect → Check → Pick, the password appears in no localStorage or sessionStorage key, no URL and no cookie
+- Done when:
+  - [ ] Tests green locally; CI green on the last pushed commit (PROGRESS commit included)
+  - [ ] Screenshots check-1280, check-375, connect-375, pick-dbcheck-1280 and pick-dbcheck-375 regenerated, paths in the summary
+- Commit: `fix(ui): check database permissions on the chosen database`
+
 ### U.5 Launcher screens: extract, map, recent maps
 - Model: Sonnet 5.5 · Effort: medium · Mode: normal
 - Session: /clear → /model sonnet → /effort medium
@@ -913,6 +936,8 @@ Branch `phase-u-launcher`. Gate: U.7, then PR, merge commit, tag `v0.1.0-alpha.3
   - Recent maps screen: list, open, re-run (asks for the password again), delete with confirmation, "Open a snapshot file"
   - Quit button (calls `/api/quit`, shows "You can close this tab")
   - Extract rows show status (and duration if the API gives it); per-section counts appear only after the job ends (U.3 choice, D-063)
+  - Top bar on every launcher screen: "Recent maps" and "Quit" (left out of U.4)
+  - Clear the password from page memory as soon as the extract job starts, and on Edit connection and Quit
 - Tests:
   - Playwright (CI integration job, real lab): connect as `schemamap_reader`, pick AdventureWorks2022, extract, open the map, reach layout status done; re-run from Recent maps; delete a map; import the WWI fixture snapshot; zero CSP violations on launcher and map
   - axe zero serious/critical on every launcher state
