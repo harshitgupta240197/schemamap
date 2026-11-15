@@ -132,6 +132,15 @@ p {
   display: none;
 }
 
+.lc-pill--stopped {
+  background: #eeeaf5;
+  color: var(--sm-muted);
+}
+
+.lc-pill--stopped .lc-pill__dot {
+  background: currentColor;
+}
+
 .lc-steps {
   width: 100%;
   max-width: 1040px;
@@ -424,6 +433,12 @@ p {
 
 .lc-hint--note {
   margin: 12px 0 0;
+}
+
+/* Inside the results card the note lines up with the check items (U.7). */
+.lc-card--results .lc-hint--note {
+  margin: 0;
+  padding: 12px 24px 16px;
 }
 
 .lc-hint--page {
@@ -1109,6 +1124,10 @@ a.lc-btn {
     padding: 16px;
   }
 
+  .lc-card--results .lc-hint--note {
+    padding: 12px 16px 16px;
+  }
+
   .lc-summary-row {
     padding: 16px;
   }
@@ -1451,9 +1470,15 @@ a.lc-btn {
     color: var(--sm-muted);
   }
 
-  .lc-maps__actions {
+  /* Beats `.lc-maps td { display: block }`, which dropped the gap between the buttons (U.7). */
+  .lc-maps td.lc-maps__actions {
+    display: flex;
     justify-content: flex-start;
     margin-top: 10px;
+  }
+
+  .lc-maps tbody tr:first-child {
+    border-top: 0;
   }
 
   .lc-maps__confirm {

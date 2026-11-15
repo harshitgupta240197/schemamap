@@ -391,6 +391,9 @@ test("Quit stops the server and says the tab can be closed", async ({ page }) =>
   await expect(page.getByRole("heading", { name: "Schema Map has stopped" })).toBeVisible();
   await expect(page.getByText(/You can close this tab/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Quit" })).toHaveCount(0);
+  // U.7: the header no longer claims the stopped server is running.
+  await expect(page.locator(".lc-pill")).toHaveText("Stopped");
+  await expect(page.getByText(/Running on this computer|This computer only/)).toHaveCount(0);
   expect(world.quit).toBe(1);
   expect(await page.evaluate(() => document.body.innerHTML)).not.toContain(PASSWORD);
   await audit(page, "quit", true);
@@ -477,4 +480,23 @@ test("Re-run with no matching connection says how to make it a password only", a
   await expect(page.getByRole("heading", { name: "Connect to SQL Server" })).toBeFocused();
   await expect(page.getByLabel("Server", { exact: true })).toHaveValue("127.0.0.1");
   expect(world.posted).toHaveLength(0);
+});
+
+test("on a phone the Open, Re-run and Delete buttons of a map keep their gap", async ({ page }) => {
+  // U.7: `.lc-maps td { display: block }` beat the actions cell's flex layout, so the buttons
+  // touched at 375 px.
+  await page.setViewportSize({ width: 375, height: 800 });
+  const world = newWorld();
+  await stub(page, world);
+  await page.goto(current().url);
+  await page.getByRole("button", { name: "Recent maps" }).click();
+  const open = page.getByRole("link", {
+    name: "Open the map of AdventureWorks2022 (opens in a new tab)",
+  });
+  const rerun = page.getByRole("button", { name: "Re-run AdventureWorks2022" });
+  const del = page.getByRole("button", { name: "Delete the map of AdventureWorks2022" });
+  const [a, b, c] = await Promise.all([open.boundingBox(), rerun.boundingBox(), del.boundingBox()]);
+  if (a === null || b === null || c === null) throw new Error("a map action is not on screen");
+  expect(b.x - (a.x + a.width)).toBeGreaterThanOrEqual(8);
+  expect(c.x - (b.x + b.width)).toBeGreaterThanOrEqual(8);
 });

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import signal
 import socket
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from launcher_builders import write_launcher
 from typer.testing import CliRunner
 
 from schemamap.cli import app
+from schemamap.ui.jobs import JobManager
 from schemamap.ui.server import LauncherServer
 
 runner = CliRunner()
@@ -152,3 +154,51 @@ def test_an_unusable_data_folder_exits_1(tmp_path: Path, monkeypatch: pytest.Mon
     result = runner.invoke(app, ["ui", "--no-open", "--data-dir", str(blocker)])
     assert result.exit_code == 1
     assert "data folder" in result.stderr
+
+
+def test_a_second_ctrl_c_while_stopping_does_not_cut_the_cleanup_short(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # U.7: a second SIGINT (pressed twice, or forwarded by `uv run`) used to raise inside
+    # server_close while it waited for a job, so the process died without emptying tmp/.
+    monkeypatch.setattr("schemamap.ui.assets.VIEWER_DIR", write_launcher(tmp_path / "launcher"))
+    events: list[object] = []
+    close = LauncherServer.server_close
+
+    def serve(self: LauncherServer, poll_interval: float = 0.5) -> None:
+        signal.raise_signal(signal.SIGINT)
+        events.append(("served", self.stop_reason))
+
+    def close_after_another_ctrl_c(self: LauncherServer) -> None:
+        signal.raise_signal(signal.SIGINT)
+        close(self)
+        events.append("closed")
+
+    exits: list[int] = []
+    monkeypatch.setattr(LauncherServer, "serve_forever", serve)
+    monkeypatch.setattr(LauncherServer, "server_close", close_after_another_ctrl_c)
+    monkeypatch.setattr(LauncherServer, "shutdown", lambda self: None)  # serve_forever is fake
+    monkeypatch.setattr("schemamap.cli.os._exit", exits.append)
+    before = signal.getsignal(signal.SIGINT)
+    result = runner.invoke(app, ["ui", "--no-open", "--data-dir", str(tmp_path / "data")])
+    assert result.exit_code == 0
+    assert events == [("served", "interrupt"), "closed"]
+    assert "Schema Map launcher stopped." in result.stderr
+    assert exits == []  # no job left running: an ordinary exit
+    assert signal.getsignal(signal.SIGINT) is before
+
+
+def test_a_job_still_running_after_the_stop_ends_the_process_at_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The driver's exit hook would close the connection under the running query (a crash), so
+    # the command leaves with os._exit once tmp/ is emptied and the stop is reported.
+    monkeypatch.setattr("schemamap.ui.assets.VIEWER_DIR", write_launcher(tmp_path / "launcher"))
+    stop_at_once(monkeypatch)
+    monkeypatch.setattr(JobManager, "busy", property(lambda self: True))
+    exits: list[int] = []
+    monkeypatch.setattr("schemamap.cli.os._exit", exits.append)
+    result = runner.invoke(app, ["ui", "--no-open", "--data-dir", str(tmp_path / "data")])
+    assert result.exit_code == 0
+    assert "Schema Map launcher stopped." in result.stderr
+    assert exits == [0]

@@ -6,7 +6,8 @@ map file it produces is the same offline file `schemamap view` writes (D-057).
 
 Status: built through U.6 (server, connection API, jobs and library, and the launcher screens:
 connect, check, pick, extract, done, recent maps, quit; checked on Windows, macOS and Linux in
-CI). Plan and non-negotiables: `docs/plans/PHASE_U.md`. Review amendments to U.0 are in D-060.
+CI) and reviewed in U.7 (`docs/gates/PHASEU.md`). Plan and non-negotiables:
+`docs/plans/PHASE_U.md`. Review amendments to U.0 are in D-060.
 Sections 1 to 4 below are the technical contract; the next section is for people using it.
 
 ## Using the launcher
@@ -100,7 +101,8 @@ remove everything Schema Map saved.
 ### Stopping
 
 Press **Quit** in the top bar, or Ctrl+C in the terminal. It also stops by itself after 30
-minutes without use.
+minutes without use. If an extract is running, stopping cancels it first, which can take a few
+seconds; pressing Ctrl+C again does not cut that short.
 
 ### If something goes wrong
 
@@ -136,7 +138,14 @@ schemamap.connect / extract / viewer   the same allowlisted query layer and map 
   starts the server, prints the launch link on one stdout line and the data folder on stderr,
   opens the browser (`ui/browser.py`: only `http` and `file` URLs without whitespace or control
   characters, handed to `webbrowser.open` as one argument, never a shell command), and stops
-  on Ctrl+C, `POST /api/quit` or 30 minutes without use. Library modules never print.
+  on Ctrl+C, SIGTERM, `POST /api/quit` or 30 minutes without use. Library modules never print.
+- **Stopping (U.7, D-069):** while the server runs, SIGINT and SIGTERM call
+  `request_stop("interrupt")` instead of raising `KeyboardInterrupt`, so a second Ctrl+C (or
+  the copy `uv run` forwards) cannot interrupt `server_close`: it cancels the job, waits up to 5
+  seconds for it, and empties `tmp/`. If the job's query is still running after that wait, the
+  command reports the stop and ends the process with `os._exit(0)`, because a normal exit would
+  run the SQL Server driver's exit hook, which closes the connection under the running query
+  and crashes the process.
   Options: `--port` (default: the OS picks), `--no-open`, `--data-dir`.
 - **Idle timeout:** the timer restarts on every successful (2xx) response, so refused or
   unauthenticated requests cannot keep the launcher alive. After 30 minutes without one the
@@ -249,7 +258,7 @@ connection string or traceback.
 
 | Status | `code` | When |
 |---|---|---|
-| 400 | `bad_request` | Malformed JSON, missing or ill-typed field |
+| 400 | `bad_request` | Malformed JSON, missing or ill-typed field; a malformed request line |
 | 401 | `unauthorized` | `/api/*` without the right `X-SchemaMap-Token` header (a query-string token does not count); `/api/session` with a used, expired or wrong launch code |
 | 403 | `forbidden_host` | Host is not `127.0.0.1:<port>` or `localhost:<port>` |
 | 403 | `forbidden_origin` | Origin present and not this launcher's origin |
@@ -259,10 +268,18 @@ connection string or traceback.
 | 409 | `job_running` | A job is already running |
 | 411 | `length_required` | Body without `Content-Length` (chunked bodies are refused) |
 | 413 | `too_large` | Body over 1 MB (over 100 MB for import) |
+| 414 | `uri_too_long` | Request line over 64 KiB (refused by the standard library before routing) |
 | 415 | `unsupported_media_type` | Body not `application/json` (import: not `application/json` or `application/gzip`) |
 | 422 | `invalid` | Well-formed but unacceptable: bad snapshot version, unknown auth mode, settings the connection refuses (a mode that needs a password given none) |
+| 431 | `headers_too_large` | More than 100 headers (refused before routing) |
 | 500 | `internal` | Anything unexpected; generic message, details never sent |
+| 501 | `not_implemented` | A method the server has no handler for (refused before routing) |
 | 502 | `connect_failed` | `/api/databases` could not connect or log in (`message` and `fix` included) |
+| 505 | `version_not_supported` | An HTTP version other than 1.x (refused before routing) |
+
+The refusals marked "before routing" come from the standard library's request parser, before
+the Host check. Since U.7 they are the same JSON error with the same security headers and fixed
+wording (the status phrase), never an HTML page that quotes the request.
 
 ### Routes
 
@@ -412,8 +429,10 @@ Assets:
 | **Map file leakage** | The served map makes requests or can be framed | The map is byte-identical to `view` output and keeps `connect-src 'none'`. `frame-ancestors 'none'` is in the header | None |
 | **Binding to the network** | The server reachable from the LAN | Bind is the constant `127.0.0.1`, and a test asserts it. There is no option to change the interface | None |
 
-U.7 attacks each row for real (hostile Host, a cross-origin page, process list, logs, oversized
-and malformed requests, two browsers at once) and records the results in `docs/gates/PHASEU.md`.
+U.7 attacked each row for real (hostile Host, a cross-origin page, process list, logs, history,
+oversized and malformed requests, two tabs at once, stopping mid-job) and recorded the results in
+`docs/gates/PHASEU.md`. The browser history database keeps the launch link with its code
+(Chromium and Firefox, verified); the code is used or expired by then, so it is worthless.
 
 ## 4. Decisions from the U.0 review (D-060)
 

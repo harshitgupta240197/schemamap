@@ -252,6 +252,34 @@ test("Check passes axe at both widths", async ({ page }) => {
   await audit(page, "check", true);
 });
 
+for (const width of [1280, 375]) {
+  test(`the database-permissions note sits inside the Check card's padding at ${String(width)} px`, async ({
+    page,
+  }) => {
+    // U.7: the note was flush with the card's left edge.
+    await page.setViewportSize({ width, height: 900 });
+    await open(page);
+    await toCheck(page);
+    const card = page.locator(".lc-card--results");
+    const note = card.locator(".lc-hint--note");
+    const item = card.locator(".lc-check-item").first();
+    const [cardBox, noteBox, itemBox] = await Promise.all([
+      card.boundingBox(),
+      note.boundingBox(),
+      item.boundingBox(),
+    ]);
+    if (cardBox === null || noteBox === null || itemBox === null) throw new Error("not on screen");
+    const textStart = await note.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return range.getBoundingClientRect().left;
+    });
+    const itemPadding = await item.evaluate((el) => parseFloat(getComputedStyle(el).paddingLeft));
+    expect(textStart - cardBox.x).toBeGreaterThanOrEqual(itemPadding);
+    expect(cardBox.y + cardBox.height - (noteBox.y + noteBox.height)).toBeGreaterThanOrEqual(0);
+  });
+}
+
 test("Pick, its search states and its system-database toggle pass axe", async ({ page }) => {
   await toPick(page);
   await expect(page.getByRole("radio", { name: /AdventureWorks2022/ })).toBeVisible();
