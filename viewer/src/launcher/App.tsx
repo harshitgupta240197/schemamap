@@ -178,7 +178,13 @@ export function App() {
         if (gone()) return;
         const entry = maps.ok ? (maps.value.find((item) => item.id === mapId) ?? null) : null;
         setRun({ id: null, database, where });
-        setDone({ mapId, database, where, entry });
+        const followed = database === "";
+        setDone({
+          mapId,
+          database: followed ? (entry?.database ?? "") : database,
+          where: followed ? (entry?.server ?? "") : where,
+          entry,
+        });
         setExtract(null);
         if (screenRef.current === "extract") go("done");
       } else if (job.state === "cancelled") {
@@ -279,6 +285,11 @@ export function App() {
     go("extract");
     void startJob(token, body, target.remember).then((outcome) => {
       if (!outcome.ok) {
+        if (outcome.failure.code === "job_running") {
+          setRun({ id: null, database, where });
+          setExtract({ kind: "busy", database, jobId: outcome.failure.jobId ?? null });
+          return;
+        }
         setExtract({
           kind: "failed",
           database,
@@ -462,6 +473,14 @@ export function App() {
           onEdit={() => {
             setExtract(null);
             editConnection();
+          }}
+          onFollow={(jobId) => {
+            setRun({ id: jobId, database: "", where: "SQL Server" });
+            setExtract({ kind: "starting", database: "" });
+          }}
+          onRecent={() => {
+            setExtract(null);
+            go("recent");
           }}
         />
       ) : null}

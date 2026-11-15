@@ -45,6 +45,10 @@ export interface Failure {
   readonly status: number;
   readonly message: string;
   readonly fix: string | null;
+  /** The server's error code, e.g. `job_running`, when it sent one. */
+  readonly code?: string;
+  /** For `job_running`: the id of the extract that is already running. */
+  readonly jobId?: string;
 }
 
 export type JobState = "running" | "done" | "failed" | "cancelled";
@@ -169,7 +173,15 @@ export function parseDatabases(body: unknown): string[] | null {
 export function parseFailure(status: number, body: unknown): Failure {
   const error = isObj(body) ? body.error : undefined;
   if (isObj(error) && typeof error.message === "string") {
-    return { status, message: error.message, fix: str(error.fix) };
+    const code = str(error.code);
+    const jobId = str(error.job_id);
+    return {
+      status,
+      message: error.message,
+      fix: str(error.fix),
+      ...(code === null ? {} : { code }),
+      ...(jobId === null ? {} : { jobId }),
+    };
   }
   return { status, message: `Schema Map answered with an error (${String(status)}).`, fix: null };
 }

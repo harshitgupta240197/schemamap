@@ -89,6 +89,10 @@ class DataDirError(SchemaMapError):
 class JobRunningError(SchemaMapError):
     """An extract job is already running; the launcher runs one at a time."""
 
+    def __init__(self, message: str, job_id: str | None = None) -> None:
+        super().__init__(message)
+        self.job_id = job_id
+
 
 class JobCancelledError(SchemaMapError):
     """Raised inside an extract job when the user cancelled it. It stops the work, nothing more."""

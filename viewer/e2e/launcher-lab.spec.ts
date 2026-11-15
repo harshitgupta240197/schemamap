@@ -81,7 +81,7 @@ test("connect, extract, open the map, re-run, delete and import against the real
   await page.getByRole("checkbox", { name: /Trust server certificate/ }).check();
   await page.getByRole("button", { name: "Test connection" }).click();
   await expect(page.getByRole("heading", { name: "Connection checks" })).toBeVisible();
-  await page.getByRole("button", { name: "Choose a database anyway" }).click();
+  await page.getByRole("button", { name: "Choose a database", exact: true }).click();
   await page.getByRole("radio", { name: /AdventureWorks2022/ }).check({ force: true });
   await extractAdventureWorks(page);
   await expect(page.getByText(/71 tables/)).toBeVisible();

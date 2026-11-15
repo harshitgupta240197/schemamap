@@ -1,10 +1,20 @@
-import { Icon, Main, ScreenHeading } from "./Chrome";
+import { HowToFix, Icon, Main, ScreenHeading, StateTile } from "./Chrome";
 import { failedSection, formatElapsed, sectionCount, sectionProgress, sectionTitle } from "./maps";
 import type { JobStatus, SectionState } from "./model";
 
-/** What the Extract screen shows: waiting for the job to start, running, or failed. */
+/**
+ * What the Extract screen shows: waiting for the job to start, running, failed, or refused because
+ * another extract (in another tab) is running. An empty `database` means the extract is one this
+ * tab did not start.
+ */
 export type ExtractState =
   | { readonly kind: "starting"; readonly database: string }
+  | {
+      readonly kind: "busy";
+      readonly database: string;
+      /** The running extract, when the server named it. */
+      readonly jobId: string | null;
+    }
   | {
       readonly kind: "running";
       readonly database: string;
@@ -34,6 +44,8 @@ interface Props {
   readonly onTryAgain: () => void;
   readonly onChooseAnother: () => void;
   readonly onEdit: () => void;
+  readonly onFollow: (jobId: string) => void;
+  readonly onRecent: () => void;
 }
 
 /** Step 4: the extract's sections, progress and time; or why it stopped and how to fix it. */
@@ -44,45 +56,99 @@ export function ExtractScreen({
   onTryAgain,
   onChooseAnother,
   onEdit,
+  onFollow,
+  onRecent,
 }: Props) {
+  if (state.kind === "busy") {
+    return (
+      <Main>
+        <div className="lc-title">
+          <ScreenHeading focus>Another extract is running</ScreenHeading>
+          <p className="lc-lede">Schema Map runs one extract at a time.</p>
+        </div>
+        <section className="lc-card lc-card--state" aria-labelledby="ext-busy-h">
+          <StateTile tone="warn" />
+          <h2 id="ext-busy-h" className="lc-h2 lc-h2--state">
+            Another extract is running
+          </h2>
+          <p role="status">
+            An extract is already running, probably in another tab. Nothing is wrong, and your{" "}
+            {state.database === "" ? "request" : state.database} was not started.
+          </p>
+          <HowToFix
+            fix={
+              state.jobId === null
+                ? "wait for it to finish, then try again. Finished maps appear under Recent maps."
+                : "follow its progress here, or wait for it to finish and try again."
+            }
+          />
+          <div className="lc-actions">
+            {state.jobId === null ? null : (
+              <button
+                type="button"
+                className="lc-btn lc-btn--primary"
+                onClick={() => {
+                  onFollow(state.jobId ?? "");
+                }}
+              >
+                See its progress
+              </button>
+            )}
+            <button
+              type="button"
+              className={`lc-btn ${state.jobId === null ? "lc-btn--primary" : "lc-btn--secondary"}`}
+              onClick={onRecent}
+            >
+              <Icon name="clock" size={18} />
+              <span>Recent maps</span>
+            </button>
+            <button type="button" className="lc-btn lc-btn--ghost" onClick={onChooseAnother}>
+              Choose another database
+            </button>
+          </div>
+        </section>
+      </Main>
+    );
+  }
   const job = state.kind === "starting" ? null : state.job;
   const failed = state.kind === "failed";
   const stoppedAt = job === null ? null : failedSection(job);
   return (
     <Main>
       <div className="lc-title">
-        <ScreenHeading focus>Extracting {state.database}</ScreenHeading>
+        <ScreenHeading focus>
+          {state.database === "" ? "Extract in progress" : `Extracting ${state.database}`}
+        </ScreenHeading>
         <p className="lc-lede">Reading system catalog views on {where}. No row data is read.</p>
       </div>
       {state.kind === "failed" ? (
-        <section className="lc-card lc-card--state lc-card--stopped" aria-labelledby="ext-fail-h">
-          <h2 id="ext-fail-h" className="lc-h2 lc-h2--state">
-            <Icon name="warn" size={22} />
-            {stoppedAt === null
-              ? "The extract could not finish"
-              : `The extract stopped at ${sectionTitle(stoppedAt.name)}`}
-          </h2>
-          <p role="alert">{state.message}</p>
-          {state.fix === null ? null : (
-            <p className="lc-fix">
-              <strong>How to fix: </strong>
-              {state.fix}
+        <section className="lc-banner lc-banner--fail" aria-labelledby="ext-fail-h" role="alert">
+          <span className="lc-banner__icon">
+            <Icon name="x-circle" size={22} />
+          </span>
+          <div className="lc-banner__body">
+            <h2 id="ext-fail-h" className="lc-h2">
+              {stoppedAt === null
+                ? "The extract could not finish"
+                : `The extract stopped at ${sectionTitle(stoppedAt.name)}`}
+            </h2>
+            <p>{state.message}</p>
+            {state.fix === null ? null : <HowToFix fix={state.fix} />}
+            <p className="lc-hint">
+              Nothing was saved, so there is no partial map to confuse anyone later.
             </p>
-          )}
-          <p className="lc-hint">
-            Nothing was saved, so there is no partial map to confuse anyone later.
-          </p>
-          <div className="lc-actions">
-            <button type="button" className="lc-btn lc-btn--primary" onClick={onTryAgain}>
-              <Icon name="refresh" size={18} />
-              <span>Try again</span>
-            </button>
-            <button type="button" className="lc-btn lc-btn--secondary" onClick={onEdit}>
-              Edit connection
-            </button>
-            <button type="button" className="lc-btn lc-btn--ghost" onClick={onChooseAnother}>
-              Choose another database
-            </button>
+            <div className="lc-actions lc-actions--stopped">
+              <button type="button" className="lc-btn lc-btn--primary" onClick={onTryAgain}>
+                <Icon name="refresh" size={18} />
+                <span>Try again</span>
+              </button>
+              <button type="button" className="lc-btn lc-btn--secondary" onClick={onEdit}>
+                Edit connection
+              </button>
+              <button type="button" className="lc-btn lc-btn--ghost" onClick={onChooseAnother}>
+                Choose another database
+              </button>
+            </div>
           </div>
         </section>
       ) : null}
@@ -131,7 +197,7 @@ function SectionsCard({
         <p className="lc-elapsed">Elapsed {formatElapsed(job?.elapsedMs ?? 0)}</p>
       </div>
       <div
-        className="lc-progress"
+        className={failed ? "lc-progress lc-progress--failed" : "lc-progress"}
         role="progressbar"
         aria-label="Extract progress"
         aria-valuemin={0}

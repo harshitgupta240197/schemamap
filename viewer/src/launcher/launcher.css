@@ -9,6 +9,7 @@
   --lc-note-bg: #f3effa;
   --lc-note-border: #e1d8f2;
   --lc-warn-border: #f2dfae;
+  --lc-fail-border: #f3c9ce;
 }
 
 *,
@@ -198,9 +199,9 @@ p {
 }
 
 .lc-step--done .lc-step__badge {
-  background: var(--lc-teal-bg);
+  background: var(--lc-teal);
   border-color: var(--lc-teal);
-  color: var(--lc-teal-fg);
+  color: #ffffff;
 }
 
 .lc-steps__compact {
@@ -1364,9 +1365,26 @@ a.lc-btn {
   flex-wrap: wrap;
   gap: 12px;
   padding: 14px 16px;
-  border: 1px solid var(--lc-warn-border);
+  border: 1px solid var(--lc-fail-border);
   border-radius: 12px;
-  background: var(--sm-warn-bg);
+  background: var(--sm-error-bg);
+  color: var(--sm-error-fg);
+}
+
+.lc-confirm__text {
+  display: flex;
+  flex: 1 1 320px;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.lc-confirm__text svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.lc-confirm .lc-hint {
+  color: var(--sm-text);
 }
 
 .lc-confirm__title {
@@ -1414,7 +1432,6 @@ a.lc-btn {
 
 @media (max-width: 720px) {
   .lc-header {
-    flex-wrap: wrap;
     gap: 8px;
     padding: 12px 16px;
   }
@@ -1506,6 +1523,127 @@ a.lc-btn {
   }
 }
 
+/* One row at every width: below 600 px the nav buttons keep their icons and lose their words
+   (their aria-label names them), and below 480 px the "This computer only" pill goes too. */
+@media (max-width: 600px) {
+  .lc-topnav .lc-btn__label {
+    display: none;
+  }
+
+  .lc-topnav .lc-btn {
+    width: 44px;
+    padding: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .lc-pill:not(.lc-pill--stopped) {
+    display: none;
+  }
+}
+
 .lc-card--done .lc-actions--top {
   align-self: stretch;
+}
+
+/* ---- status states (U.8): one set of tones, icons and the "How to fix" line ---- */
+.lc-tile {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+}
+
+.lc-tile--fail {
+  background: var(--sm-error-bg);
+  color: var(--sm-error-fg);
+}
+
+.lc-tile--warn {
+  background: var(--sm-warn-bg);
+  color: var(--sm-warn-fg);
+}
+
+.lc-tile--ok {
+  background: var(--sm-pass-bg);
+  color: var(--sm-pass-fg);
+}
+
+.lc-tile--info {
+  background: var(--lc-note-bg);
+  color: var(--sm-accent);
+}
+
+.lc-card--state .lc-tile {
+  margin-bottom: 4px;
+}
+
+.lc-fix-line {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--sm-text);
+}
+
+.lc-fix-line strong {
+  font-weight: 600;
+}
+
+.lc-banner {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding: 20px;
+  border: 1px solid var(--lc-fail-border);
+  border-radius: 14px;
+  background: var(--sm-error-bg);
+  color: var(--sm-error-fg);
+}
+
+.lc-banner__icon {
+  display: inline-flex;
+  flex: none;
+  padding-top: 2px;
+}
+
+.lc-banner__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.lc-banner__body p,
+.lc-banner__body .lc-hint {
+  color: var(--sm-text);
+  font-size: 14px;
+}
+
+.lc-actions--stopped {
+  margin-top: 8px;
+}
+
+.lc-progress--failed .lc-progress__fill {
+  background: var(--sm-error-fg);
+}
+
+.lc-hint--folder {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.lc-hint--folder svg {
+  flex: none;
+  margin-top: 3px;
+}
+
+@media (max-width: 720px) {
+  .lc-banner .lc-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

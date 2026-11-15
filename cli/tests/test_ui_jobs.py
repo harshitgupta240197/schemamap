@@ -310,8 +310,9 @@ def test_a_second_job_is_refused_while_one_runs_and_allowed_after(tmp_path: Path
     try:
         first = rig.manager.start(config(), remember=False)
         assert rig.extractor.reached.wait(5)
-        with pytest.raises(JobRunningError):
+        with pytest.raises(JobRunningError) as refused:
             rig.manager.start(config(), remember=False)
+        assert refused.value.job_id == first
         rig.extractor.release.set()
         assert rig.wait(first)["state"] == "done"
         second = rig.manager.start(config(), remember=False)

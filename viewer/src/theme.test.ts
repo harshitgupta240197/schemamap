@@ -43,6 +43,7 @@ const PAIRS: readonly (readonly [string, readonly string[], number])[] = [
   ["sm-badge-fg", ["sm-badge-bg"], 4.5],
   ["sm-warn-fg", ["sm-warn-bg"], 4.5],
   ["sm-error-fg", ["sm-error-bg", "sm-bg", "sm-surface"], 4.5],
+  ["sm-pass-fg", ["sm-pass-bg", "sm-surface"], 4.5],
   ["sm-on-accent", ["sm-accent"], 4.5],
   ["sm-sql-keyword", ["sm-header"], 4.5],
   ["sm-sql-string", ["sm-header"], 4.5],

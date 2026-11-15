@@ -630,3 +630,17 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 **Why.** A crash can write a core dump (on by default with systemd-coredump on many Linux systems), which would put process memory, including a password Python could not wipe, on disk. That turns a documented in-memory residual into a file. The other changes keep every response under the same rules and stop the page contradicting itself.
 
 **Cost.** `os._exit` skips `atexit` handlers when a job is still running; nothing of Schema Map's own relies on them, and the driver's handler is exactly what must not run then. A late write in `tmp/` is cleared at the next start (#13). **Not added:** no dependency.
+
+## D-070 Launcher polish: shared status tones, one "How to fix" line, a busy state that is not a failure (2026-11-15)
+
+**Decision (crumb U.8, issues #7, #8, #9, #11, #12).**
+- **Status tokens are shared.** `tokens.css` carries fail `#A61E2A` on `#FCE8EA`, warn `#7A4F00` on `#FFF3D6` and pass `#0B5F5B` on `#E6F3F2` (dark values chosen to match), with a contrast test. Failed, warning and success states show an icon and words as well as the colour.
+- **One layout for a fix.** `HowToFix` is the single "How to fix:" line, inline, on Check, Pick (empty, error, database checks), Recent and Extract failed. `StateTile` is the one icon tile above a state card's heading; Extract failed uses the frame's red banner.
+- **Check offers "Choose a database" as the primary action when no server check fails;** "Choose a database anyway" appears, as the secondary action, only when one does.
+- **A second tab's extract is not a failure.** `409 job_running` now names the running job (`error.job_id`), and the launcher says "Another extract is running" with "See its progress" and "Recent maps".
+- **The header stays on one row at 375 px:** icons on Recent maps and Quit, words dropped below 600 px (the `aria-label` names them), the "This computer only" pill dropped below 480 px.
+
+**Why.** The five issues were visible gaps against the approved frames. The job id is the only server change: without it the second tab could say another extract is running but not show it.
+
+**Cost.** One extra field in one error answer. **Not added:** no dependency. The frames' folder path in the Done card is not shown: the server does not tell the page where maps are kept.
+

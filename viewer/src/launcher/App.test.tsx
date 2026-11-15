@@ -402,7 +402,7 @@ describe("database checks", () => {
   it("checks the chosen database on Extract map and shows a failure with its script", async () => {
     await ready({ test: SERVER_ONLY });
     fillAndTest();
-    fireEvent.click(await screen.findByRole("button", { name: "Choose a database anyway" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Choose a database" }));
     fireEvent.click(await screen.findByRole("radio", { name: /Sales/ }));
     stubFetch({ test: DATABASE_FAIL });
     fireEvent.click(screen.getByRole("button", { name: "Extract map" }));
@@ -468,5 +468,76 @@ describe("starting up", () => {
     );
     render(<App />);
     expect((await screen.findByRole("status")).textContent).toContain("does not understand");
+  });
+});
+
+describe("the Check actions (#11)", () => {
+  it("offers Choose a database as the primary action when no check fails", async () => {
+    await ready({ test: SERVER_ONLY });
+    fillAndTest();
+    const choose = await screen.findByRole("button", { name: "Choose a database" });
+    expect(choose.className).toContain("lc-btn--primary");
+    expect(screen.queryByRole("button", { name: /anyway/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Check again" }).className).toContain(
+      "lc-btn--secondary",
+    );
+  });
+
+  it("offers Choose a database anyway, as the secondary action, only when a check fails", async () => {
+    await ready();
+    fillAndTest();
+    const anyway = await screen.findByRole("button", { name: "Choose a database anyway" });
+    expect(anyway.className).toContain("lc-btn--secondary");
+    expect(screen.queryByRole("button", { name: "Choose a database" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Check again" }).className).toContain(
+      "lc-btn--primary",
+    );
+  });
+});
+
+describe("one How to fix layout and one set of state icons (#9)", () => {
+  const inline = (fix: Element | null) => fix?.textContent.startsWith("How to fix: ") === true;
+
+  it("puts How to fix inline on a Check item", async () => {
+    await ready();
+    fillAndTest();
+    await screen.findByText("Ask a DBA.");
+    const fix = document.querySelector(".lc-check-item .lc-fix-line");
+    expect(inline(fix)).toBe(true);
+    expect(fix?.querySelector("strong")?.textContent).toBe("How to fix: ");
+  });
+
+  it("uses the same inline line and an icon tile on Pick error and Pick empty", async () => {
+    await ready({
+      databasesStatus: 502,
+      databases: { error: { message: "Timed out.", fix: "Raise the timeout." } },
+    });
+    fillAndTest();
+    fireEvent.click(await screen.findByRole("button", { name: "Choose a database anyway" }));
+    await screen.findByText("Couldn’t load the list of databases");
+    expect(document.querySelector(".lc-tile--fail")).not.toBeNull();
+    expect(document.querySelector("h2 svg")).toBeNull();
+    expect(inline(document.querySelector(".lc-fix-line"))).toBe(true);
+    cleanup();
+
+    await ready({ databases: { databases: [] } });
+    fillAndTest();
+    fireEvent.click(await screen.findByRole("button", { name: "Choose a database anyway" }));
+    await screen.findByText("This login can’t open any databases yet");
+    expect(document.querySelector(".lc-tile--info")).not.toBeNull();
+    expect(document.querySelector("h2 svg")).toBeNull();
+    expect(inline(document.querySelector(".lc-fix-line"))).toBe(true);
+  });
+});
+
+describe("the header (#7)", () => {
+  it("gives Recent maps and Quit an icon and an accessible name", async () => {
+    await ready();
+    const nav = screen.getByRole("navigation", { name: "Launcher" });
+    for (const name of ["Recent maps", "Quit"]) {
+      const button = within(nav).getByRole("button", { name });
+      expect(button.querySelector("svg")).not.toBeNull();
+      expect(button.getAttribute("aria-label")).toBe(name);
+    }
   });
 });

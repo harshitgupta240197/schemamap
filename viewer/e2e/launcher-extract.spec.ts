@@ -98,6 +98,8 @@ interface World {
   posted: unknown[];
   cancelled: number;
   quit: number;
+  /** When set, `POST /api/jobs` answers 409 `job_running` naming this job (a second tab). */
+  runningElsewhere?: boolean;
 }
 
 async function stub(page: Page, world: World): Promise<void> {
@@ -112,6 +114,16 @@ async function stub(page: Page, world: World): Promise<void> {
     const method = request.method();
     if (url.pathname === "/api/jobs" && method === "POST") {
       world.posted.push(request.postDataJSON());
+      if (world.runningElsewhere === true) {
+        return answer(route, 409, {
+          error: {
+            code: "job_running",
+            message: "An extract is already running.",
+            fix: "Wait for it to finish, or cancel it, then try again.",
+            job_id: JOB,
+          },
+        });
+      }
       return answer(route, 202, { job_id: JOB });
     }
     if (url.pathname === `/api/jobs/${JOB}/cancel`) {
@@ -150,7 +162,7 @@ async function connectToPick(page: Page, world: World): Promise<void> {
   await page.getByLabel("User name", { exact: true }).fill("schemamap_reader");
   await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: "Test connection" }).click();
-  await page.getByRole("button", { name: "Choose a database anyway" }).click();
+  await page.getByRole("button", { name: "Choose a database", exact: true }).click();
   await page.getByRole("radio", { name: /AdventureWorks2022/ }).check({ force: true });
 }
 
@@ -195,6 +207,72 @@ test("a failed extract shows the fix, says nothing was saved, and offers a way o
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("heading", { name: "Choose a database" })).toBeVisible();
   await expect(page.getByText("AdventureWorks2022 selected")).toBeVisible();
+});
+
+test("an extract started while another runs says so and links to its progress (#12)", async ({
+  page,
+}) => {
+  const world = newWorld();
+  world.runningElsewhere = true;
+  await connectToPick(page, world);
+  await page.getByRole("button", { name: "Extract map" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Another extract is running", level: 2 }),
+  ).toBeVisible();
+  await expect(page.getByText(/could not finish/)).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await audit(page, "extract-busy", true);
+
+  await page.getByRole("button", { name: "See its progress" }).click();
+  await expect(page.getByRole("heading", { name: "Extract in progress" })).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "Extract progress" })).toBeVisible();
+});
+
+/** The brand and both nav buttons share one row: nothing wraps below the brand line. */
+async function expectOneRowHeader(page: Page, where: string): Promise<void> {
+  const header = page.locator(".lc-header");
+  const brand = await header.locator(".lc-brand").boundingBox();
+  const recent = await header.getByRole("button", { name: "Recent maps" }).boundingBox();
+  const quit = await header.getByRole("button", { name: "Quit" }).boundingBox();
+  const box = await header.boundingBox();
+  if (brand === null || recent === null || quit === null || box === null) {
+    throw new Error("header not on screen");
+  }
+  const middle = (b: { y: number; height: number }) => b.y + b.height / 2;
+  expect(
+    Math.abs(middle(recent) - middle(brand)),
+    `${where}: Recent maps level with brand`,
+  ).toBeLessThan(6);
+  expect(Math.abs(middle(quit) - middle(brand)), `${where}: Quit level with brand`).toBeLessThan(6);
+  expect(box.height, `${where}: one row`).toBeLessThanOrEqual(72);
+  expect(await header.getByRole("button", { name: "Quit" }).locator("svg").count()).toBe(1);
+  expect(await header.getByRole("button", { name: "Recent maps" }).locator("svg").count()).toBe(1);
+}
+
+test("the header keeps one row with icons at 375 px on Connect, Pick, Extract and Recent (#7)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  const world = newWorld();
+  await stub(page, world);
+  await page.goto(current().url);
+  await expect(page.getByRole("heading", { name: "Connect to SQL Server" })).toBeVisible();
+  await expectOneRowHeader(page, "connect");
+  await page.getByLabel("Server", { exact: true }).fill("127.0.0.1");
+  await page.getByLabel("User name", { exact: true }).fill("schemamap_reader");
+  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByRole("button", { name: "Test connection" }).click();
+  await expect(page.getByRole("heading", { name: "Connection checks" })).toBeVisible();
+  await expectOneRowHeader(page, "check");
+  await page.getByRole("button", { name: "Choose a database", exact: true }).click();
+  await page.getByRole("radio", { name: /AdventureWorks2022/ }).check({ force: true });
+  await expectOneRowHeader(page, "pick");
+  await page.getByRole("button", { name: "Extract map" }).click();
+  await expect(page.getByRole("heading", { name: "Extracting AdventureWorks2022" })).toBeVisible();
+  await expectOneRowHeader(page, "extract");
+  await page.getByRole("button", { name: "Recent maps" }).click();
+  await expect(page.getByRole("heading", { name: "Recent maps", level: 1 })).toBeVisible();
+  await expectOneRowHeader(page, "recent");
 });
 
 test("Cancel stops the job and returns to Pick, asking for the password again", async ({
@@ -436,7 +514,7 @@ test("the skip link is the first Tab stop on every launcher screen and axe stays
   await expect(page.getByRole("heading", { name: "Connection checks" })).toBeVisible();
   await expectSkipLinkFirst(page, "check");
 
-  await page.getByRole("button", { name: "Choose a database anyway" }).click();
+  await page.getByRole("button", { name: "Choose a database", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Choose a database" })).toBeVisible();
   await expectSkipLinkFirst(page, "pick");
 
