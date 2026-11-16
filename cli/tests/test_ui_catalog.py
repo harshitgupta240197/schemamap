@@ -79,13 +79,28 @@ def test_every_shipped_query_has_a_purpose_beyond_its_name() -> None:
 
 
 def test_the_maps_folder_is_shown_with_the_home_folder_as_tilde(
-    server: LauncherServer, tmp_path: Path
+    server: LauncherServer, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # The data folder is under tmp_path, which on Windows is under the real home folder, so pin
+    # home to a folder that holds neither: the full path must then be shown.
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.setenv("HOME", str(elsewhere))
+    monkeypatch.setenv("USERPROFILE", str(elsewhere))
     status, _, body = request(server, "/api/maps/folder", headers=AUTH)
     assert status == 200
     folder = json.loads(body)["folder"]
     assert folder == str((tmp_path / "data" / "maps").resolve())
     assert request(server, "/api/maps/folder")[0] == 401
+
+
+def test_the_maps_folder_under_home_is_shown_with_a_tilde(
+    server: LauncherServer, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    _, _, body = request(server, "/api/maps/folder", headers=AUTH)
+    assert json.loads(body)["folder"] == str(Path("~") / "data" / "maps")
 
 
 def test_display_path_replaces_only_the_home_prefix(tmp_path: Path) -> None:
