@@ -104,6 +104,12 @@ Press **Quit** in the top bar, or Ctrl+C in the terminal. It also stops by itsel
 minutes without use. If an extract is running, stopping cancels it first, which can take a few
 seconds; pressing Ctrl+C again does not cut that short.
 
+Stopping also ends an upload that is in flight and empties the `tmp/` folder inside the data
+folder, after waiting up to five seconds for a write that has already begun. On Windows an open
+file cannot be deleted, so in rare cases a file may be left in `tmp/`; it is removed the next
+time `schemamap ui` starts. The `ui-smoke` job quits with an upload in flight on all three
+systems and checks this.
+
 ### If something goes wrong
 
 - **"This link has already been used or has expired":** run `schemamap ui` again.
@@ -142,7 +148,9 @@ schemamap.connect / extract / viewer   the same allowlisted query layer and map 
 - **Stopping (U.7, D-069):** while the server runs, SIGINT and SIGTERM call
   `request_stop("interrupt")` instead of raising `KeyboardInterrupt`, so a second Ctrl+C (or
   the copy `uv run` forwards) cannot interrupt `server_close`: it cancels the job, waits up to 5
-  seconds for it, and empties `tmp/`. If the job's query is still running after that wait, the
+  seconds for it, cuts short any upload in flight (its connection is shut down so the handler
+  closes its file), waits up to 5 seconds for writes that have begun (`MapLibrary.close`), and
+  empties `tmp/`; a file Windows still holds is removed at the next start (#13). If the job's query is still running after that wait, the
   command reports the stop and ends the process with `os._exit(0)`, because a normal exit would
   run the SQL Server driver's exit hook, which closes the connection under the running query
   and crashes the process.
@@ -386,7 +394,7 @@ every `POST`, it takes a JSON body: send `{}`.
 
 **`POST /api/maps/import`** (U.3) takes a raw `.json` or `.json.gz` body (`Content-Type:
 application/json` or `application/gzip`; the file is recognised by its content), up to 100 MB,
-streamed to a server-named file in `tmp/`. A gzip file may unpack to at most 512 MB. It answers `{ "map_id": "…" }`, or `422 invalid` with the same friendly message
+streamed to a server-named file in `tmp/`. A file may unpack to at most 32 MB (D-072; importing needs about 18 times that in memory). It answers `{ "map_id": "…" }`, or `422 invalid` with the same friendly message
 `view` gives.
 
 ### Why `/maps/<id>` has no token

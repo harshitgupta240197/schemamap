@@ -9,9 +9,11 @@ Nothing is logged.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import secrets
+import socket
 import socketserver
 import threading
 import time
@@ -36,7 +38,7 @@ from schemamap.ui.api import (
 from schemamap.ui.assets import Launcher
 from schemamap.ui.connections import ConnectionStore
 from schemamap.ui.jobs import JobManager, describe_error
-from schemamap.ui.library import MapLibrary, read_upload
+from schemamap.ui.library import LibraryClosedError, MapLibrary, read_upload
 from schemamap.ui.security import (
     LISTEN_HOST,
     TOKEN_HEADER,
@@ -141,6 +143,8 @@ class LauncherServer(ThreadingHTTPServer):
         self._idle_timeout = idle_timeout
         self._last_activity = clock()
         self._stop_lock = threading.Lock()
+        self._upload_lock = threading.Lock()
+        self._uploads: set[socket.socket] = set()
         super().__init__((LISTEN_HOST, port), LauncherHandler)
 
     def server_bind(self) -> None:
@@ -153,8 +157,28 @@ class LauncherServer(ThreadingHTTPServer):
     def server_close(self) -> None:
         """Stop a running job, empty ``tmp/`` of uploads and half-written maps, close the socket."""
         self.jobs.shutdown()
-        self.library.clear_tmp()
+        self._abort_uploads()
+        self.library.close()
         super().server_close()
+
+    def watch_upload(self, connection: socket.socket) -> None:
+        """Remember a connection that is streaming an upload, so a stop can cut it short."""
+        with self._upload_lock:
+            self._uploads.add(connection)
+
+    def forget_upload(self, connection: socket.socket) -> None:
+        """The upload on this connection is over."""
+        with self._upload_lock:
+            self._uploads.discard(connection)
+
+    def _abort_uploads(self) -> None:
+        """Unblock handlers waiting for upload bytes, so they close their files before ``tmp/``
+        is emptied (an open file cannot be deleted on Windows)."""
+        with self._upload_lock:
+            uploads = list(self._uploads)
+        for connection in uploads:
+            with contextlib.suppress(OSError):
+                connection.shutdown(socket.SHUT_RD)
 
     def handle_error(self, request: object, client_address: object) -> None:
         """Drop handler errors silently: a traceback on stderr could quote request data."""
@@ -201,6 +225,7 @@ class LauncherHandler(BaseHTTPRequestHandler):
     server_version = "SchemaMap"
     sys_version = ""
     timeout = REQUEST_TIMEOUT_SECONDS
+    _body_consumed = False
 
     @property
     def _launcher_server(self) -> LauncherServer:
@@ -224,6 +249,39 @@ class LauncherHandler(BaseHTTPRequestHandler):
             self.request_version = "HTTP/1.0"
         status = HTTPStatus(code)
         self._error(status, _PROTOCOL_ERRORS.get(status, "bad_request"), f"{status.phrase}.")
+
+    def handle_one_request(self) -> None:
+        """Handle one request, then take in a body the route never read.
+
+        An answer that leaves the client's body unread (a 401, 404 or 405, or any DELETE) would
+        close the socket on unread data. Windows then resets the connection, and the client can
+        lose the answer it was waiting for (#18). A body up to ``MAX_BODY_BYTES`` is read and
+        dropped first; a larger one is not worth the wait, and its sender gets the refusal anyway.
+        """
+        self._body_consumed = False
+        super().handle_one_request()
+        self._discard_unread_body()
+
+    def _discard_unread_body(self) -> None:
+        if self._body_consumed:
+            return
+        headers = getattr(self, "headers", None)  # absent when the request line did not parse
+        declared = None if headers is None else headers.get("Content-Length")
+        if not declared or not declared.isascii() or not declared.isdigit():
+            return
+        remaining = int(declared)
+        if remaining > MAX_BODY_BYTES:
+            return
+        try:
+            while remaining > 0:
+                chunk = self.rfile.read(min(_CHUNK_BYTES, remaining))
+                if not chunk:
+                    return
+                remaining -= len(chunk)
+        except OSError:
+            return
+        finally:
+            self._body_consumed = True
 
     def do_GET(self) -> None:
         self._handle("GET")
@@ -445,11 +503,22 @@ class LauncherHandler(BaseHTTPRequestHandler):
                     "unsupported_media_type",
                     "Send application/json or application/gzip.",
                 )
-            upload = server.library.new_upload_path()
             try:
-                self._stream_body(upload, length)
-                snapshot = read_upload(upload)
-                map_id = server.library.add(snapshot)
+                upload = server.library.new_upload_path()
+            except LibraryClosedError:
+                raise ApiError(
+                    HTTPStatus.SERVICE_UNAVAILABLE, "stopping", "Schema Map is stopping."
+                ) from None
+            server.watch_upload(self.connection)
+            try:
+                with server.library.writing():
+                    self._stream_body(upload, length)
+                    snapshot = read_upload(upload)
+                    map_id = server.library.add(snapshot)
+            except LibraryClosedError:
+                raise ApiError(
+                    HTTPStatus.SERVICE_UNAVAILABLE, "stopping", "Schema Map is stopping."
+                ) from None
             except SnapshotError as exc:
                 raise snapshot_refusal(exc) from None
             except (SchemaMapError, OSError) as exc:
@@ -458,6 +527,7 @@ class LauncherHandler(BaseHTTPRequestHandler):
                     HTTPStatus.INTERNAL_SERVER_ERROR, failure.code, failure.message, failure.fix
                 ) from None
             finally:
+                server.forget_upload(self.connection)
                 upload.unlink(missing_ok=True)
         except ApiError:
             self.close_connection = True
@@ -466,10 +536,13 @@ class LauncherHandler(BaseHTTPRequestHandler):
 
     def _stream_body(self, destination: Path, length: int) -> None:
         """Copy exactly ``length`` body bytes to ``destination`` in chunks, never all in memory."""
+        self._body_consumed = True
         remaining = length
         with destination.open("wb") as out:
             while remaining > 0:
                 chunk = self.rfile.read(min(_CHUNK_BYTES, remaining))
+                if self._launcher_server.library.closed:
+                    raise LibraryClosedError("Schema Map is stopping")
                 if not chunk:
                     raise ApiError(HTTPStatus.BAD_REQUEST, "bad_request", "The body ended early.")
                 out.write(chunk)
@@ -504,6 +577,7 @@ class LauncherHandler(BaseHTTPRequestHandler):
                 "unsupported_media_type",
                 "Send application/json.",
             )
+        self._body_consumed = True
         raw = self.rfile.read(length)
         try:
             value = json.loads(raw)

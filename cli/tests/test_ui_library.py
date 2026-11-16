@@ -345,5 +345,27 @@ def test_an_upload_that_unpacks_past_the_limit_is_refused_without_reading_it_all
         read_upload(upload_file(tmp_path, b" " * 1001))
 
 
+def test_an_upload_over_the_limit_is_never_unpacked_past_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A 50 MB gzip bomb against a 1 MB limit: decompression stops one byte past the limit."""
+    limit = 1024 * 1024
+    monkeypatch.setattr(library_module, "MAX_UNPACKED_BYTES", limit)
+    produced = 0
+
+    class Counting(gzip.GzipFile):
+        def read(self, size: int | None = -1) -> bytes:
+            nonlocal produced
+            chunk = super().read(size)
+            produced += len(chunk)
+            return chunk
+
+    monkeypatch.setattr(gzip, "GzipFile", Counting)
+    bomb = gzip.compress(b" " * (50 * 1024 * 1024))
+    with pytest.raises(SnapshotError, match="1 MB once unpacked"):
+        read_upload(upload_file(tmp_path, bomb))
+    assert produced == limit + 1
+
+
 def test_map_ids_are_the_pattern_the_server_routes_use() -> None:
     assert MAP_ID.pattern == "[0-9a-f]{32}"
