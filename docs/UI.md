@@ -148,8 +148,8 @@ schemamap.connect / extract / viewer   the same allowlisted query layer and map 
 - **Stopping (U.7, D-069):** while the server runs, SIGINT and SIGTERM call
   `request_stop("interrupt")` instead of raising `KeyboardInterrupt`, so a second Ctrl+C (or
   the copy `uv run` forwards) cannot interrupt `server_close`: it cancels the job, waits up to 5
-  seconds for it, cuts short any upload in flight (its connection is shut down so the handler
-  closes its file), waits up to 5 seconds for writes that have begun (`MapLibrary.close`), and
+  seconds for it, cuts short any upload in flight (its read waits are 0.2 s, so the handler
+  notices the stop and closes its file), waits up to 5 seconds for writes that have begun (`MapLibrary.close`), and
   empties `tmp/`; a file Windows still holds is removed at the next start (#13). If the job's query is still running after that wait, the
   command reports the stop and ends the process with `os._exit(0)`, because a normal exit would
   run the SQL Server driver's exit hook, which closes the connection under the running query

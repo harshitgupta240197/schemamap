@@ -9,11 +9,9 @@ Nothing is logged.
 
 from __future__ import annotations
 
-import contextlib
 import json
 import re
 import secrets
-import socket
 import socketserver
 import threading
 import time
@@ -53,6 +51,7 @@ REQUEST_TIMEOUT_SECONDS = 10
 MAX_BODY_BYTES = 1024 * 1024
 MAX_IMPORT_BYTES = 100 * 1024 * 1024
 _CHUNK_BYTES = 64 * 1024
+_UPLOAD_POLL_SECONDS = 0.2
 _IMPORT_TYPES = frozenset({"application/json", "application/gzip"})
 IDLE_TIMEOUT_SECONDS = 30 * 60
 
@@ -143,8 +142,6 @@ class LauncherServer(ThreadingHTTPServer):
         self._idle_timeout = idle_timeout
         self._last_activity = clock()
         self._stop_lock = threading.Lock()
-        self._upload_lock = threading.Lock()
-        self._uploads: set[socket.socket] = set()
         super().__init__((LISTEN_HOST, port), LauncherHandler)
 
     def server_bind(self) -> None:
@@ -157,28 +154,8 @@ class LauncherServer(ThreadingHTTPServer):
     def server_close(self) -> None:
         """Stop a running job, empty ``tmp/`` of uploads and half-written maps, close the socket."""
         self.jobs.shutdown()
-        self._abort_uploads()
         self.library.close()
         super().server_close()
-
-    def watch_upload(self, connection: socket.socket) -> None:
-        """Remember a connection that is streaming an upload, so a stop can cut it short."""
-        with self._upload_lock:
-            self._uploads.add(connection)
-
-    def forget_upload(self, connection: socket.socket) -> None:
-        """The upload on this connection is over."""
-        with self._upload_lock:
-            self._uploads.discard(connection)
-
-    def _abort_uploads(self) -> None:
-        """Unblock handlers waiting for upload bytes, so they close their files before ``tmp/``
-        is emptied (an open file cannot be deleted on Windows)."""
-        with self._upload_lock:
-            uploads = list(self._uploads)
-        for connection in uploads:
-            with contextlib.suppress(OSError):
-                connection.shutdown(socket.SHUT_RD)
 
     def handle_error(self, request: object, client_address: object) -> None:
         """Drop handler errors silently: a traceback on stderr could quote request data."""
@@ -226,6 +203,7 @@ class LauncherHandler(BaseHTTPRequestHandler):
     sys_version = ""
     timeout = REQUEST_TIMEOUT_SECONDS
     _body_consumed = False
+    _reader_drained = False
 
     @property
     def _launcher_server(self) -> LauncherServer:
@@ -259,6 +237,7 @@ class LauncherHandler(BaseHTTPRequestHandler):
         dropped first; a larger one is not worth the wait, and its sender gets the refusal anyway.
         """
         self._body_consumed = False
+        self._reader_drained = False
         super().handle_one_request()
         self._discard_unread_body()
 
@@ -509,7 +488,6 @@ class LauncherHandler(BaseHTTPRequestHandler):
                 raise ApiError(
                     HTTPStatus.SERVICE_UNAVAILABLE, "stopping", "Schema Map is stopping."
                 ) from None
-            server.watch_upload(self.connection)
             try:
                 with server.library.writing():
                     self._stream_body(upload, length)
@@ -527,7 +505,6 @@ class LauncherHandler(BaseHTTPRequestHandler):
                     HTTPStatus.INTERNAL_SERVER_ERROR, failure.code, failure.message, failure.fix
                 ) from None
             finally:
-                server.forget_upload(self.connection)
                 upload.unlink(missing_ok=True)
         except ApiError:
             self.close_connection = True
@@ -538,15 +515,42 @@ class LauncherHandler(BaseHTTPRequestHandler):
         """Copy exactly ``length`` body bytes to ``destination`` in chunks, never all in memory."""
         self._body_consumed = True
         remaining = length
+        # Short socket timeouts make each wait end soon, so a stop is noticed at once on every
+        # system (a blocked read cannot be woken from another thread on Windows) and the file is
+        # closed before ``tmp/`` is emptied.
+        self.connection.settimeout(_UPLOAD_POLL_SECONDS)
+        last_bytes = time.monotonic()
         with destination.open("wb") as out:
             while remaining > 0:
-                chunk = self.rfile.read(min(_CHUNK_BYTES, remaining))
+                try:
+                    chunk = self._read_some(min(_CHUNK_BYTES, remaining))
+                except TimeoutError:
+                    if self._launcher_server.library.closed:
+                        raise LibraryClosedError("Schema Map is stopping") from None
+                    if time.monotonic() - last_bytes > REQUEST_TIMEOUT_SECONDS:
+                        raise ApiError(
+                            HTTPStatus.REQUEST_TIMEOUT, "request_timeout", "The upload stalled."
+                        ) from None
+                    continue
                 if self._launcher_server.library.closed:
                     raise LibraryClosedError("Schema Map is stopping")
                 if not chunk:
                     raise ApiError(HTTPStatus.BAD_REQUEST, "bad_request", "The body ended early.")
+                last_bytes = time.monotonic()
                 out.write(chunk)
                 remaining -= len(chunk)
+
+    def _read_some(self, size: int) -> bytes:
+        """Up to ``size`` body bytes, at most one wait. Raises TimeoutError, b"" at the end.
+
+        The first call drains what the buffered reader already holds (it never holds more than
+        one chunk, so afterwards the buffer is empty, also when it timed out and can no longer be
+        read). Later calls read the socket directly.
+        """
+        if self._reader_drained:
+            return bytes(self.connection.recv(size))
+        self._reader_drained = True
+        return bytes(self.rfile.read1(size))
 
     def _session(self, body: dict[str, object]) -> None:
         """Trade the one-time launch code for the session token."""
