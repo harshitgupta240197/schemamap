@@ -9,13 +9,16 @@ import {
   parseImported,
   parseJobStarted,
   parseJobStatus,
+  parseFolder,
   parseMaps,
+  parseQueries,
   parseRemembered,
   parseTestResult,
   type Capabilities,
   type Failure,
   type JobStatus,
   type MapEntry,
+  type QueryCatalog,
   type RememberedConnection,
   type TestResult,
 } from "./model";
@@ -171,6 +174,22 @@ export function fetchMaps(
   fetcher: typeof fetch = fetch,
 ): Promise<Outcome<MapEntry[]>> {
   return call("GET", "/api/maps", token, undefined, parseMaps, fetcher);
+}
+
+/** Every query this version can send, as the .sql files it ships with. */
+export function fetchQueries(
+  token: string,
+  fetcher: typeof fetch = fetch,
+): Promise<Outcome<QueryCatalog>> {
+  return call("GET", "/api/queries", token, undefined, parseQueries, fetcher);
+}
+
+/** The folder maps are kept in, for display. */
+export function fetchMapsFolder(
+  token: string,
+  fetcher: typeof fetch = fetch,
+): Promise<Outcome<string>> {
+  return call("GET", "/api/maps/folder", token, undefined, parseFolder, fetcher);
 }
 
 export function deleteMap(

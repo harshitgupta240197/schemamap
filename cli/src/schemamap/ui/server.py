@@ -34,6 +34,7 @@ from schemamap.ui.api import (
     snapshot_refusal,
 )
 from schemamap.ui.assets import Launcher
+from schemamap.ui.catalog import display_path, list_queries
 from schemamap.ui.connections import ConnectionStore
 from schemamap.ui.jobs import JobManager, describe_error
 from schemamap.ui.library import LibraryClosedError, MapLibrary, read_upload
@@ -80,6 +81,8 @@ _API_ROUTES: dict[str, tuple[str, ...]] = {
     "/api/jobs": ("POST",),
     "/api/maps": ("GET", "HEAD"),
     "/api/maps/import": ("POST",),
+    "/api/maps/folder": ("GET", "HEAD"),
+    "/api/queries": ("GET", "HEAD"),
 }
 # Routes with an id in the path: a pattern per route. An id is exactly 32 lowercase hex
 # characters, so a path with anything else in that place is not a route at all.
@@ -430,6 +433,10 @@ class LauncherHandler(BaseHTTPRequestHandler):
         elif route == "/api/maps":
             maps = [entry.to_json() for entry in server.library.entries()]
             self._json(HTTPStatus.OK, {"maps": maps})
+        elif route == "/api/maps/folder":
+            self._json(HTTPStatus.OK, {"folder": display_path(server.library.folder)})
+        elif route == "/api/queries":
+            self._json(HTTPStatus.OK, list_queries())
         elif route == _IMPORT_PATH:
             self._import_map()
         else:

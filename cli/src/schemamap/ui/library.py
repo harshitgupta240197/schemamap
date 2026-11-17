@@ -195,6 +195,11 @@ class MapLibrary:
         self.clear_tmp()
         return settled and not self._tmp.exists()
 
+    @property
+    def folder(self) -> Path:
+        """The folder the maps are kept in."""
+        return self._maps
+
     def add(self, snapshot: Snapshot) -> str:
         """Make a map from the snapshot, keep it, and return its new id.
 
