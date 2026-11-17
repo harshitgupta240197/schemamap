@@ -23,10 +23,12 @@ import shutil
 import tempfile
 import threading
 import zlib
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timezone
 from pathlib import Path
+from typing import Protocol
 
 from schemamap.errors import SnapshotError
 from schemamap.snapshot.io import (
@@ -45,10 +47,13 @@ MAP_FILE = "map.html"
 META_FILE = "meta.json"
 MAP_ID = re.compile(r"[0-9a-f]{32}")
 # An upload may unpack to far more than it weighs; stop reading past this, so a small gzip file
-# cannot fill memory.
-MAX_UNPACKED_BYTES = 512 * 1024 * 1024
+# cannot fill memory. Importing peaks at about 18 times the unpacked size, so 32 MB keeps the
+# peak under 1 GB on the measured machine (D-072, docs/PERFORMANCE.md).
+MAX_UNPACKED_BYTES = 32 * 1024 * 1024
 _MAX_META_BYTES = 64 * 1024
+CLOSE_WAIT_SECONDS = 5.0
 _GZIP_MAGIC = b"\x1f\x8b"
+_READ_CHUNK_BYTES = 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -96,6 +101,25 @@ def _entry_from_json(value: object, map_id: str) -> MapEntry | None:
     return MapEntry(map_id, database, server, extracted_at, tables, size)
 
 
+class _Readable(Protocol):
+    def read(self, size: int = ..., /) -> bytes: ...
+
+
+def _read_limited(source: _Readable) -> bytes:
+    """Read up to ``MAX_UNPACKED_BYTES`` plus one byte, in chunks, and stop there.
+
+    The extra byte tells the caller the source is over the limit. A gzip bomb is never unpacked
+    past it: each chunk is asked for only while the total is within the limit.
+    """
+    data = bytearray()
+    while len(data) <= MAX_UNPACKED_BYTES:
+        chunk = source.read(min(_READ_CHUNK_BYTES, MAX_UNPACKED_BYTES + 1 - len(data)))
+        if not chunk:
+            break
+        data += chunk
+    return bytes(data)
+
+
 def read_upload(path: Path) -> Snapshot:
     """Load and validate an uploaded snapshot, plain or gzip (detected by content).
 
@@ -109,9 +133,9 @@ def read_upload(path: Path) -> Snapshot:
             handle.seek(0)
             if packed:
                 with gzip.GzipFile(fileobj=handle) as unpacked:
-                    data = unpacked.read(MAX_UNPACKED_BYTES + 1)
+                    data = _read_limited(unpacked)
             else:
-                data = handle.read(MAX_UNPACKED_BYTES + 1)
+                data = _read_limited(handle)
     except (OSError, EOFError, zlib.error):
         raise SnapshotError("cannot read the file: it is not a valid snapshot file") from None
     if len(data) > MAX_UNPACKED_BYTES:
@@ -119,6 +143,10 @@ def read_upload(path: Path) -> Snapshot:
             f"the snapshot is larger than {MAX_UNPACKED_BYTES // (1024 * 1024)} MB once unpacked"
         )
     return load_snapshot(data)
+
+
+class LibraryClosedError(OSError):
+    """The launcher is stopping: nothing new is written under ``tmp/`` or ``maps/``."""
 
 
 class MapLibrary:
@@ -131,6 +159,41 @@ class MapLibrary:
         self._tmp = data_dir / TMP_FOLDER
         self._template = template
         self._lock = threading.Lock()
+        self._writers = threading.Condition()
+        self._active = 0
+        self._closed = False
+
+    @property
+    def closed(self) -> bool:
+        """Whether ``close`` has begun: writers should stop at their next chance."""
+        return self._closed
+
+    @contextmanager
+    def writing(self) -> Iterator[None]:
+        """Mark a write that ``close`` waits for. Raises LibraryClosedError once closing."""
+        with self._writers:
+            if self._closed:
+                raise LibraryClosedError("Schema Map is stopping")
+            self._active += 1
+        try:
+            yield
+        finally:
+            with self._writers:
+                self._active -= 1
+                self._writers.notify_all()
+
+    def close(self, wait: float = CLOSE_WAIT_SECONDS) -> bool:
+        """Refuse new writes, wait up to ``wait`` seconds for those in flight, empty ``tmp/``.
+
+        True when ``tmp/`` is gone. False when a write outlived the wait or a file is locked
+        (Windows); what is left is removed at the next start.
+        """
+        with self._writers:
+            self._closed = True
+            self._writers.wait_for(lambda: self._active == 0, timeout=wait)
+            settled = self._active == 0
+        self.clear_tmp()
+        return settled and not self._tmp.exists()
 
     @property
     def folder(self) -> Path:
@@ -143,6 +206,10 @@ class MapLibrary:
         Raises ViewerUnavailableError or EmbedError when the packaged viewer cannot be used, and
         OSError when the folder cannot be written. Nothing is left behind on failure.
         """
+        with self.writing():
+            return self._add(snapshot)
+
+    def _add(self, snapshot: Snapshot) -> str:
         page = embed_snapshot(self._template().html, snapshot).encode("utf-8")
         map_id = secrets.token_hex(16)
         staging = Path(tempfile.mkdtemp(dir=self._tmp_dir(), prefix="map-"))
@@ -218,18 +285,22 @@ class MapLibrary:
         """
         if MAP_ID.fullmatch(map_id) is None:
             return False
-        trash = self._tmp_dir() / f"deleted-{secrets.token_hex(8)}"
-        with self._lock:
-            try:
-                os.replace(self._maps / map_id, trash)
-            except OSError:
-                return False
-        shutil.rmtree(trash, ignore_errors=True)
-        return True
+        with self.writing():
+            trash = self._tmp_dir() / f"deleted-{secrets.token_hex(8)}"
+            with self._lock:
+                try:
+                    os.replace(self._maps / map_id, trash)
+                except OSError:
+                    return False
+            shutil.rmtree(trash, ignore_errors=True)
+            return True
 
     def new_upload_path(self) -> Path:
         """A fresh, empty, owner-only file under ``tmp/`` for an upload, named by the server."""
-        descriptor, name = tempfile.mkstemp(dir=self._tmp_dir(), prefix="upload-", suffix=".tmp")
+        with self.writing():
+            descriptor, name = tempfile.mkstemp(
+                dir=self._tmp_dir(), prefix="upload-", suffix=".tmp"
+            )
         os.close(descriptor)
         return Path(name)
 

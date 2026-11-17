@@ -5,6 +5,7 @@ from __future__ import annotations
 import gzip
 import json
 import logging
+import socket
 import threading
 import time
 from collections.abc import Callable, Iterator
@@ -21,7 +22,7 @@ from schemamap.snapshot.io import dump_snapshot
 from schemamap.snapshot.models import Section
 from schemamap.ui import server as server_module
 from schemamap.ui.jobs import JobManager
-from schemamap.ui.library import MapLibrary, read_upload
+from schemamap.ui.library import MAX_UNPACKED_BYTES, MapLibrary, read_upload
 from schemamap.ui.server import LauncherServer
 
 AUTH = {"X-SchemaMap-Token": TOKEN}
@@ -436,6 +437,23 @@ def test_an_upload_over_the_limit_is_413_before_it_is_read(
     )  # exactly the limit is read (and refused as not a snapshot)
 
 
+def test_an_upload_over_the_unpacked_limit_is_the_friendly_422(
+    server: LauncherServer, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    rig_server(server)
+    monkeypatch.setattr("schemamap.ui.library.MAX_UNPACKED_BYTES", 1024 * 1024)
+    bomb = gzip.compress(b" " * (20 * 1024 * 1024))
+    status, _, body = import_snapshot(server, bomb, "application/gzip")
+    error = json.loads(body)["error"]
+    assert status == 422
+    assert error["code"] == "invalid" and "1 MB once unpacked" in error["message"]
+
+
+def test_the_unpacked_limit_keeps_an_import_under_one_gigabyte() -> None:
+    """31 MB unpacked peaks at 560 MB (about 18 times), measured in docs/PERFORMANCE.md."""
+    assert MAX_UNPACKED_BYTES == 32 * 1024 * 1024
+
+
 def test_the_import_limit_is_100_megabytes_and_json_bodies_stay_at_one() -> None:
     assert server_module.MAX_IMPORT_BYTES == 100 * 1024 * 1024
     assert server_module.MAX_BODY_BYTES == 1024 * 1024
@@ -566,3 +584,39 @@ def test_a_hostile_password_is_in_no_saved_file_when_the_job_succeeds(
     assert done["state"] == "done"
     bodies = [json.dumps(done).encode(), get(server, "/api/maps")[2]]
     assert_no_password(password, bodies=bodies, server=server, caplog=caplog, capfd=capfd)
+
+
+@pytest.mark.parametrize(
+    ("method", "path"), [("DELETE", "/api/maps/" + "z" * 32), ("GET", "/nope")]
+)
+def test_an_answer_that_leaves_a_body_unread_still_closes_cleanly(
+    server: LauncherServer, method: str, path: str
+) -> None:
+    """The server takes in the unread body before it closes (#18).
+
+    A server that closes on unread data resets the connection, and Windows then loses the
+    answer the client is waiting for. macOS and Linux do not show that, so this checks the
+    cause: the socket stays open until the body arrives, then closes quietly.
+    """
+    with socket.create_connection(("127.0.0.1", server.port), timeout=5) as sock:
+        head = (
+            f"{method} {path} HTTP/1.1\r\nHost: 127.0.0.1:{server.port}\r\n"
+            f"X-SchemaMap-Token: {TOKEN}\r\nContent-Type: application/json\r\n"
+            "Content-Length: 2\r\n\r\n"
+        )
+        sock.sendall(head.encode("ascii"))
+        answer = b""
+        while b"\r\n\r\n" not in answer:
+            answer += sock.recv(4096)
+        assert answer.startswith(b"HTTP/1.0 404")
+        header, _, partial = answer.partition(b"\r\n\r\n")
+        size = int(header.lower().split(b"content-length: ")[1].split(b"\r\n")[0])
+        while len(partial) < size:  # the whole answer, so the next read can only be the close
+            partial += sock.recv(4096)
+        sock.settimeout(0.3)
+        with pytest.raises(TimeoutError):  # still open: the server waits for the body
+            sock.recv(4096)
+        sock.settimeout(5)
+        sock.sendall(b"{}")
+        while sock.recv(4096):  # then a quiet close, never a reset
+            pass

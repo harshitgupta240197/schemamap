@@ -11,8 +11,12 @@ Two launches, each in a home folder whose name has a space and non-ASCII letters
 
 Each launch must print its link; the one-time code in it must be refused when wrong, accepted
 once and refused the second time (D-060); `/api/health` must need the token and answer with
-it; `POST /api/quit` must stop the process with exit status 0. Nothing here reads the lab or
-any user data.
+it; `POST /api/quit` must stop the process with exit status 0.
+
+A third launch quits while an import upload is in flight and then requires `tmp/` to be empty
+once the process has exited. On Windows an open file cannot be deleted, so a file may be left
+for the next start; then the launcher is started again and `tmp/` must be empty after that
+start (docs/UI.md). Nothing here reads the lab or any user data.
 """
 
 from __future__ import annotations
@@ -22,10 +26,12 @@ import io
 import json
 import os
 import re
+import socket
 import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Sequence
@@ -159,6 +165,62 @@ def exercise(launcher: Launcher) -> None:
     _expect("stopped" in launcher.output, f"no stop message in the output:\n{launcher.output}")
 
 
+def stop_with_upload_in_flight(launcher: Launcher, data_dir: Path) -> None:
+    """Start an import that never finishes, quit, and return once the process has exited."""
+    _, port, code = launcher.link()
+    _, answer = _call(port, "/api/session", method="POST", body={"code": code})
+    token = answer.get("token") if isinstance(answer, dict) else None
+    _expect(isinstance(token, str), "the session answer carried no token")
+    uploads = data_dir / "tmp"
+    head = (
+        f"POST /api/maps/import HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n"
+        f"{TOKEN_HEADER}: {token}\r\nContent-Type: application/json\r\n"
+        f"Content-Length: {50 * 1024 * 1024}\r\n\r\n"
+    )
+    with socket.create_connection(("127.0.0.1", port), timeout=10) as sender:
+        sender.sendall(head.encode("ascii") + b" " * (1024 * 1024))
+        deadline = time.monotonic() + 15
+        while not any(uploads.glob("upload-*.tmp")):
+            _expect(time.monotonic() < deadline, "the upload never reached tmp/")
+            time.sleep(0.05)
+        status, _ = _call(port, "/api/quit", method="POST", token=str(token), body={})
+        _expect(status == 200, f"/api/quit with an upload in flight answered {status}")
+        code_out = launcher.stop()
+    _expect(code_out == 0, f"`schemamap ui` exited with status {code_out}:\n{launcher.output}")
+
+
+def leftovers(data_dir: Path) -> list[str]:
+    """Names still in ``tmp/`` (none when the folder is gone)."""
+    uploads = data_dir / "tmp"
+    return sorted(item.name for item in uploads.iterdir()) if uploads.is_dir() else []
+
+
+def run_quit_with_upload(command: Path, home: Path, data_dir: Path) -> str:
+    """Quit with an upload in flight. ``tmp/`` must be empty after the exit, or (Windows only,
+    for a file that was locked) after the next start. Returns what happened, for the log."""
+    launcher = Launcher(command, ["--data-dir", str(data_dir)], home)
+    try:
+        stop_with_upload_in_flight(launcher, data_dir)
+    finally:
+        launcher.kill()
+    left = leftovers(data_dir)
+    if not left:
+        return "tmp/ was empty after the exit"
+    _expect(sys.platform == "win32", f"tmp/ still held {left} after the exit")
+    again = Launcher(command, ["--data-dir", str(data_dir)], home)
+    try:
+        _, port, code = again.link()
+        _, answer = _call(port, "/api/session", method="POST", body={"code": code})
+        token = answer.get("token") if isinstance(answer, dict) else None
+        left = leftovers(data_dir)
+        _expect(not left, f"tmp/ still held {left} after the next start")
+        _call(port, "/api/quit", method="POST", token=str(token), body={})
+        again.stop()
+    finally:
+        again.kill()
+    return "a locked file was left, and removed at the next start"
+
+
 def run(command: Path, args: Sequence[str], home: Path, expected: Path) -> None:
     """Start the launcher with ``args``, exercise it, and require ``expected`` to exist."""
     launcher = Launcher(command, args, home)
@@ -193,6 +255,7 @@ def main(argv: Sequence[str]) -> int:
             chosen = home / "My Maps" / "Schéma Map"
             run(command, ["--data-dir", str(chosen)], home, chosen)
             print(f"--data-dir with spaces and accents: created at {chosen}")
+            print(f"quit with an upload in flight: {run_quit_with_upload(command, home, chosen)}")
     except SmokeError as error:
         print(f"ui_smoke: {error}", file=sys.stderr)
         return 1

@@ -35,6 +35,13 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy
       - run: uv run pytest -m "not integration"
+      - name: Repeat the id-route tests 50 times (#18, a connection abort on Windows)
+        if: matrix.os == 'windows-latest' && matrix.python-version == '3.10'
+        run: >
+          uv run python -c "import sys, pytest;
+          sys.exit(sum(pytest.main(['-q', '--no-cov', '-p', 'no:cacheprovider',
+          'tests/test_ui_job_routes.py', '-k', 'not_32_hex_characters or leaves_a_body_unread'])
+          != 0 for _ in range(50)))"
 
   viewer:
     name: viewer (ubuntu)

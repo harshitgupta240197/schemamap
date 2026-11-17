@@ -37,7 +37,7 @@ from schemamap.ui.assets import Launcher
 from schemamap.ui.catalog import display_path, list_queries
 from schemamap.ui.connections import ConnectionStore
 from schemamap.ui.jobs import JobManager, describe_error
-from schemamap.ui.library import MapLibrary, read_upload
+from schemamap.ui.library import LibraryClosedError, MapLibrary, read_upload
 from schemamap.ui.security import (
     LISTEN_HOST,
     TOKEN_HEADER,
@@ -52,6 +52,7 @@ REQUEST_TIMEOUT_SECONDS = 10
 MAX_BODY_BYTES = 1024 * 1024
 MAX_IMPORT_BYTES = 100 * 1024 * 1024
 _CHUNK_BYTES = 64 * 1024
+_UPLOAD_POLL_SECONDS = 0.2
 _IMPORT_TYPES = frozenset({"application/json", "application/gzip"})
 IDLE_TIMEOUT_SECONDS = 30 * 60
 
@@ -156,7 +157,7 @@ class LauncherServer(ThreadingHTTPServer):
     def server_close(self) -> None:
         """Stop a running job, empty ``tmp/`` of uploads and half-written maps, close the socket."""
         self.jobs.shutdown()
-        self.library.clear_tmp()
+        self.library.close()
         super().server_close()
 
     def handle_error(self, request: object, client_address: object) -> None:
@@ -204,6 +205,8 @@ class LauncherHandler(BaseHTTPRequestHandler):
     server_version = "SchemaMap"
     sys_version = ""
     timeout = REQUEST_TIMEOUT_SECONDS
+    _body_consumed = False
+    _reader_drained = False
 
     @property
     def _launcher_server(self) -> LauncherServer:
@@ -227,6 +230,40 @@ class LauncherHandler(BaseHTTPRequestHandler):
             self.request_version = "HTTP/1.0"
         status = HTTPStatus(code)
         self._error(status, _PROTOCOL_ERRORS.get(status, "bad_request"), f"{status.phrase}.")
+
+    def handle_one_request(self) -> None:
+        """Handle one request, then take in a body the route never read.
+
+        An answer that leaves the client's body unread (a 401, 404 or 405, or any DELETE) would
+        close the socket on unread data. Windows then resets the connection, and the client can
+        lose the answer it was waiting for (#18). A body up to ``MAX_BODY_BYTES`` is read and
+        dropped first; a larger one is not worth the wait, and its sender gets the refusal anyway.
+        """
+        self._body_consumed = False
+        self._reader_drained = False
+        super().handle_one_request()
+        self._discard_unread_body()
+
+    def _discard_unread_body(self) -> None:
+        if self._body_consumed:
+            return
+        headers = getattr(self, "headers", None)  # absent when the request line did not parse
+        declared = None if headers is None else headers.get("Content-Length")
+        if not declared or not declared.isascii() or not declared.isdigit():
+            return
+        remaining = int(declared)
+        if remaining > MAX_BODY_BYTES:
+            return
+        try:
+            while remaining > 0:
+                chunk = self.rfile.read(min(_CHUNK_BYTES, remaining))
+                if not chunk:
+                    return
+                remaining -= len(chunk)
+        except OSError:
+            return
+        finally:
+            self._body_consumed = True
 
     def do_GET(self) -> None:
         self._handle("GET")
@@ -452,11 +489,21 @@ class LauncherHandler(BaseHTTPRequestHandler):
                     "unsupported_media_type",
                     "Send application/json or application/gzip.",
                 )
-            upload = server.library.new_upload_path()
             try:
-                self._stream_body(upload, length)
-                snapshot = read_upload(upload)
-                map_id = server.library.add(snapshot)
+                upload = server.library.new_upload_path()
+            except LibraryClosedError:
+                raise ApiError(
+                    HTTPStatus.SERVICE_UNAVAILABLE, "stopping", "Schema Map is stopping."
+                ) from None
+            try:
+                with server.library.writing():
+                    self._stream_body(upload, length)
+                    snapshot = read_upload(upload)
+                    map_id = server.library.add(snapshot)
+            except LibraryClosedError:
+                raise ApiError(
+                    HTTPStatus.SERVICE_UNAVAILABLE, "stopping", "Schema Map is stopping."
+                ) from None
             except SnapshotError as exc:
                 raise snapshot_refusal(exc) from None
             except (SchemaMapError, OSError) as exc:
@@ -473,14 +520,44 @@ class LauncherHandler(BaseHTTPRequestHandler):
 
     def _stream_body(self, destination: Path, length: int) -> None:
         """Copy exactly ``length`` body bytes to ``destination`` in chunks, never all in memory."""
+        self._body_consumed = True
         remaining = length
+        # Short socket timeouts make each wait end soon, so a stop is noticed at once on every
+        # system (a blocked read cannot be woken from another thread on Windows) and the file is
+        # closed before ``tmp/`` is emptied.
+        self.connection.settimeout(_UPLOAD_POLL_SECONDS)
+        last_bytes = time.monotonic()
         with destination.open("wb") as out:
             while remaining > 0:
-                chunk = self.rfile.read(min(_CHUNK_BYTES, remaining))
+                try:
+                    chunk = self._read_some(min(_CHUNK_BYTES, remaining))
+                except TimeoutError:
+                    if self._launcher_server.library.closed:
+                        raise LibraryClosedError("Schema Map is stopping") from None
+                    if time.monotonic() - last_bytes > REQUEST_TIMEOUT_SECONDS:
+                        raise ApiError(
+                            HTTPStatus.REQUEST_TIMEOUT, "request_timeout", "The upload stalled."
+                        ) from None
+                    continue
+                if self._launcher_server.library.closed:
+                    raise LibraryClosedError("Schema Map is stopping")
                 if not chunk:
                     raise ApiError(HTTPStatus.BAD_REQUEST, "bad_request", "The body ended early.")
+                last_bytes = time.monotonic()
                 out.write(chunk)
                 remaining -= len(chunk)
+
+    def _read_some(self, size: int) -> bytes:
+        """Up to ``size`` body bytes, at most one wait. Raises TimeoutError, b"" at the end.
+
+        The first call drains what the buffered reader already holds (it never holds more than
+        one chunk, so afterwards the buffer is empty, also when it timed out and can no longer be
+        read). Later calls read the socket directly.
+        """
+        if self._reader_drained:
+            return bytes(self.connection.recv(size))
+        self._reader_drained = True
+        return bytes(self.rfile.read1(size))
 
     def _session(self, body: dict[str, object]) -> None:
         """Trade the one-time launch code for the session token."""
@@ -511,6 +588,7 @@ class LauncherHandler(BaseHTTPRequestHandler):
                 "unsupported_media_type",
                 "Send application/json.",
             )
+        self._body_consumed = True
         raw = self.rfile.read(length)
         try:
             value = json.loads(raw)

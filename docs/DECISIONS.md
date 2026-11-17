@@ -644,7 +644,6 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 
 **Cost.** One extra field in one error answer. **Not added:** no dependency. The frames' folder path in the Done card is not shown: the server does not tell the page where maps are kept.
 
-
 ## D-071 "See every query it runs" is a local launcher page; "Technical details" stays on failure screens (2026-11-15)
 
 **Decision (crumb U.8a, issue #10).** Build "See every query it runs" as a local launcher page, and keep "Technical details" on failure screens.
@@ -657,3 +656,11 @@ The landing page and waitlist (`site/`) are one static HTML page, one stylesheet
 **Alternatives.** Link to GitHub (needs network, can drift from the installed version); drop both (loses the trust signal).
 
 **Cost.** Two read-only routes and one page. The folder is its own route so the `/api/maps` answer is unchanged. **Not added:** no dependency.
+
+## D-072 Launcher import: unpacked limit lowered from 512 MB to 32 MB (2026-11-16)
+
+**Decision.** `POST /api/maps/import` accepts a snapshot that unpacks to at most 32 MB (was 512 MB). The upload cap of 100 MB on the wire is unchanged. Over the limit the launcher gives the existing `422 invalid` ("larger than 32 MB once unpacked"); decompression stops one byte past the limit, so a gzip bomb is never fully unpacked.
+
+**Why.** Peak memory (RSS) of an import, measured with `tools/measure_import_memory.py` (numbers in `docs/PERFORMANCE.md`), is about 18 times the unpacked size at the sizes near the limit: 46 MB peaks at 872 MB, 61 MB at 1.17 GB, and a snapshot at the old 512 MB limit (493 MB unpacked) peaked at 3.3 GB on a 16 GB machine. A streaming parse was rejected: the validated Pydantic model alone holds about 8 times the unpacked size (510 MB after `read_upload` at 61 MB), so streaming the bytes cannot keep the peak under 1 GB, and a streaming validator would mean a new dependency and a second parser to keep identical to `view`'s. At 31 MB unpacked (the largest the new limit lets through) the peak is 560 MB, under the 1 GB goal with room for other platforms. The real 2,000-table SchemaMapSynth snapshot is 10 MB (peak 153 MB), so the limit allows about 6,000 tables of that shape.
+
+**Cost.** A snapshot over 32 MB unpacked cannot be imported through the launcher; it still opens with `schemamap view`. The viewer's own 512 MB limit for files opened in the browser is separate and unchanged. **Not added:** no dependency.

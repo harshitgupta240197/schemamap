@@ -155,3 +155,31 @@ The default layering takes 1.6 s at 800 tables but lays fan-outs out as tall str
 ## Map file with the light theme and Inter (crumb U.1a)
 
 `dist/index.html` is 2,271.88 kB (690.10 kB gzipped) with the Inter latin variable font inlined as a `data:` font. The font file is 48 KB, about 64 KB as base64 in the page, against a limit of 350 KB, so Inter is kept (D-061).
+
+## Launcher import memory (U.9, #14, D-072)
+
+What `POST /api/maps/import` costs in memory: `read_upload` (unpack, parse, validate) and `MapLibrary.add` (embed in the viewer page, write the map folder). Measured by `tools/measure_import_memory.py`, which runs each import in a fresh child process and reports the process's peak resident memory (RSS: `ru_maxrss` on macOS and Linux, `PeakWorkingSetSize` on Windows).
+
+```
+uv run --project cli tools/measure_import_memory.py --file path/to/snapshot.json[.gz]
+uv run --project cli tools/measure_import_memory.py --synthetic-mb 33 [--gzip]
+```
+
+`--synthetic-mb N` copies the AdventureWorks test fixture under renamed schemas until the file is about N MB unpacked, so nothing comes from a real company. The real 2,000-table snapshot is `schemamap extract` of the lab's SchemaMapSynth database.
+
+**Machine:** Apple M5, 16 GB, macOS (Darwin 25.0), Python 3.13, run on 2026-11-16 with the viewer page packaged (2.2 MB). Peak RSS includes the 35 MB the interpreter starts with. One run per row; macOS compresses idle memory, so the largest rows understate what Linux or Windows would show.
+
+| Snapshot | Unpacked | Tables | After `read_upload` | **Peak RSS** | Time |
+| --- | --: | --: | --: | --: | --: |
+| SchemaMapSynth, 2,000 tables (real extract) | 10 MB | 2,000 | 103 MB | **153 MB** | 1.7 s |
+| synthetic | 19 MB | 2,627 | 203 MB | **380 MB** | 6.2 s |
+| synthetic (**new limit**, largest that passes) | 31 MB | 4,331 | 311 MB | **560 MB** | 10 s |
+| synthetic | 38 MB | 5,254 | 368 MB | 676 MB | 13 s |
+| synthetic | 46 MB | 6,319 | 435 MB | 872 MB | 15 s |
+| synthetic | 61 MB | 8,449 | 510 MB | 1,166 MB | 21 s |
+| synthetic | 123 MB | 16,898 | 995 MB | 1,957 MB | 42 s |
+| synthetic | 246 MB | 33,796 | 1,651 MB | 2,356 MB | 90 s |
+| synthetic (**old limit**, 512 MB) | 493 MB | 67,521 | 2,973 MB | **3,307 MB** | 190 s |
+
+**Choice (D-072).** Peak memory is about 18 times the unpacked size where it matters, and the validated model alone is about 8 times, so a streaming parse of the bytes cannot bring a 512 MB snapshot under 1 GB. The unpacked limit is lowered from 512 MB to 32 MB. A snapshot at the limit peaks at 560 MB, under the 1 GB goal with room for other platforms. Over the limit the launcher answers the existing `422 invalid` and stops unpacking one byte past the limit (a 50 MB gzip bomb is never fully unpacked: `test_an_upload_over_the_limit_is_never_unpacked_past_it`). A larger snapshot still opens with `schemamap view`.
+

@@ -18,7 +18,7 @@ cli/        Python package `schemamap` (extract, infer, export, CLI)
 viewer/     React + TypeScript single-file viewer (Vite), plus the `schemamap ui` launcher page (second entry)
 site/       Landing page and waitlist: static HTML plus one Vercel function (api/join), no build step
 schema/     snapshot.v1.json, generated from cli/src/schemamap/snapshot/ (never edit by hand)
-tools/      lab.py (SQL Server Docker lab), synthetic schema generator, build_viewer.py (packages the viewer and launcher for `schemamap view` and `schemamap ui`), check_wheel.py (checks the wheel carries them), ui_smoke.py (starts `schemamap ui` from an installed wheel and drives it; the CI `ui-smoke` job)
+tools/      lab.py (SQL Server Docker lab), synthetic schema generator, build_viewer.py (packages the viewer and launcher for `schemamap view` and `schemamap ui`), check_wheel.py (checks the wheel carries them), ui_smoke.py (starts `schemamap ui` from an installed wheel and drives it, including a quit with an upload in flight; the CI `ui-smoke` job), measure_import_memory.py (peak memory of importing a snapshot; D-072)
 docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, UI.md, gate reports, plans/ (phase plans), images/ui/ (launcher screenshots for UI.md)
 .github/    CI workflows
 ```
@@ -37,6 +37,7 @@ docs/       BUILD_PLAN.md, ARCHITECTURE.md, DECISIONS.md, PROGRESS.md, UI.md, ga
 - Launcher end-to-end against the lab (lab up, packaged viewer; the CI integration job runs it): `cd viewer && SCHEMAMAP_E2E_LAB=1 npx playwright test e2e/launcher-lab.spec.ts --project=chromium`
 - Wheel contains the viewer and a matching manifest: `cd cli && uv build --wheel && cd .. && uv run tools/check_wheel.py cli/dist/*.whl`
 - Launcher smoke test on the built wheel (the CI `ui-smoke` job runs it on all three systems): `uv build --wheel --directory cli && uv venv ui-smoke-env && uv pip install --python ui-smoke-env cli/dist/*.whl && uv run tools/ui_smoke.py --venv ui-smoke-env`
+- Peak memory of a launcher import (docs/PERFORMANCE.md): `uv run --project cli tools/measure_import_memory.py --file <snapshot> | --synthetic-mb <N> [--gzip]`
 - Regenerate the snapshot JSON Schema after changing `snapshot/` models: `cd cli && uv run python scripts/gen_snapshot_schema.py` (a test fails if `schema/snapshot.v1.json` is stale)
 - Lab: `uv run tools/lab.py up | restore all | status | down [--purge]` (also `restore <db>`, `grant <db> [--view-database-state]`, `edgecases`, `synth --tables N`; see `docs/LAB.md`)
 
