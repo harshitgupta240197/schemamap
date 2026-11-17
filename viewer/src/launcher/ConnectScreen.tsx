@@ -67,6 +67,8 @@ interface Props {
   readonly focusHeading: boolean;
   /** Set when "Forget" could not reach the server. */
   readonly forgetError: string | null;
+  /** Open the page that lists every query this version can send. */
+  readonly onQueries: () => void;
 }
 
 /** Step 1: where to connect and how to sign in. */
@@ -99,6 +101,7 @@ export function ConnectScreen({
   onSubmit,
   focusHeading,
   forgetError,
+  onQueries,
 }: Props) {
   const narrow = useNarrow();
   const [revealed, setRevealed] = useState(false);
@@ -487,6 +490,9 @@ export function ConnectScreen({
                 <span>Runs on this computer. The map is a single offline file you control.</span>
               </li>
             </ul>
+            <button type="button" className="lc-link lc-reads__link" onClick={onQueries}>
+              See every query it runs
+            </button>
           </section>
         </div>
       </div>

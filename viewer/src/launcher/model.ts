@@ -244,6 +244,40 @@ export function parseMaps(body: unknown): MapEntry[] | null {
   return list(body.maps).flatMap((entry) => mapEntry(entry) ?? []);
 }
 
+/** One query this version can send: its file name, what it is for and its SQL text. */
+export interface QueryInfo {
+  readonly name: string;
+  readonly purpose: string;
+  readonly sql: string;
+}
+
+export interface QueryCatalog {
+  readonly version: string;
+  readonly queries: readonly QueryInfo[];
+}
+
+function queryInfo(value: unknown): QueryInfo | null {
+  if (!isObj(value)) return null;
+  const { name, purpose, sql } = value;
+  if (typeof name !== "string" || typeof purpose !== "string" || typeof sql !== "string") {
+    return null;
+  }
+  return { name, purpose, sql };
+}
+
+/** `GET /api/queries`: the version and every query, in the order the server sent them. */
+export function parseQueries(body: unknown): QueryCatalog | null {
+  if (!isObj(body) || typeof body.version !== "string" || !Array.isArray(body.queries)) {
+    return null;
+  }
+  return { version: body.version, queries: list(body.queries).flatMap((q) => queryInfo(q) ?? []) };
+}
+
+/** `GET /api/maps/folder`: where maps are kept, with the home folder shown as `~`. */
+export function parseFolder(body: unknown): string | null {
+  return isObj(body) ? str(body.folder) : null;
+}
+
 /** `POST /api/maps/import`: the id of the new map. */
 export function parseImported(body: unknown): string | null {
   return isObj(body) ? str(body.map_id) : null;

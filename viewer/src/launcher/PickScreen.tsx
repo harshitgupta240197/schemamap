@@ -2,6 +2,8 @@ import { useState, type ReactNode } from "react";
 import { CheckItem } from "./CheckScreen";
 import { HowToFix, Icon, Main, ScreenHeading, ScriptBlock, StateTile } from "./Chrome";
 import { endpointLabel, type FormState } from "./form";
+import { failureCategory } from "./maps";
+import { TechnicalDetails } from "./TechnicalDetails";
 import type { Failure, TestResult } from "./model";
 import { combinedFixScript, permissionScript } from "./permissionScript";
 
@@ -98,6 +100,7 @@ export function PickScreen({
           </h2>
           <p role="alert">{state.failure.message}</p>
           {state.failure.fix === null ? null : <HowToFix fix={state.failure.fix} />}
+          <TechnicalDetails query="databases" category={failureCategory(state.failure)} />
           <div className="lc-actions">
             <button type="button" className="lc-btn lc-btn--primary" onClick={onRetry}>
               <Icon name="refresh" size={18} />
@@ -307,6 +310,10 @@ function DatabaseResults({ state }: { readonly state: DatabaseCheckState }) {
         </h2>
         <p role="alert">{state.failure.message}</p>
         {state.failure.fix === null ? null : <HowToFix fix={state.failure.fix} />}
+        <TechnicalDetails
+          query="doctor_server_info, permissions"
+          category={failureCategory(state.failure)}
+        />
       </section>
     );
   }

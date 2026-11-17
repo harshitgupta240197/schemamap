@@ -202,6 +202,9 @@ test("a failed extract shows the fix, says nothing was saved, and offers a way o
   await expect(page.getByText(/Raise Query timeout under Advanced/)).toBeVisible();
   await expect(page.getByText(/Nothing was saved/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Cancel" })).toHaveCount(0);
+  await page.getByText("Technical details").click();
+  await expect(page.getByText("query_timeout")).toBeVisible();
+  await expect(page.locator(".lc-details")).not.toContainText("127.0.0.1");
   await audit(page, "extract-failed", true);
 
   await page.getByRole("button", { name: "Try again" }).click();

@@ -1,5 +1,13 @@
 import { HowToFix, Icon, Main, ScreenHeading, StateTile } from "./Chrome";
-import { failedSection, formatElapsed, sectionCount, sectionProgress, sectionTitle } from "./maps";
+import {
+  failedSection,
+  formatElapsed,
+  sectionQueries,
+  sectionCount,
+  sectionProgress,
+  sectionTitle,
+} from "./maps";
+import { TechnicalDetails } from "./TechnicalDetails";
 import type { JobStatus, SectionState } from "./model";
 
 /**
@@ -27,6 +35,8 @@ export type ExtractState =
       readonly job: JobStatus | null;
       readonly message: string;
       readonly fix: string | null;
+      /** The error category when there is no job to read it from. */
+      readonly code?: string;
     };
 
 const STATE_WORDS: Record<SectionState, string> = {
@@ -134,6 +144,10 @@ export function ExtractScreen({
             </h2>
             <p>{state.message}</p>
             {state.fix === null ? null : <HowToFix fix={state.fix} />}
+            <TechnicalDetails
+              query={stoppedAt === null ? "none yet" : sectionQueries(stoppedAt.name)}
+              category={job?.error?.code ?? state.code ?? "unknown"}
+            />
             <p className="lc-hint">
               Nothing was saved, so there is no partial map to confuse anyone later.
             </p>

@@ -12,12 +12,23 @@ interface Props {
   readonly where: string;
   /** The map's row from the maps list; null when the list could not be read. */
   readonly entry: MapEntry | null;
+  /** Where maps are kept (home folder shown as ~); null when the server did not say. */
+  readonly folder: string | null;
   readonly onAnother: () => void;
   readonly onRecent: () => void;
 }
 
 /** Step 5: the map is saved. Open it in a new tab, save the file, or extract another database. */
-export function DoneScreen({ token, mapId, database, where, entry, onAnother, onRecent }: Props) {
+export function DoneScreen({
+  token,
+  mapId,
+  database,
+  where,
+  entry,
+  folder,
+  onAnother,
+  onRecent,
+}: Props) {
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const facts = [
@@ -76,11 +87,20 @@ export function DoneScreen({ token, mapId, database, where, entry, onAnother, on
           </button>
           <p className="lc-hint lc-hint--folder">
             <Icon name="folder" size={15} />
-            Kept on this computer. Find it later under{" "}
-            <button type="button" className="lc-link" onClick={onRecent}>
-              Recent maps
-            </button>
-            .
+            <span>
+              Kept on this computer
+              {folder === null ? null : (
+                <>
+                  {" "}
+                  in <code className="lc-code">{folder}</code>
+                </>
+              )}
+              . Find it later under{" "}
+              <button type="button" className="lc-link" onClick={onRecent}>
+                Recent maps
+              </button>
+              .
+            </span>
           </p>
         </div>
       </section>

@@ -117,3 +117,26 @@ export function rerunTarget(
   const entry = usable(remembered, caps).find((item) => same(item.server));
   return entry === undefined ? null : applyRemembered(form, entry, caps);
 }
+
+/** The queries each progress section reads, for the failure screens' technical details. */
+const SECTION_QUERIES: Readonly<Record<string, string>> = {
+  schemas: "schemas",
+  tables: "tables, columns, indexes, index_columns, check_constraints",
+  views: "views, view_columns",
+  routines: "routines",
+  synonyms: "synonyms",
+  relationships: "foreign_keys",
+  dependencies: "dependencies",
+  row_counts: "row_counts",
+};
+
+/** The query names behind a section; the section's own name when it is not one we know. */
+export function sectionQueries(name: string): string {
+  return SECTION_QUERIES[name] ?? name;
+}
+
+/** The short code a failure carries, for display: the server's code, else what the status says. */
+export function failureCategory(failure: { status: number; code?: string }): string {
+  if (failure.code !== undefined) return failure.code;
+  return failure.status === 0 ? "unreachable" : `http_${String(failure.status)}`;
+}

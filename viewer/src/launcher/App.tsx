@@ -7,6 +7,7 @@ import {
   fetchCapabilities,
   fetchJob,
   fetchMaps,
+  fetchMapsFolder,
   fetchRemembered,
   forgetConnection,
   listDatabases,
@@ -25,15 +26,16 @@ import {
   toConnection,
   type FormState,
 } from "./form";
-import { rerunTarget } from "./maps";
+import { failureCategory, rerunTarget } from "./maps";
 import type { Capabilities, MapEntry, RememberedConnection } from "./model";
+import { QueriesScreen } from "./QueriesScreen";
 import { PickScreen, type DatabaseCheckState, type PickState } from "./PickScreen";
 import { QuitScreen } from "./QuitScreen";
 import { RecentScreen } from "./RecentScreen";
 import { RerunDialog } from "./RerunDialog";
 import { startSession } from "./session";
 
-type Screen = "connect" | "check" | "pick" | "extract" | "done" | "recent" | "quit";
+type Screen = "connect" | "check" | "pick" | "extract" | "done" | "recent" | "queries" | "quit";
 
 /** The extract the page is following: where it runs and what it is called. */
 interface Run {
@@ -47,6 +49,8 @@ interface DoneState {
   readonly database: string;
   readonly where: string;
   readonly entry: MapEntry | null;
+  /** Where maps are kept, home folder shown as ~; null when the server did not say. */
+  readonly folder: string | null;
 }
 
 const POLL_MS = 500;
@@ -93,6 +97,7 @@ export function App() {
   const [done, setDone] = useState<DoneState | null>(null);
   const [rerun, setRerun] = useState<MapEntry | null>(null);
   const [quitError, setQuitError] = useState<string | null>(null);
+  const [cameFrom, setCameFrom] = useState<Screen>("connect");
   const screenRef = useRef<Screen>("connect");
   const sessionToken = boot.kind === "ready" ? boot.token : null;
   // Answers that arrive after the person moved on are dropped.
@@ -157,6 +162,7 @@ export function App() {
           job: null,
           message: outcome.failure.message,
           fix: outcome.failure.fix,
+          code: failureCategory(outcome.failure),
         });
         return;
       }
@@ -174,7 +180,10 @@ export function App() {
       }
       if (job.state === "done" && job.mapId !== null) {
         const mapId = job.mapId;
-        const maps = await fetchMaps(sessionToken);
+        const [maps, folder] = await Promise.all([
+          fetchMaps(sessionToken),
+          fetchMapsFolder(sessionToken),
+        ]);
         if (gone()) return;
         const entry = maps.ok ? (maps.value.find((item) => item.id === mapId) ?? null) : null;
         setRun({ id: null, database, where });
@@ -184,6 +193,7 @@ export function App() {
           database: followed ? (entry?.database ?? "") : database,
           where: followed ? (entry?.server ?? "") : where,
           entry,
+          folder: folder.ok ? folder.value : null,
         });
         setExtract(null);
         if (screenRef.current === "extract") go("done");
@@ -296,6 +306,7 @@ export function App() {
           job: null,
           message: outcome.failure.message,
           fix: outcome.failure.fix,
+          code: failureCategory(outcome.failure),
         });
         return;
       }
@@ -379,6 +390,12 @@ export function App() {
     });
   };
 
+  const openQueries = () => {
+    if (screen === "queries") return;
+    setCameFrom(screen);
+    go("queries");
+  };
+
   const step = STEP[screen];
   const needsPassword = selectedMode(form, caps)?.needsPassword === true;
   const hereWhere = endpointLabel(form.server.trim(), form.port.trim());
@@ -414,6 +431,7 @@ export function App() {
           onSubmit={runCheck}
           focusHeading={moved}
           forgetError={forgetError}
+          onQueries={openQueries}
         />
       ) : null}
       {screen === "check" ? (
@@ -491,6 +509,7 @@ export function App() {
           database={done.database}
           where={done.where}
           entry={done.entry}
+          folder={done.folder}
           onAnother={() => {
             setSelected(null);
             go("pick");
@@ -507,6 +526,14 @@ export function App() {
             go("connect");
           }}
           onRerun={setRerun}
+        />
+      ) : null}
+      {screen === "queries" ? (
+        <QueriesScreen
+          token={token}
+          onBack={() => {
+            go(cameFrom === "queries" ? "connect" : cameFrom);
+          }}
         />
       ) : null}
       {screen === "quit" ? <QuitScreen /> : null}
@@ -533,7 +560,7 @@ export function App() {
           }}
         />
       ) : null}
-      <Footer />
+      <Footer onQueries={screen === "quit" ? undefined : openQueries} />
     </>
   );
 }
